@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const id = nextId(data, "batches");
   const kodeBatch = `BATCH-${new Date().getFullYear()}-${String(id).padStart(3, "0")}`;
   const token = require("crypto").randomUUID();
-  data.batches.push({ id, kode_batch: kodeBatch, jenis_kain: jenisCain, jumlah_meter: jumlahMeter, jumlah_pcs: jumlahPcs, status: "bahan-mentah", current_step: 0, token, route_selesai: false, created_at: now, updated_at: now });
+  data.batches.push({ id, kode_batch: kodeBatch, jenis_kain: jenisCain, jumlah_meter: jumlahMeter, jumlah_pcs: jumlahPcs, size_breakdown: [], status: "bahan-mentah", current_step: 0, token, route_selesai: false, created_at: now, updated_at: now });
   writeData(data);
   return NextResponse.json({ id, kodeBatch, token });
 }
