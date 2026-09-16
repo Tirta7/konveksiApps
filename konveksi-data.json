@@ -1,0 +1,2935 @@
+{
+  "_counters": {
+    "vendors": 8,
+    "batches": 15,
+    "batch_steps": 36,
+    "tracking_logs": 161,
+    "stock": 8,
+    "stock_movements": 5,
+    "purchase_orders": 5,
+    "retail_sales": 6,
+    "retur_produksi": 8,
+    "retur_online": 0
+  },
+  "vendors": [
+    {
+      "id": 1,
+      "nama": "Vendor A — Mitra Jaya",
+      "jenis_default": "Potong & Jahit",
+      "kontak": "081234567001",
+      "aktif": false,
+      "created_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 2,
+      "nama": "Vendor B — Laundry Prima",
+      "jenis_default": "Washing / Laundry",
+      "kontak": "081234567002",
+      "aktif": false,
+      "created_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 3,
+      "nama": "Vendor C — Finishing Mandiri",
+      "jenis_default": "Finishing, QC & Packing",
+      "kontak": "081234567003",
+      "aktif": false,
+      "created_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 4,
+      "nama": "Vendor 1",
+      "jenis_default": "Potong",
+      "kontak": "08999964523",
+      "aktif": true,
+      "created_at": "2026-09-15T10:36:32.736Z"
+    },
+    {
+      "id": 5,
+      "nama": "Vendor 2",
+      "jenis_default": "Jahit",
+      "kontak": "08999964525",
+      "aktif": true,
+      "created_at": "2026-09-15T10:36:45.093Z"
+    },
+    {
+      "id": 6,
+      "nama": "Vendor 3",
+      "jenis_default": "Washing",
+      "kontak": "08999964575",
+      "aktif": true,
+      "created_at": "2026-09-15T10:37:23.622Z"
+    },
+    {
+      "id": 7,
+      "nama": "Vendor 4",
+      "jenis_default": "Finishing",
+      "kontak": "08999964595",
+      "aktif": true,
+      "created_at": "2026-09-15T10:37:43.451Z"
+    },
+    {
+      "id": 8,
+      "nama": "Vendor 5",
+      "jenis_default": "Quality Control & Packing",
+      "kontak": "08999964577",
+      "aktif": true,
+      "created_at": "2026-09-15T10:38:12.226Z"
+    }
+  ],
+  "batches": [
+    {
+      "id": 1,
+      "kode_batch": "BATCH-2024-001",
+      "jenis_kain": "Denim Biru 12oz",
+      "jumlah_meter": 150,
+      "jumlah_pcs": 300,
+      "status": "dalam-proses",
+      "current_step": 3,
+      "token": "8ee0d3ad-4bb6-4d9b-bdee-9cab8e5f66cf",
+      "route_selesai": false,
+      "created_at": "2026-09-15T02:58:42.802Z",
+      "updated_at": "2026-09-15T03:12:26.756Z"
+    },
+    {
+      "id": 2,
+      "kode_batch": "BATCH-2024-002",
+      "jenis_kain": "Denim Hitam 14oz",
+      "jumlah_meter": 200,
+      "jumlah_pcs": 400,
+      "status": "dalam-proses",
+      "current_step": 3,
+      "token": "993396b7-c9e8-4a41-a9c4-d5c462dad2be",
+      "route_selesai": false,
+      "created_at": "2026-09-15T02:58:42.802Z",
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 3,
+      "kode_batch": "BATCH-2024-003",
+      "jenis_kain": "Denim Abu 11oz",
+      "jumlah_meter": 100,
+      "jumlah_pcs": 200,
+      "status": "gudang",
+      "current_step": 3,
+      "token": "4fb854e7-19e2-4452-a040-9469048ccfbf",
+      "route_selesai": true,
+      "created_at": "2026-09-15T02:58:42.802Z",
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 4,
+      "kode_batch": "BATCH-2026-004",
+      "jenis_kain": "Denim Stretch 12oz",
+      "jumlah_meter": 150,
+      "jumlah_pcs": 100,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 60,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 40,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 1,
+      "token": "3efb74a8-ee34-47c2-bdc8-8dcbbd5e18a3",
+      "route_selesai": true,
+      "catatan_route": "",
+      "created_at": "2026-09-15T04:44:52.150Z",
+      "updated_at": "2026-09-15T04:45:59.120Z"
+    },
+    {
+      "id": 5,
+      "kode_batch": "BATCH-2026-005",
+      "jenis_kain": "Denim Washed 13oz",
+      "jumlah_pcs": 100,
+      "size_breakdown": [
+        {
+          "size": "S",
+          "jumlah": 60,
+          "cacat": 0
+        },
+        {
+          "size": "M",
+          "jumlah": 40,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 2,
+      "token": "0bcfabe3-8ae4-4ae7-b64d-fbcbc92c7aa6",
+      "route_selesai": true,
+      "catatan_route": "",
+      "created_at": "2026-09-15T04:58:25.873Z",
+      "updated_at": "2026-09-15T05:04:28.911Z"
+    },
+    {
+      "id": 6,
+      "kode_batch": "BATCH-2026-006",
+      "jenis_kain": "Denim Raw 14oz",
+      "jumlah_pcs": 100,
+      "size_breakdown": [
+        {
+          "size": "S",
+          "jumlah": 60,
+          "cacat": 5
+        },
+        {
+          "size": "M",
+          "jumlah": 40,
+          "cacat": 3
+        }
+      ],
+      "status": "gudang",
+      "current_step": 1,
+      "token": "1bc8c427-60bf-4165-bdc1-fdf8d66112c5",
+      "route_selesai": true,
+      "catatan_route": "",
+      "created_at": "2026-09-15T05:11:11.623Z",
+      "updated_at": "2026-09-15T05:27:10.239Z"
+    },
+    {
+      "id": 7,
+      "kode_batch": "BATCH-2026-007",
+      "jenis_kain": "Denim Abu 11oz",
+      "jumlah_meter": 512,
+      "jumlah_pcs": 200,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 130,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 70,
+          "cacat": 10
+        }
+      ],
+      "status": "dalam-proses",
+      "current_step": 3,
+      "token": "abe453ad-be2d-4de9-89bb-cb05e1576a38",
+      "route_selesai": false,
+      "catatan_route": "",
+      "created_at": "2026-09-15T05:41:59.737Z",
+      "updated_at": "2026-09-15T05:49:38.998Z"
+    },
+    {
+      "id": 8,
+      "kode_batch": "BATCH-2026-008",
+      "jenis_kain": "Selvedge Denim",
+      "jumlah_meter": 1200,
+      "jumlah_pcs": 600,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 300,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 300,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 3,
+      "token": "89326b5f-4293-48a0-b101-a3d1e7ff0238",
+      "route_selesai": true,
+      "catatan_route": "",
+      "created_at": "2026-09-15T06:57:06.036Z",
+      "updated_at": "2026-09-15T18:25:12.831Z"
+    },
+    {
+      "id": 9,
+      "kode_batch": "BATCH-2026-009",
+      "jenis_kain": "Denim 01",
+      "jumlah_meter": 150,
+      "jumlah_pcs": 25,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 20,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 5,
+          "cacat": 0
+        }
+      ],
+      "status": "dalam-proses",
+      "current_step": 1,
+      "token": "4725258b-ffd6-4e94-abe4-95eeffe8d611",
+      "route_selesai": false,
+      "catatan_route": "",
+      "created_at": "2026-09-15T07:27:05.258Z",
+      "updated_at": "2026-09-15T07:27:05.258Z"
+    },
+    {
+      "id": 10,
+      "kode_batch": "BATCH-2026-010",
+      "jenis_kain": "Denim03",
+      "jumlah_meter": 800,
+      "jumlah_pcs": 80,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 80,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 2,
+      "token": "94f65028-4ca1-49ab-9add-4b51c36ed443",
+      "route_selesai": true,
+      "catatan_route": "",
+      "created_at": "2026-09-15T08:01:07.826Z",
+      "updated_at": "2026-09-15T09:04:30.091Z"
+    },
+    {
+      "id": 11,
+      "kode_batch": "BATCH-2026-011",
+      "jenis_kain": "Denim04",
+      "jumlah_meter": 600,
+      "jumlah_pcs": 300,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 200,
+          "cacat": 14
+        },
+        {
+          "size": "XL",
+          "jumlah": 100,
+          "cacat": 0
+        }
+      ],
+      "status": "dalam-proses",
+      "current_step": 3,
+      "token": "11bc1e72-3914-41cf-a1c0-7129812742ce",
+      "route_selesai": false,
+      "catatan_route": "",
+      "is_retur": false,
+      "created_at": "2026-09-15T09:08:34.969Z",
+      "updated_at": "2026-09-15T09:09:41.070Z"
+    },
+    {
+      "id": 12,
+      "kode_batch": "BATCH-2026-012",
+      "jenis_kain": "DENIM05",
+      "jumlah_meter": 300,
+      "jumlah_pcs": 100,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 50,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 50,
+          "cacat": 0
+        }
+      ],
+      "status": "dalam-proses",
+      "current_step": 1,
+      "token": "ceb91f7b-0e49-4f2f-82a4-4aa6dcabfd70",
+      "route_selesai": false,
+      "catatan_route": "",
+      "is_retur": false,
+      "created_at": "2026-09-15T09:53:14.338Z",
+      "updated_at": "2026-09-15T09:53:14.338Z"
+    },
+    {
+      "id": 13,
+      "kode_batch": "BATCH-2026-013",
+      "jenis_kain": "denim 09",
+      "jumlah_meter": 1000,
+      "jumlah_pcs": 200,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 100,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 100,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 3,
+      "token": "ea2e0c34-5b5d-48d6-b58f-6e50ebdf7b28",
+      "route_selesai": true,
+      "catatan_route": "",
+      "is_retur": false,
+      "created_at": "2026-09-15T09:55:51.455Z",
+      "updated_at": "2026-09-15T09:58:59.665Z"
+    },
+    {
+      "id": 14,
+      "kode_batch": "BATCH-2026-014",
+      "jenis_kain": "Raw Denim",
+      "jumlah_meter": 2500,
+      "jumlah_pcs": 600,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 218,
+          "cacat": 0
+        },
+        {
+          "size": "XL",
+          "jumlah": 200,
+          "cacat": 0
+        },
+        {
+          "size": "M",
+          "jumlah": 30,
+          "cacat": 0
+        },
+        {
+          "size": "XXL",
+          "jumlah": 170,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 4,
+      "token": "dbf5a36b-80bd-4b03-b7a2-68d44e5ece66",
+      "route_selesai": true,
+      "catatan_route": "Kebutuhan PO online",
+      "is_retur": false,
+      "created_at": "2026-09-15T10:41:27.376Z",
+      "updated_at": "2026-09-15T18:23:25.545Z"
+    },
+    {
+      "id": 15,
+      "kode_batch": "RETUR-2026-015",
+      "jenis_kain": "Raw Denim",
+      "jumlah_pcs": 18,
+      "size_breakdown": [
+        {
+          "size": "L",
+          "jumlah": 18,
+          "cacat": 0
+        }
+      ],
+      "status": "gudang",
+      "current_step": 3,
+      "token": "765db504-6a38-4137-93d1-aeeb236ea8aa",
+      "route_selesai": true,
+      "catatan_route": "Retur dari BATCH-2026-014",
+      "is_retur": true,
+      "parent_batch_id": 14,
+      "created_at": "2026-09-15T18:21:47.261Z",
+      "updated_at": "2026-09-15T18:22:54.629Z"
+    }
+  ],
+  "batch_steps": [
+    {
+      "id": 1,
+      "batch_id": 1,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 300,
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T02:58:42.802Z",
+      "selesai_waktu": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 2,
+      "batch_id": 1,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 300,
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T02:58:42.802Z",
+      "selesai_waktu": "2026-09-15T03:12:26.756Z"
+    },
+    {
+      "id": 3,
+      "batch_id": 1,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 300,
+      "status": "berjalan",
+      "mulai_waktu": "2026-09-15T03:12:26.756Z",
+      "terima_waktu": "2026-09-15T03:24:49.200Z"
+    },
+    {
+      "id": 4,
+      "batch_id": 2,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 400,
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T02:58:42.802Z",
+      "selesai_waktu": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 5,
+      "batch_id": 2,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 400,
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T02:58:42.802Z",
+      "selesai_waktu": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 6,
+      "batch_id": 4,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 100,
+      "deadline": "",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T04:44:52.150Z",
+      "terima_waktu": "2026-09-15T04:45:41.405Z",
+      "selesai_waktu": "2026-09-15T04:45:59.120Z"
+    },
+    {
+      "id": 7,
+      "batch_id": 5,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 100,
+      "deadline": "",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T04:58:25.873Z",
+      "terima_waktu": "2026-09-15T05:00:29.661Z",
+      "selesai_waktu": "2026-09-15T05:01:14.153Z"
+    },
+    {
+      "id": 8,
+      "batch_id": 5,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 100,
+      "deadline": "",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T05:01:14.153Z",
+      "terima_waktu": "2026-09-15T05:03:58.169Z",
+      "selesai_waktu": "2026-09-15T05:04:28.911Z"
+    },
+    {
+      "id": 9,
+      "batch_id": 6,
+      "step_order": 1,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 100,
+      "deadline": "",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T05:11:11.623Z",
+      "terima_waktu": "2026-09-15T05:11:50.406Z",
+      "qc_result": "gagal",
+      "defect_detail": [
+        {
+          "size": "S",
+          "jumlah_cacat": 5,
+          "alasan": "Jahitan lepas",
+          "waktu": "2026-09-15T05:15:02.857Z"
+        },
+        {
+          "size": "M",
+          "jumlah_cacat": 3,
+          "alasan": "Noda oli",
+          "waktu": "2026-09-15T05:15:02.857Z"
+        }
+      ],
+      "total_cacat": 8,
+      "selesai_waktu": "2026-09-15T05:27:10.239Z"
+    },
+    {
+      "id": 10,
+      "batch_id": 7,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 200,
+      "deadline": "2026-09-17",
+      "catatan": "Selesaikan Tepat Waktu",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T05:41:59.737Z",
+      "terima_waktu": "2026-09-15T05:43:21.915Z",
+      "selesai_waktu": "2026-09-15T05:44:40.370Z"
+    },
+    {
+      "id": 11,
+      "batch_id": 7,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 200,
+      "deadline": "2026-09-19",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T05:44:40.370Z",
+      "terima_waktu": "2026-09-15T05:47:59.680Z",
+      "selesai_waktu": "2026-09-15T05:49:38.998Z"
+    },
+    {
+      "id": 12,
+      "batch_id": 7,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 200,
+      "deadline": "2026-09-21",
+      "catatan": "",
+      "status": "berjalan",
+      "mulai_waktu": "2026-09-15T05:49:38.998Z",
+      "mulai_hitung_waktu": "2026-09-15T08:34:17.810Z",
+      "terima_waktu": "2026-09-15T08:34:53.506Z",
+      "jumlah_diterima": 200,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 130,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 70,
+          "selisih": 0
+        }
+      ],
+      "qc_result": "gagal",
+      "defect_detail": [
+        {
+          "size": "XL",
+          "jumlah_cacat": 5,
+          "alasan": "washing ulang",
+          "waktu": "2026-09-15T08:42:00.160Z"
+        }
+      ],
+      "total_cacat": 5
+    },
+    {
+      "id": 13,
+      "batch_id": 8,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-17",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T06:57:06.036Z",
+      "mulai_hitung_waktu": "2026-09-15T06:57:40.469Z",
+      "terima_waktu": "2026-09-15T06:57:50.300Z",
+      "jumlah_diterima": 600,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 300,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 300,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T06:57:56.614Z"
+    },
+    {
+      "id": 14,
+      "batch_id": 8,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-19",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T06:57:56.614Z",
+      "mulai_hitung_waktu": "2026-09-15T06:59:32.796Z",
+      "terima_waktu": "2026-09-15T07:00:51.488Z",
+      "jumlah_diterima": 555,
+      "selisih_terima": 45,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 255,
+          "selisih": 45
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 300,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T07:01:11.240Z"
+    },
+    {
+      "id": 15,
+      "batch_id": 8,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-21",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T07:01:11.240Z",
+      "mulai_hitung_waktu": "2026-09-15T18:25:02.610Z",
+      "terima_waktu": "2026-09-15T18:25:11.400Z",
+      "jumlah_diterima": 555,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 255,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 300,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T18:25:12.831Z"
+    },
+    {
+      "id": 16,
+      "batch_id": 9,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 25,
+      "deadline": "2026-09-16",
+      "catatan": "",
+      "status": "berjalan",
+      "mulai_waktu": "2026-09-15T07:27:05.258Z"
+    },
+    {
+      "id": 17,
+      "batch_id": 9,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 25,
+      "deadline": "2026-09-17",
+      "catatan": "",
+      "status": "menunggu"
+    },
+    {
+      "id": 18,
+      "batch_id": 9,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 25,
+      "deadline": "2026-09-18",
+      "catatan": "",
+      "status": "menunggu"
+    },
+    {
+      "id": 19,
+      "batch_id": 10,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 80,
+      "deadline": "2026-09-16",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T08:01:07.826Z",
+      "mulai_hitung_waktu": "2026-09-15T08:30:44.511Z",
+      "terima_waktu": "2026-09-15T08:31:24.072Z",
+      "jumlah_diterima": 80,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 80,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:04:11.278Z"
+    },
+    {
+      "id": 20,
+      "batch_id": 10,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 80,
+      "deadline": "2026-09-17",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T09:04:11.278Z",
+      "mulai_hitung_waktu": "2026-09-15T09:04:18.725Z",
+      "terima_waktu": "2026-09-15T09:04:24.793Z",
+      "jumlah_diterima": 75,
+      "selisih_terima": 5,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 75,
+          "selisih": 5
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:04:30.091Z"
+    },
+    {
+      "id": 21,
+      "batch_id": 11,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 300,
+      "deadline": "2026-09-16",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T09:08:34.969Z",
+      "mulai_hitung_waktu": "2026-09-15T09:08:59.297Z",
+      "terima_waktu": "2026-09-15T09:09:08.650Z",
+      "jumlah_diterima": 300,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:09:15.980Z"
+    },
+    {
+      "id": 22,
+      "batch_id": 11,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 300,
+      "deadline": "2026-09-17",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T09:09:15.980Z",
+      "mulai_hitung_waktu": "2026-09-15T09:09:26.966Z",
+      "terima_waktu": "2026-09-15T09:09:36.976Z",
+      "jumlah_diterima": 250,
+      "selisih_terima": 50,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 150,
+          "selisih": 50
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:09:41.070Z"
+    },
+    {
+      "id": 23,
+      "batch_id": 11,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 300,
+      "deadline": "2026-09-19",
+      "catatan": "",
+      "status": "berjalan",
+      "mulai_waktu": "2026-09-15T09:09:41.070Z",
+      "mulai_hitung_waktu": "2026-09-15T09:09:54.501Z",
+      "terima_waktu": "2026-09-15T09:10:07.359Z",
+      "jumlah_diterima": 250,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 150,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        }
+      ],
+      "qc_result": "gagal",
+      "defect_detail": [
+        {
+          "size": "L",
+          "jumlah_cacat": 7,
+          "alasan": "jahitan lepas",
+          "waktu": "2026-09-15T09:40:32.100Z"
+        }
+      ],
+      "total_cacat": 7
+    },
+    {
+      "id": 24,
+      "batch_id": 12,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 100,
+      "deadline": "2026-09-15",
+      "catatan": "",
+      "status": "berjalan",
+      "mulai_waktu": "2026-09-15T09:53:14.338Z"
+    },
+    {
+      "id": 25,
+      "batch_id": 12,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 100,
+      "deadline": "2026-09-18",
+      "catatan": "",
+      "status": "menunggu"
+    },
+    {
+      "id": 26,
+      "batch_id": 12,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 100,
+      "deadline": "2026-09-19",
+      "catatan": "",
+      "status": "menunggu"
+    },
+    {
+      "id": 27,
+      "batch_id": 13,
+      "step_order": 1,
+      "vendor_id": 1,
+      "jenis_pekerjaan": "Potong & Jahit",
+      "jumlah_barang": 200,
+      "deadline": "2026-09-17",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T09:55:51.455Z",
+      "mulai_hitung_waktu": "2026-09-15T09:56:26.387Z",
+      "terima_waktu": "2026-09-15T09:56:34.683Z",
+      "jumlah_diterima": 200,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:56:48.530Z"
+    },
+    {
+      "id": 28,
+      "batch_id": 13,
+      "step_order": 2,
+      "vendor_id": 2,
+      "jenis_pekerjaan": "Washing / Laundry",
+      "jumlah_barang": 200,
+      "deadline": "2026-09-19",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T09:56:48.530Z",
+      "mulai_hitung_waktu": "2026-09-15T09:57:09.610Z",
+      "terima_waktu": "2026-09-15T09:57:30.743Z",
+      "jumlah_diterima": 190,
+      "selisih_terima": 10,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 90,
+          "selisih": 10
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:57:53.485Z"
+    },
+    {
+      "id": 29,
+      "batch_id": 13,
+      "step_order": 3,
+      "vendor_id": 3,
+      "jenis_pekerjaan": "Finishing, QC & Packing",
+      "jumlah_barang": 200,
+      "deadline": "2026-09-21",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T09:57:53.485Z",
+      "mulai_hitung_waktu": "2026-09-15T09:58:25.692Z",
+      "terima_waktu": "2026-09-15T09:58:35.850Z",
+      "jumlah_diterima": 190,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 90,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 100,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T09:58:59.665Z"
+    },
+    {
+      "id": 30,
+      "batch_id": 14,
+      "step_order": 1,
+      "vendor_id": 4,
+      "jenis_pekerjaan": "Potong",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-16",
+      "catatan": "Potong Lebih Awal, Kebutuhan Online PO",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T10:41:27.376Z",
+      "mulai_hitung_waktu": "2026-09-15T11:59:28.671Z",
+      "terima_waktu": "2026-09-15T11:59:59.454Z",
+      "jumlah_diterima": 600,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "M",
+          "jumlah_diterima": 30,
+          "selisih": 0
+        },
+        {
+          "size": "XXL",
+          "jumlah_diterima": 170,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T16:10:16.940Z"
+    },
+    {
+      "id": 31,
+      "batch_id": 14,
+      "step_order": 2,
+      "vendor_id": 5,
+      "jenis_pekerjaan": "Jahit",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-17",
+      "catatan": "Jahit Lebih Awal, Kebutuhan Online PO",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T16:10:16.940Z",
+      "mulai_hitung_waktu": "2026-09-15T16:28:19.566Z",
+      "terima_waktu": "2026-09-15T16:28:49.945Z",
+      "jumlah_diterima": 600,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "M",
+          "jumlah_diterima": 30,
+          "selisih": 0
+        },
+        {
+          "size": "XXL",
+          "jumlah_diterima": 170,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T16:29:30.760Z"
+    },
+    {
+      "id": 32,
+      "batch_id": 14,
+      "step_order": 3,
+      "vendor_id": 6,
+      "jenis_pekerjaan": "Washing",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-18",
+      "catatan": "Washing Lebih Awal, Kebutuhan Online PO",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T16:29:30.760Z",
+      "mulai_hitung_waktu": "2026-09-15T16:55:10.236Z",
+      "terima_waktu": "2026-09-15T16:56:11.398Z",
+      "jumlah_diterima": 565,
+      "selisih_terima": 35,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 180,
+          "selisih": 20
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "M",
+          "jumlah_diterima": 15,
+          "selisih": 15
+        },
+        {
+          "size": "XXL",
+          "jumlah_diterima": 170,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T16:56:48.324Z"
+    },
+    {
+      "id": 33,
+      "batch_id": 14,
+      "step_order": 4,
+      "vendor_id": 7,
+      "jenis_pekerjaan": "Finishing",
+      "jumlah_barang": 600,
+      "deadline": "2026-09-21",
+      "catatan": "Finishing Lebih Awal, Kebutuhan Online PO",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T16:56:48.324Z",
+      "mulai_hitung_waktu": "2026-09-15T16:57:15.060Z",
+      "terima_waktu": "2026-09-15T16:57:51.287Z",
+      "jumlah_diterima": 535,
+      "selisih_terima": 30,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 150,
+          "selisih": 30
+        },
+        {
+          "size": "XL",
+          "jumlah_diterima": 200,
+          "selisih": 0
+        },
+        {
+          "size": "M",
+          "jumlah_diterima": 15,
+          "selisih": 0
+        },
+        {
+          "size": "XXL",
+          "jumlah_diterima": 170,
+          "selisih": 0
+        }
+      ],
+      "qc_result": "gagal",
+      "defect_detail": [
+        {
+          "size": "L",
+          "jumlah_cacat": 9,
+          "alasan": "rusak jahitan",
+          "waktu": "2026-09-15T17:01:14.265Z"
+        }
+      ],
+      "total_cacat": 9,
+      "selesai_waktu": "2026-09-15T18:23:25.545Z"
+    },
+    {
+      "id": 34,
+      "batch_id": 15,
+      "step_order": 1,
+      "vendor_id": 6,
+      "jenis_pekerjaan": "Washing",
+      "jumlah_barang": 18,
+      "deadline": "2026-09-17",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T18:21:47.261Z",
+      "mulai_hitung_waktu": "2026-09-15T18:22:09.634Z",
+      "terima_waktu": "2026-09-15T18:22:31.572Z",
+      "jumlah_diterima": 18,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 18,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T18:22:38.120Z"
+    },
+    {
+      "id": 35,
+      "batch_id": 15,
+      "step_order": 2,
+      "vendor_id": 7,
+      "jenis_pekerjaan": "Finishing",
+      "jumlah_barang": 18,
+      "deadline": "2026-09-19",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T18:22:38.120Z",
+      "mulai_hitung_waktu": "2026-09-15T18:22:41.531Z",
+      "terima_waktu": "2026-09-15T18:22:44.499Z",
+      "jumlah_diterima": 18,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 18,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T18:22:47.010Z"
+    },
+    {
+      "id": 36,
+      "batch_id": 15,
+      "step_order": 3,
+      "vendor_id": 8,
+      "jenis_pekerjaan": "Quality Control & Packing",
+      "jumlah_barang": 18,
+      "deadline": "2026-09-22",
+      "catatan": "",
+      "status": "selesai",
+      "mulai_waktu": "2026-09-15T18:22:47.010Z",
+      "mulai_hitung_waktu": "2026-09-15T18:22:50.444Z",
+      "terima_waktu": "2026-09-15T18:22:52.818Z",
+      "jumlah_diterima": 18,
+      "selisih_terima": 0,
+      "size_diterima": [
+        {
+          "size": "L",
+          "jumlah_diterima": 18,
+          "selisih": 0
+        }
+      ],
+      "selesai_waktu": "2026-09-15T18:22:54.629Z"
+    }
+  ],
+  "tracking_logs": [
+    {
+      "id": 1,
+      "batch_id": 1,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai oleh Vendor A",
+      "waktu": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 2,
+      "batch_id": 1,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Washing dimulai oleh Vendor B",
+      "waktu": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 3,
+      "batch_id": 2,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing selesai",
+      "waktu": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 4,
+      "batch_id": 1,
+      "step_id": 2,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang",
+      "waktu": "2026-09-15T03:09:15.802Z"
+    },
+    {
+      "id": 5,
+      "batch_id": 1,
+      "step_id": 2,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang",
+      "waktu": "2026-09-15T03:09:25.921Z"
+    },
+    {
+      "id": 6,
+      "batch_id": 1,
+      "step_id": 2,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang",
+      "waktu": "2026-09-15T03:11:36.751Z"
+    },
+    {
+      "id": 7,
+      "batch_id": 1,
+      "step_id": 2,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang",
+      "waktu": "2026-09-15T03:12:03.474Z"
+    },
+    {
+      "id": 8,
+      "batch_id": 1,
+      "step_id": 2,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T03:12:26.756Z"
+    },
+    {
+      "id": 9,
+      "batch_id": 1,
+      "step_id": 3,
+      "vendor_id": 3,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Finishing, QC & Packing dimulai",
+      "waktu": "2026-09-15T03:12:26.756Z"
+    },
+    {
+      "id": 10,
+      "batch_id": 1,
+      "step_id": 3,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang",
+      "waktu": "2026-09-15T03:15:35.601Z"
+    },
+    {
+      "id": 11,
+      "batch_id": 1,
+      "step_id": 3,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang",
+      "waktu": "2026-09-15T03:16:05.026Z"
+    },
+    {
+      "id": 12,
+      "batch_id": 1,
+      "step_id": 3,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang pukul 10.24.49",
+      "waktu": "2026-09-15T03:24:49.200Z"
+    },
+    {
+      "id": 13,
+      "batch_id": 1,
+      "step_id": 3,
+      "vendor_id": 3,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal (ke-1), menunggu instruksi admin",
+      "waktu": "2026-09-15T03:26:37.077Z"
+    },
+    {
+      "id": 14,
+      "batch_id": 4,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T04:44:52.150Z"
+    },
+    {
+      "id": 15,
+      "batch_id": 4,
+      "step_id": 6,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 11.45.41",
+      "waktu": "2026-09-15T04:45:41.405Z"
+    },
+    {
+      "id": 16,
+      "batch_id": 4,
+      "step_id": 6,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T04:45:59.120Z"
+    },
+    {
+      "id": 17,
+      "batch_id": 4,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T04:45:59.120Z"
+    },
+    {
+      "id": 18,
+      "batch_id": 5,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T04:58:25.873Z"
+    },
+    {
+      "id": 19,
+      "batch_id": 5,
+      "step_id": 7,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 12.00.29",
+      "waktu": "2026-09-15T05:00:29.661Z"
+    },
+    {
+      "id": 20,
+      "batch_id": 5,
+      "step_id": 7,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T05:01:14.153Z"
+    },
+    {
+      "id": 21,
+      "batch_id": 5,
+      "step_id": 8,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Washing / Laundry dimulai",
+      "waktu": "2026-09-15T05:01:14.153Z"
+    },
+    {
+      "id": 22,
+      "batch_id": 5,
+      "step_id": 8,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang pukul 12.03.58",
+      "waktu": "2026-09-15T05:03:58.169Z"
+    },
+    {
+      "id": 23,
+      "batch_id": 5,
+      "step_id": 8,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T05:04:28.911Z"
+    },
+    {
+      "id": 24,
+      "batch_id": 5,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T05:04:28.911Z"
+    },
+    {
+      "id": 25,
+      "batch_id": 6,
+      "vendor_id": 3,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Finishing, QC & Packing oleh Vendor C — Finishing Mandiri",
+      "waktu": "2026-09-15T05:11:11.623Z"
+    },
+    {
+      "id": 26,
+      "batch_id": 6,
+      "step_id": 9,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang pukul 12.11.50",
+      "waktu": "2026-09-15T05:11:50.406Z"
+    },
+    {
+      "id": 27,
+      "batch_id": 6,
+      "step_id": 9,
+      "vendor_id": 3,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 1 — S: 5 pcs (Jahitan lepas), M: 3 pcs (Noda oli)",
+      "waktu": "2026-09-15T05:15:02.857Z"
+    },
+    {
+      "id": 28,
+      "batch_id": 6,
+      "step_id": 9,
+      "vendor_id": 3,
+      "aksi": "selesai-step",
+      "keterangan": "Finishing, QC & Packing selesai",
+      "waktu": "2026-09-15T05:27:10.239Z"
+    },
+    {
+      "id": 29,
+      "batch_id": 6,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T05:27:10.239Z"
+    },
+    {
+      "id": 30,
+      "batch_id": 7,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T05:41:59.737Z"
+    },
+    {
+      "id": 31,
+      "batch_id": 7,
+      "step_id": 10,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 12.43.21",
+      "waktu": "2026-09-15T05:43:21.915Z"
+    },
+    {
+      "id": 32,
+      "batch_id": 7,
+      "step_id": 10,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T05:44:40.370Z"
+    },
+    {
+      "id": 33,
+      "batch_id": 7,
+      "step_id": 11,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Washing / Laundry dimulai",
+      "waktu": "2026-09-15T05:44:40.370Z"
+    },
+    {
+      "id": 34,
+      "batch_id": 7,
+      "step_id": 11,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang pukul 12.47.59",
+      "waktu": "2026-09-15T05:47:59.680Z"
+    },
+    {
+      "id": 35,
+      "batch_id": 7,
+      "step_id": 11,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T05:49:38.998Z"
+    },
+    {
+      "id": 36,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Finishing, QC & Packing dimulai",
+      "waktu": "2026-09-15T05:49:38.998Z"
+    },
+    {
+      "id": 37,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:07:14.216Z"
+    },
+    {
+      "id": 38,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:07:37.698Z"
+    },
+    {
+      "id": 39,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:08:10.450Z"
+    },
+    {
+      "id": 40,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T06:11:04.263Z"
+    },
+    {
+      "id": 41,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:11:11.682Z"
+    },
+    {
+      "id": 42,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T06:11:23.867Z"
+    },
+    {
+      "id": 43,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:16:11.779Z"
+    },
+    {
+      "id": 44,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:28:23.914Z"
+    },
+    {
+      "id": 45,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T06:28:26.663Z"
+    },
+    {
+      "id": 46,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:28:48.473Z"
+    },
+    {
+      "id": 47,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:29:16.291Z"
+    },
+    {
+      "id": 48,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:51:04.322Z"
+    },
+    {
+      "id": 49,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T06:51:06.876Z"
+    },
+    {
+      "id": 50,
+      "batch_id": 8,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T06:57:06.036Z"
+    },
+    {
+      "id": 51,
+      "batch_id": 8,
+      "step_id": 13,
+      "vendor_id": 1,
+      "aksi": "mulai-hitung",
+      "keterangan": "Potong & Jahit — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:57:40.469Z"
+    },
+    {
+      "id": 52,
+      "batch_id": 8,
+      "step_id": 13,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 13.57.50 — Diterima: 600 pcs (seharusnya 600 pcs), sesuai",
+      "waktu": "2026-09-15T06:57:50.300Z"
+    },
+    {
+      "id": 53,
+      "batch_id": 8,
+      "step_id": 13,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T06:57:56.614Z"
+    },
+    {
+      "id": 54,
+      "batch_id": 8,
+      "step_id": 14,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Washing / Laundry dimulai",
+      "waktu": "2026-09-15T06:57:56.614Z"
+    },
+    {
+      "id": 55,
+      "batch_id": 8,
+      "step_id": 14,
+      "vendor_id": 2,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing / Laundry — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T06:59:32.796Z"
+    },
+    {
+      "id": 56,
+      "batch_id": 8,
+      "step_id": 14,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang pukul 14.00.51 — Diterima: 555 pcs (seharusnya 600 pcs), SELISIH 45 pcs",
+      "waktu": "2026-09-15T07:00:51.488Z"
+    },
+    {
+      "id": 57,
+      "batch_id": 8,
+      "step_id": 14,
+      "vendor_id": 2,
+      "aksi": "selisih-barang",
+      "keterangan": "⚠️ SELISIH: 45 pcs tidak diterima saat transfer ke step 2",
+      "waktu": "2026-09-15T07:00:51.488Z"
+    },
+    {
+      "id": 58,
+      "batch_id": 8,
+      "step_id": 14,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T07:01:11.240Z"
+    },
+    {
+      "id": 59,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Finishing, QC & Packing dimulai",
+      "waktu": "2026-09-15T07:01:11.240Z"
+    },
+    {
+      "id": 60,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:02:11.844Z"
+    },
+    {
+      "id": 61,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T07:08:32.731Z"
+    },
+    {
+      "id": 62,
+      "batch_id": 9,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T07:27:05.258Z"
+    },
+    {
+      "id": 63,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:42:31.587Z"
+    },
+    {
+      "id": 64,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:50:58.841Z"
+    },
+    {
+      "id": 65,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:51:34.363Z"
+    },
+    {
+      "id": 66,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:53:06.751Z"
+    },
+    {
+      "id": 67,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T07:53:10.951Z"
+    },
+    {
+      "id": 68,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:53:13.593Z"
+    },
+    {
+      "id": 69,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T07:53:16.823Z"
+    },
+    {
+      "id": 70,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T07:55:04.497Z"
+    },
+    {
+      "id": 71,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T07:55:07.350Z"
+    },
+    {
+      "id": 72,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "batal-hitung",
+      "keterangan": "Finishing, QC & Packing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T07:55:19.227Z"
+    },
+    {
+      "id": 73,
+      "batch_id": 10,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T08:01:07.826Z"
+    },
+    {
+      "id": 74,
+      "batch_id": 10,
+      "step_id": 19,
+      "vendor_id": 1,
+      "aksi": "mulai-hitung",
+      "keterangan": "Potong & Jahit — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T08:30:44.511Z"
+    },
+    {
+      "id": 75,
+      "batch_id": 10,
+      "step_id": 19,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 15.31.24 — Diterima: 80 pcs (seharusnya 80 pcs), sesuai",
+      "waktu": "2026-09-15T08:31:24.072Z"
+    },
+    {
+      "id": 76,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T08:33:58.545Z"
+    },
+    {
+      "id": 77,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T08:34:17.810Z"
+    },
+    {
+      "id": 78,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang pukul 15.34.53 — Diterima: 200 pcs (seharusnya 200 pcs), sesuai",
+      "waktu": "2026-09-15T08:34:53.506Z"
+    },
+    {
+      "id": 79,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 3 — XL: 5 pcs (Washing tidak rata)",
+      "waktu": "2026-09-15T08:38:31.756Z"
+    },
+    {
+      "id": 80,
+      "batch_id": 7,
+      "step_id": 12,
+      "vendor_id": 3,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 3 — XL: 5 pcs (washing ulang)",
+      "waktu": "2026-09-15T08:42:00.160Z"
+    },
+    {
+      "id": 81,
+      "batch_id": 10,
+      "step_id": 19,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T09:04:11.278Z"
+    },
+    {
+      "id": 82,
+      "batch_id": 10,
+      "step_id": 20,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Washing / Laundry dimulai",
+      "waktu": "2026-09-15T09:04:11.278Z"
+    },
+    {
+      "id": 83,
+      "batch_id": 10,
+      "step_id": 20,
+      "vendor_id": 2,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing / Laundry — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:04:18.725Z"
+    },
+    {
+      "id": 84,
+      "batch_id": 10,
+      "step_id": 20,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang pukul 16.04.24 — Diterima: 75 pcs (seharusnya 80 pcs), SELISIH 5 pcs",
+      "waktu": "2026-09-15T09:04:24.793Z"
+    },
+    {
+      "id": 85,
+      "batch_id": 10,
+      "step_id": 20,
+      "vendor_id": 2,
+      "aksi": "selisih-barang",
+      "keterangan": "⚠️ SELISIH: 5 pcs tidak diterima saat transfer ke step 2",
+      "waktu": "2026-09-15T09:04:24.793Z"
+    },
+    {
+      "id": 86,
+      "batch_id": 10,
+      "step_id": 20,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T09:04:30.091Z"
+    },
+    {
+      "id": 87,
+      "batch_id": 10,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T09:04:30.091Z"
+    },
+    {
+      "id": 88,
+      "batch_id": 11,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T09:08:34.969Z"
+    },
+    {
+      "id": 89,
+      "batch_id": 11,
+      "step_id": 21,
+      "vendor_id": 1,
+      "aksi": "mulai-hitung",
+      "keterangan": "Potong & Jahit — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:08:59.297Z"
+    },
+    {
+      "id": 90,
+      "batch_id": 11,
+      "step_id": 21,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 16.09.08 — Diterima: 300 pcs (seharusnya 300 pcs), sesuai",
+      "waktu": "2026-09-15T09:09:08.650Z"
+    },
+    {
+      "id": 91,
+      "batch_id": 11,
+      "step_id": 21,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T09:09:15.980Z"
+    },
+    {
+      "id": 92,
+      "batch_id": 11,
+      "step_id": 22,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Washing / Laundry dimulai",
+      "waktu": "2026-09-15T09:09:15.980Z"
+    },
+    {
+      "id": 93,
+      "batch_id": 11,
+      "step_id": 22,
+      "vendor_id": 2,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing / Laundry — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:09:26.966Z"
+    },
+    {
+      "id": 94,
+      "batch_id": 11,
+      "step_id": 22,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang pukul 16.09.36 — Diterima: 250 pcs (seharusnya 300 pcs), SELISIH 50 pcs",
+      "waktu": "2026-09-15T09:09:36.976Z"
+    },
+    {
+      "id": 95,
+      "batch_id": 11,
+      "step_id": 22,
+      "vendor_id": 2,
+      "aksi": "selisih-barang",
+      "keterangan": "⚠️ SELISIH: 50 pcs tidak diterima saat transfer ke step 2",
+      "waktu": "2026-09-15T09:09:36.976Z"
+    },
+    {
+      "id": 96,
+      "batch_id": 11,
+      "step_id": 22,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T09:09:41.070Z"
+    },
+    {
+      "id": 97,
+      "batch_id": 11,
+      "step_id": 23,
+      "vendor_id": 3,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Finishing, QC & Packing dimulai",
+      "waktu": "2026-09-15T09:09:41.070Z"
+    },
+    {
+      "id": 98,
+      "batch_id": 11,
+      "step_id": 23,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:09:54.501Z"
+    },
+    {
+      "id": 99,
+      "batch_id": 11,
+      "step_id": 23,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang pukul 16.10.07 — Diterima: 250 pcs (seharusnya 300 pcs), sesuai",
+      "waktu": "2026-09-15T09:10:07.359Z"
+    },
+    {
+      "id": 100,
+      "batch_id": 11,
+      "step_id": 23,
+      "vendor_id": 3,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 3 — L: 7 pcs (Lepas kancing)",
+      "waktu": "2026-09-15T09:10:28.656Z"
+    },
+    {
+      "id": 101,
+      "batch_id": 11,
+      "step_id": 23,
+      "vendor_id": 3,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 3 — L: 7 pcs (jahitan lepas)",
+      "waktu": "2026-09-15T09:40:32.100Z"
+    },
+    {
+      "id": 102,
+      "batch_id": 12,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T09:53:14.338Z"
+    },
+    {
+      "id": 103,
+      "batch_id": 13,
+      "vendor_id": 1,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong & Jahit oleh Vendor A — Mitra Jaya",
+      "waktu": "2026-09-15T09:55:51.455Z"
+    },
+    {
+      "id": 104,
+      "batch_id": 13,
+      "step_id": 27,
+      "vendor_id": 1,
+      "aksi": "mulai-hitung",
+      "keterangan": "Potong & Jahit — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:56:26.387Z"
+    },
+    {
+      "id": 105,
+      "batch_id": 13,
+      "step_id": 27,
+      "vendor_id": 1,
+      "aksi": "terima-barang",
+      "keterangan": "Potong & Jahit — vendor konfirmasi terima barang pukul 16.56.34 — Diterima: 200 pcs (seharusnya 200 pcs), sesuai",
+      "waktu": "2026-09-15T09:56:34.683Z"
+    },
+    {
+      "id": 106,
+      "batch_id": 13,
+      "step_id": 27,
+      "vendor_id": 1,
+      "aksi": "selesai-step",
+      "keterangan": "Potong & Jahit selesai",
+      "waktu": "2026-09-15T09:56:48.530Z"
+    },
+    {
+      "id": 107,
+      "batch_id": 13,
+      "step_id": 28,
+      "vendor_id": 2,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Washing / Laundry dimulai",
+      "waktu": "2026-09-15T09:56:48.530Z"
+    },
+    {
+      "id": 108,
+      "batch_id": 13,
+      "step_id": 28,
+      "vendor_id": 2,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing / Laundry — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:57:09.610Z"
+    },
+    {
+      "id": 109,
+      "batch_id": 13,
+      "step_id": 28,
+      "vendor_id": 2,
+      "aksi": "terima-barang",
+      "keterangan": "Washing / Laundry — vendor konfirmasi terima barang pukul 16.57.30 — Diterima: 190 pcs (seharusnya 200 pcs), SELISIH 10 pcs",
+      "waktu": "2026-09-15T09:57:30.743Z"
+    },
+    {
+      "id": 110,
+      "batch_id": 13,
+      "step_id": 28,
+      "vendor_id": 2,
+      "aksi": "selisih-barang",
+      "keterangan": "⚠️ SELISIH: 10 pcs tidak diterima saat transfer ke step 2",
+      "waktu": "2026-09-15T09:57:30.743Z"
+    },
+    {
+      "id": 111,
+      "batch_id": 13,
+      "step_id": 28,
+      "vendor_id": 2,
+      "aksi": "selesai-step",
+      "keterangan": "Washing / Laundry selesai",
+      "waktu": "2026-09-15T09:57:53.485Z"
+    },
+    {
+      "id": 112,
+      "batch_id": 13,
+      "step_id": 29,
+      "vendor_id": 3,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Finishing, QC & Packing dimulai",
+      "waktu": "2026-09-15T09:57:53.485Z"
+    },
+    {
+      "id": 113,
+      "batch_id": 13,
+      "step_id": 29,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T09:58:25.692Z"
+    },
+    {
+      "id": 114,
+      "batch_id": 13,
+      "step_id": 29,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang pukul 16.58.35 — Diterima: 190 pcs (seharusnya 200 pcs), sesuai",
+      "waktu": "2026-09-15T09:58:35.850Z"
+    },
+    {
+      "id": 115,
+      "batch_id": 13,
+      "step_id": 29,
+      "vendor_id": 3,
+      "aksi": "selesai-step",
+      "keterangan": "Finishing, QC & Packing selesai",
+      "waktu": "2026-09-15T09:58:59.665Z"
+    },
+    {
+      "id": 116,
+      "batch_id": 13,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T09:58:59.665Z"
+    },
+    {
+      "id": 117,
+      "batch_id": 14,
+      "vendor_id": 4,
+      "aksi": "mulai-produksi",
+      "keterangan": "Route produksi dimulai. Step 1: Potong oleh Vendor 1",
+      "waktu": "2026-09-15T10:41:27.376Z"
+    },
+    {
+      "id": 118,
+      "batch_id": 14,
+      "step_id": 30,
+      "vendor_id": 4,
+      "aksi": "mulai-hitung",
+      "keterangan": "Potong — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T11:59:28.671Z"
+    },
+    {
+      "id": 119,
+      "batch_id": 14,
+      "step_id": 30,
+      "vendor_id": 4,
+      "aksi": "terima-barang",
+      "keterangan": "Potong — vendor konfirmasi terima barang pukul 18.59.59 — Diterima: 600 pcs (seharusnya 600 pcs), sesuai",
+      "waktu": "2026-09-15T11:59:59.454Z"
+    },
+    {
+      "id": 120,
+      "batch_id": 14,
+      "step_id": 30,
+      "vendor_id": 4,
+      "aksi": "selesai-step",
+      "keterangan": "Potong selesai",
+      "waktu": "2026-09-15T16:10:16.940Z"
+    },
+    {
+      "id": 121,
+      "batch_id": 14,
+      "step_id": 31,
+      "vendor_id": 5,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Jahit dimulai",
+      "waktu": "2026-09-15T16:10:16.940Z"
+    },
+    {
+      "id": 122,
+      "batch_id": 14,
+      "step_id": 31,
+      "vendor_id": 5,
+      "aksi": "mulai-hitung",
+      "keterangan": "Jahit — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T16:28:19.566Z"
+    },
+    {
+      "id": 123,
+      "batch_id": 14,
+      "step_id": 31,
+      "vendor_id": 5,
+      "aksi": "terima-barang",
+      "keterangan": "Jahit — vendor konfirmasi terima barang pukul 23.28.49 — Diterima: 600 pcs (seharusnya 600 pcs), sesuai",
+      "waktu": "2026-09-15T16:28:49.945Z"
+    },
+    {
+      "id": 124,
+      "batch_id": 14,
+      "step_id": 31,
+      "vendor_id": 5,
+      "aksi": "selesai-step",
+      "keterangan": "Jahit selesai",
+      "waktu": "2026-09-15T16:29:30.760Z"
+    },
+    {
+      "id": 125,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Washing dimulai",
+      "waktu": "2026-09-15T16:29:30.760Z"
+    },
+    {
+      "id": 126,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T16:31:40.967Z"
+    },
+    {
+      "id": 127,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "batal-hitung",
+      "keterangan": "Washing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T16:32:29.761Z"
+    },
+    {
+      "id": 128,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T16:49:32.272Z"
+    },
+    {
+      "id": 129,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "batal-hitung",
+      "keterangan": "Washing — penghitungan barang dibatalkan, sedang diperiksa ulang",
+      "waktu": "2026-09-15T16:54:00.113Z"
+    },
+    {
+      "id": 130,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T16:54:02.780Z"
+    },
+    {
+      "id": 131,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T16:55:10.236Z"
+    },
+    {
+      "id": 132,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "terima-barang",
+      "keterangan": "Washing — vendor konfirmasi terima barang pukul 23.56.11 — Diterima: 565 pcs (seharusnya 600 pcs), SELISIH 35 pcs",
+      "waktu": "2026-09-15T16:56:11.398Z"
+    },
+    {
+      "id": 133,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "selisih-barang",
+      "keterangan": "⚠️ SELISIH: 35 pcs tidak diterima saat transfer ke step 3",
+      "waktu": "2026-09-15T16:56:11.398Z"
+    },
+    {
+      "id": 134,
+      "batch_id": 14,
+      "step_id": 32,
+      "vendor_id": 6,
+      "aksi": "selesai-step",
+      "keterangan": "Washing selesai",
+      "waktu": "2026-09-15T16:56:48.324Z"
+    },
+    {
+      "id": 135,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "mulai-step",
+      "keterangan": "Step 4: Finishing dimulai",
+      "waktu": "2026-09-15T16:56:48.324Z"
+    },
+    {
+      "id": 136,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T16:57:15.060Z"
+    },
+    {
+      "id": 137,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing — vendor konfirmasi terima barang pukul 23.57.51 — Diterima: 535 pcs (seharusnya 600 pcs), SELISIH 30 pcs",
+      "waktu": "2026-09-15T16:57:51.287Z"
+    },
+    {
+      "id": 138,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "selisih-barang",
+      "keterangan": "⚠️ SELISIH: 30 pcs tidak diterima saat transfer ke step 4",
+      "waktu": "2026-09-15T16:57:51.287Z"
+    },
+    {
+      "id": 139,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 4 — L: 9 pcs (jahitan rusak)",
+      "waktu": "2026-09-15T16:59:07.283Z"
+    },
+    {
+      "id": 140,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "qc-gagal",
+      "keterangan": "QC gagal step 4 — L: 9 pcs (rusak jahitan)",
+      "waktu": "2026-09-15T17:01:14.265Z"
+    },
+    {
+      "id": 141,
+      "batch_id": 14,
+      "aksi": "spk-retur-dibuat",
+      "keterangan": "SPK Retur dibuat: RETUR-2026-015 — memproses 18 pcs cacat",
+      "waktu": "2026-09-15T18:21:47.261Z"
+    },
+    {
+      "id": 142,
+      "batch_id": 15,
+      "vendor_id": 6,
+      "aksi": "mulai-produksi",
+      "keterangan": "[RETUR] Route produksi dimulai. Step 1: Washing oleh Vendor 3",
+      "waktu": "2026-09-15T18:21:47.261Z"
+    },
+    {
+      "id": 143,
+      "batch_id": 15,
+      "step_id": 34,
+      "vendor_id": 6,
+      "aksi": "mulai-hitung",
+      "keterangan": "Washing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T18:22:09.634Z"
+    },
+    {
+      "id": 144,
+      "batch_id": 15,
+      "step_id": 34,
+      "vendor_id": 6,
+      "aksi": "terima-barang",
+      "keterangan": "Washing — vendor konfirmasi terima barang pukul 01.22.31 — Diterima: 18 pcs (seharusnya 18 pcs), sesuai",
+      "waktu": "2026-09-15T18:22:31.572Z"
+    },
+    {
+      "id": 145,
+      "batch_id": 15,
+      "step_id": 34,
+      "vendor_id": 6,
+      "aksi": "selesai-step",
+      "keterangan": "Washing selesai",
+      "waktu": "2026-09-15T18:22:38.120Z"
+    },
+    {
+      "id": 146,
+      "batch_id": 15,
+      "step_id": 35,
+      "vendor_id": 7,
+      "aksi": "mulai-step",
+      "keterangan": "Step 2: Finishing dimulai",
+      "waktu": "2026-09-15T18:22:38.120Z"
+    },
+    {
+      "id": 147,
+      "batch_id": 15,
+      "step_id": 35,
+      "vendor_id": 7,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T18:22:41.531Z"
+    },
+    {
+      "id": 148,
+      "batch_id": 15,
+      "step_id": 35,
+      "vendor_id": 7,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing — vendor konfirmasi terima barang pukul 01.22.44 — Diterima: 18 pcs (seharusnya 18 pcs), sesuai",
+      "waktu": "2026-09-15T18:22:44.499Z"
+    },
+    {
+      "id": 149,
+      "batch_id": 15,
+      "step_id": 35,
+      "vendor_id": 7,
+      "aksi": "selesai-step",
+      "keterangan": "Finishing selesai",
+      "waktu": "2026-09-15T18:22:47.010Z"
+    },
+    {
+      "id": 150,
+      "batch_id": 15,
+      "step_id": 36,
+      "vendor_id": 8,
+      "aksi": "mulai-step",
+      "keterangan": "Step 3: Quality Control & Packing dimulai",
+      "waktu": "2026-09-15T18:22:47.010Z"
+    },
+    {
+      "id": 151,
+      "batch_id": 15,
+      "step_id": 36,
+      "vendor_id": 8,
+      "aksi": "mulai-hitung",
+      "keterangan": "Quality Control & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T18:22:50.444Z"
+    },
+    {
+      "id": 152,
+      "batch_id": 15,
+      "step_id": 36,
+      "vendor_id": 8,
+      "aksi": "terima-barang",
+      "keterangan": "Quality Control & Packing — vendor konfirmasi terima barang pukul 01.22.52 — Diterima: 18 pcs (seharusnya 18 pcs), sesuai",
+      "waktu": "2026-09-15T18:22:52.818Z"
+    },
+    {
+      "id": 153,
+      "batch_id": 15,
+      "step_id": 36,
+      "vendor_id": 8,
+      "aksi": "selesai-step",
+      "keterangan": "Quality Control & Packing selesai",
+      "waktu": "2026-09-15T18:22:54.629Z"
+    },
+    {
+      "id": 154,
+      "batch_id": 15,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T18:22:54.629Z"
+    },
+    {
+      "id": 155,
+      "batch_id": 14,
+      "aksi": "retur-selesai",
+      "keterangan": "Retur SPK RETUR-2026-015 selesai — stok cacat dipulihkan",
+      "waktu": "2026-09-15T18:22:54.629Z"
+    },
+    {
+      "id": 156,
+      "batch_id": 14,
+      "step_id": 33,
+      "vendor_id": 7,
+      "aksi": "selesai-step",
+      "keterangan": "Finishing selesai",
+      "waktu": "2026-09-15T18:23:25.545Z"
+    },
+    {
+      "id": 157,
+      "batch_id": 14,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T18:23:25.545Z"
+    },
+    {
+      "id": 158,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "mulai-hitung",
+      "keterangan": "Finishing, QC & Packing — barang diterima, sedang dalam proses penghitungan fisik",
+      "waktu": "2026-09-15T18:25:02.610Z"
+    },
+    {
+      "id": 159,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "terima-barang",
+      "keterangan": "Finishing, QC & Packing — vendor konfirmasi terima barang pukul 01.25.11 — Diterima: 555 pcs (seharusnya 600 pcs), sesuai",
+      "waktu": "2026-09-15T18:25:11.400Z"
+    },
+    {
+      "id": 160,
+      "batch_id": 8,
+      "step_id": 15,
+      "vendor_id": 3,
+      "aksi": "selesai-step",
+      "keterangan": "Finishing, QC & Packing selesai",
+      "waktu": "2026-09-15T18:25:12.831Z"
+    },
+    {
+      "id": 161,
+      "batch_id": 8,
+      "aksi": "route-selesai",
+      "keterangan": "Semua proses produksi selesai, barang masuk gudang",
+      "waktu": "2026-09-15T18:25:12.831Z"
+    }
+  ],
+  "stock": [
+    {
+      "id": 1,
+      "kategori": "Slim Fit",
+      "stok_saat_ini": 45,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 2,
+      "kategori": "Regular Fit",
+      "stok_saat_ini": 60,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 3,
+      "kategori": "Bootcut",
+      "stok_saat_ini": 30,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 4,
+      "kategori": "Skinny",
+      "stok_saat_ini": 35,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 5,
+      "kategori": "Wide Leg",
+      "stok_saat_ini": 30,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 6,
+      "kategori": "Mom Jeans",
+      "stok_saat_ini": 0,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 7,
+      "kategori": "Straight Cut",
+      "stok_saat_ini": 0,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    },
+    {
+      "id": 8,
+      "kategori": "Cargo Jeans",
+      "stok_saat_ini": 0,
+      "updated_at": "2026-09-15T02:58:42.802Z"
+    }
+  ],
+  "stock_movements": [
+    {
+      "id": 1,
+      "tanggal": "2026-09-15T02:58:42.802Z",
+      "jenis": "masuk",
+      "kategori": "Slim Fit",
+      "jumlah": 45,
+      "keterangan": "Produksi BATCH-2024-003",
+      "referensi_tipe": "batch"
+    },
+    {
+      "id": 2,
+      "tanggal": "2026-09-15T02:58:42.802Z",
+      "jenis": "masuk",
+      "kategori": "Regular Fit",
+      "jumlah": 60,
+      "keterangan": "Produksi BATCH-2024-003",
+      "referensi_tipe": "batch"
+    },
+    {
+      "id": 3,
+      "tanggal": "2026-09-15T02:58:42.802Z",
+      "jenis": "masuk",
+      "kategori": "Bootcut",
+      "jumlah": 30,
+      "keterangan": "Produksi BATCH-2024-003",
+      "referensi_tipe": "batch"
+    },
+    {
+      "id": 4,
+      "tanggal": "2026-09-15T02:58:42.802Z",
+      "jenis": "masuk",
+      "kategori": "Skinny",
+      "jumlah": 35,
+      "keterangan": "Produksi BATCH-2024-003",
+      "referensi_tipe": "batch"
+    },
+    {
+      "id": 5,
+      "tanggal": "2026-09-15T02:58:42.802Z",
+      "jenis": "masuk",
+      "kategori": "Wide Leg",
+      "jumlah": 30,
+      "keterangan": "Produksi BATCH-2024-003",
+      "referensi_tipe": "batch"
+    }
+  ],
+  "purchase_orders": [
+    {
+      "id": 1,
+      "no_po": "PO-2024-001",
+      "kategori": "Slim Fit",
+      "jumlah": 50,
+      "tanggal_kirim": "2024-09-20",
+      "tanggal_po": "2026-09-15T02:58:42.802Z",
+      "status": "terkirim"
+    },
+    {
+      "id": 2,
+      "no_po": "PO-2024-002",
+      "kategori": "Regular Fit",
+      "jumlah": 80,
+      "tanggal_kirim": "2024-09-22",
+      "tanggal_po": "2026-09-15T02:58:42.802Z",
+      "status": "terkirim"
+    },
+    {
+      "id": 3,
+      "no_po": "PO-2024-003",
+      "kategori": "Skinny",
+      "jumlah": 40,
+      "tanggal_kirim": "2024-09-25",
+      "tanggal_po": "2026-09-15T02:58:42.802Z",
+      "status": "siap-kirim"
+    },
+    {
+      "id": 4,
+      "no_po": "PO-2024-004",
+      "kategori": "Bootcut",
+      "jumlah": 35,
+      "tanggal_kirim": "2024-09-28",
+      "tanggal_po": "2026-09-15T02:58:42.802Z",
+      "status": "diproses"
+    },
+    {
+      "id": 5,
+      "no_po": "PO-2024-005",
+      "kategori": "Wide Leg",
+      "jumlah": 30,
+      "tanggal_kirim": "2024-10-01",
+      "tanggal_po": "2026-09-15T02:58:42.802Z",
+      "status": "baru"
+    }
+  ],
+  "retail_sales": [
+    {
+      "id": 1,
+      "tanggal": "2026-09-15",
+      "kategori": "Slim Fit",
+      "jumlah": 12
+    },
+    {
+      "id": 2,
+      "tanggal": "2026-09-15",
+      "kategori": "Regular Fit",
+      "jumlah": 18
+    },
+    {
+      "id": 3,
+      "tanggal": "2026-09-15",
+      "kategori": "Mom Jeans",
+      "jumlah": 8
+    },
+    {
+      "id": 4,
+      "tanggal": "2026-09-15",
+      "kategori": "Straight Cut",
+      "jumlah": 15
+    },
+    {
+      "id": 5,
+      "tanggal": "2026-09-15",
+      "kategori": "Slim Fit",
+      "jumlah": 10
+    },
+    {
+      "id": 6,
+      "tanggal": "2026-09-15",
+      "kategori": "Skinny",
+      "jumlah": 9
+    }
+  ],
+  "retur_produksi": [
+    {
+      "id": 1,
+      "batch_id": 1,
+      "step_id": 3,
+      "alasan": "Cacat dari QC — perlu dicuci ulang",
+      "ke_berapa_kali": 1,
+      "status": "menunggu-spk-retur",
+      "tanggal": "2026-09-15T03:26:37.077Z"
+    },
+    {
+      "id": 2,
+      "batch_id": 6,
+      "step_id": 9,
+      "alasan": "S: 5 pcs (Jahitan lepas), M: 3 pcs (Noda oli)",
+      "ke_berapa_kali": 1,
+      "status": "menunggu-instruksi",
+      "tanggal": "2026-09-15T05:15:02.857Z"
+    },
+    {
+      "id": 3,
+      "batch_id": 7,
+      "step_id": 12,
+      "alasan": "XL: 5 pcs (Washing tidak rata)",
+      "ke_berapa_kali": 1,
+      "status": "menunggu-instruksi",
+      "tanggal": "2026-09-15T08:38:31.756Z"
+    },
+    {
+      "id": 4,
+      "batch_id": 7,
+      "step_id": 12,
+      "alasan": "XL: 5 pcs (washing ulang)",
+      "ke_berapa_kali": 2,
+      "status": "menunggu-instruksi",
+      "tanggal": "2026-09-15T08:42:00.160Z"
+    },
+    {
+      "id": 5,
+      "batch_id": 11,
+      "step_id": 23,
+      "alasan": "L: 7 pcs (Lepas kancing)",
+      "ke_berapa_kali": 1,
+      "status": "menunggu-spk-retur",
+      "tanggal": "2026-09-15T09:10:28.656Z"
+    },
+    {
+      "id": 6,
+      "batch_id": 11,
+      "step_id": 23,
+      "alasan": "L: 7 pcs (jahitan lepas)",
+      "ke_berapa_kali": 2,
+      "status": "menunggu-spk-retur",
+      "tanggal": "2026-09-15T09:40:32.100Z"
+    },
+    {
+      "id": 7,
+      "batch_id": 14,
+      "step_id": 33,
+      "alasan": "L: 9 pcs (jahitan rusak)",
+      "ke_berapa_kali": 1,
+      "status": "menunggu-spk-retur",
+      "tanggal": "2026-09-15T16:59:07.283Z"
+    },
+    {
+      "id": 8,
+      "batch_id": 14,
+      "step_id": 33,
+      "alasan": "L: 9 pcs (rusak jahitan)",
+      "ke_berapa_kali": 2,
+      "status": "selesai",
+      "tanggal": "2026-09-15T17:01:14.265Z",
+      "spk_batch_id": 15,
+      "size_detail": [
+        {
+          "size": "L",
+          "jumlah_retur": 18
+        }
+      ]
+    }
+  ],
+  "retur_online": []
+}
