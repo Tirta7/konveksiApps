@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import { Clock, Shirt, CheckCircle2, Loader2, Hourglass, Package, FileText, ClipboardList, AlertTriangle, AlertCircle, PackageCheck, ClipboardCheck, CheckCircle, Search, XCircle, ClipboardX, Link as LinkIcon, ChevronDown } from "lucide-react";
 
 function fmtTgl(str?: string) {
   if (!str) return "-";
@@ -48,6 +49,19 @@ export default function VendorSPKPage() {
   const [sizeCountForm, setSizeCountForm] = useState<SizeCount[]>([]);
   const [showCountForm, setShowCountForm] = useState(false);
   const [showDetailPopup, setShowDetailPopup] = useState(false);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+
+  // Handle scroll to hide indicator
+  useEffect(() => {
+    const handleScroll = () => {
+      const bottom = Math.ceil(window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 50;
+      setShowScrollIndicator(!bottom);
+    };
+    window.addEventListener("scroll", handleScroll);
+    // Check initial state
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -361,7 +375,7 @@ export default function VendorSPKPage() {
   if (!step) return (
     <div style={{ ...pageStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "white", borderRadius: 20, padding: 40, maxWidth: 480, width: "100%", textAlign: "center" }}>
-        <div style={{ fontSize: 64 }}>⚙️</div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Clock size={64} color="#94A3B8" /></div>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: "16px 0 8px" }}>Menunggu Dimulai</h1>
         <p style={{ color: "#64748B" }}>Belum ada step aktif. Hubungi admin.</p>
       </div>
@@ -377,7 +391,7 @@ export default function VendorSPKPage() {
           {/* Header Internal */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #F1F5F9" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ background: "#F1F5F9", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>👖</div>
+              <div style={{ background: "#F1F5F9", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#334155" }}><Shirt size={16} /></div>
               <div style={{ fontSize: 15, fontWeight: 900, color: "#1E293B", letterSpacing: -0.3 }}>
                 {phase === "confirmed" ? "Sedang Dikerjakan" : "Tugas Vendor"}
               </div>
@@ -404,7 +418,10 @@ export default function VendorSPKPage() {
           <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>
             {info.steps.map((s: any, i: number) => (
               <div key={i} style={{ flex: "1 0 auto", padding: "6px 12px", borderRadius: 10, background: s.status === "selesai" ? "#DCFCE7" : s.status === "berjalan" ? "#DBEAFE" : "#F1F5F9", fontSize: 11, fontWeight: 800, color: s.status === "selesai" ? "#065F46" : s.status === "berjalan" ? "#1E40AF" : "#94A3B8", textAlign: "center", border: s.status === "berjalan" ? "2px solid #3B82F6" : "2px solid transparent", transition: "all 0.4s" }}>
-                {s.status === "selesai" ? "✅" : s.status === "berjalan" ? "⚙️" : "⏳"} {i + 1}. {s.jenis_pekerjaan.split(" ").slice(0, 2).join(" ")}
+                <div style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle", marginRight: 4 }}>
+                  {s.status === "selesai" ? <CheckCircle2 size={12} /> : s.status === "berjalan" ? <Loader2 size={12} className="animate-spin" /> : <Hourglass size={12} />}
+                </div>
+                {i + 1}. {s.jenis_pekerjaan.split(" ").slice(0, 2).join(" ")}
                 {s.selesai_waktu && <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2, fontWeight: 600 }}>{fmtTime(s.selesai_waktu)}</div>}
               </div>
             ))}
@@ -456,7 +473,7 @@ export default function VendorSPKPage() {
                   {step.mulai_waktu ? fmtDateTime(step.mulai_waktu) : "-"}
                 </div>
                 {step.terima_waktu && (
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, fontWeight: 600 }}>📦 Terima: {step.terima_waktu.split("T")[1].substring(0,5)}</div>
+                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Package size={12} /> Terima: {step.terima_waktu.split("T")[1].substring(0,5)}</div>
                 )}
               </div>
 
@@ -472,7 +489,7 @@ export default function VendorSPKPage() {
             {/* Catatan */}
             {step.catatan && (
               <div style={{ marginTop: 16, padding: 12, background: "#FFF7ED", borderRadius: 12, border: "1px solid #FED7AA" }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#92400E", textTransform: "uppercase", marginBottom: 4, letterSpacing: 0.5 }}>📝 Catatan Admin</div>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#92400E", textTransform: "uppercase", marginBottom: 4, letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 4 }}><FileText size={12} /> Catatan Admin</div>
                 <div style={{ fontSize: 13, color: "#451A03", lineHeight: 1.5, fontWeight: 600 }}>{step.catatan}</div>
               </div>
             )}
@@ -492,24 +509,32 @@ export default function VendorSPKPage() {
           if (sizes.length === 0) return null;
             return (
               <>
+                <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setShowDetailPopup(true)}
-                  style={{ width: "100%", background: previousMissing ? "#FEF2F2" : "white", border: "none", borderRadius: 20, marginBottom: 14, padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", textAlign: "left", position: "relative", borderTop: "2px dashed #E2E8F0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)", overflow: "hidden" }}
+                  className="animate-attention"
+                  style={{ width: "100%", background: previousMissing ? "#FEF2F2" : "#EEF2FF", border: previousMissing ? "1px solid #FECACA" : "1px solid #C7D2FE", borderRadius: 20, marginBottom: 14, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", textAlign: "left", position: "relative", boxShadow: "0 4px 12px rgba(0,0,0,0.03)", overflow: "hidden" }}
                 >
                   {/* Cutouts on the top border */}
                   <div style={{ position: "absolute", top: -12, left: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset -2px 0 6px rgba(0,0,0,0.04)" }} />
                   <div style={{ position: "absolute", top: -12, right: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset 2px 0 6px rgba(0,0,0,0.04)" }} />
 
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: previousMissing ? "#991B1B" : "#1E293B", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span>📋</span> Detail SPK Batch
+                    <div style={{ fontWeight: 800, fontSize: 14, color: previousMissing ? "#991B1B" : "#3730A3", display: "flex", alignItems: "center", gap: 8 }}>
+                      <ClipboardList size={16} /> Detail SPK Batch
                     </div>
                     {previousMissing && (
-                      <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4, fontWeight: 700 }}>⚠️ Ada barang hilang dari step sebelumnya!</div>
+                      <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle size={12} /> Ada barang hilang dari step sebelumnya!</div>
                     )}
                   </div>
-                  <div style={{ fontSize: 13, color: "#3B82F6", fontWeight: 700 }}>Lihat Detail →</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    <div style={{ background: previousMissing ? "#EF4444" : "#4F46E5", color: "white", padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 800, animation: "pulse 2s infinite", boxShadow: previousMissing ? "0 4px 12px rgba(239, 68, 68, 0.3)" : "0 4px 12px rgba(79, 70, 229, 0.3)" }}>
+                      {previousMissing ? "Cek barang hilang" : "Buka cek ukuran"}
+                    </div>
+                    <div style={{ fontSize: 13, color: previousMissing ? "#EF4444" : "#4F46E5", fontWeight: 800 }}>Lihat Detail →</div>
+                  </div>
                 </button>
+              </div>
 
               {showDetailPopup && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowDetailPopup(false)}>
@@ -528,7 +553,7 @@ export default function VendorSPKPage() {
                     <button onClick={() => setShowDetailPopup(false)} style={{ position: "absolute", top: 16, right: 16, background: "#F1F5F9", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B", transition: "0.2s" }}>✕</button>
                     
                     <div style={{ fontWeight: 800, fontSize: 18, color: "#1E293B", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                      <span>📋</span> Detail SPK Batch
+                      <ClipboardList size={20} /> Detail SPK Batch
                     </div>
                     
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20, background: "#F8FAFC", padding: 16, borderRadius: 12 }}>
@@ -549,7 +574,7 @@ export default function VendorSPKPage() {
                     {previousMissing && (
                       <div style={{ padding: 16, background: "#FEF2F2", borderRadius: 12, marginBottom: 20, border: "1px solid #FECACA" }}>
                         <div style={{ fontSize: 14, color: "#991B1B", fontWeight: 800, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                          <span>⚠️</span> Info dari step sebelumnya:
+                          <AlertTriangle size={16} /> Info dari step sebelumnya:
                         </div>
                         <div style={{ fontSize: 13, color: "#991B1B", marginBottom: 10 }}>
                           Step sebelumnya (<strong>{info.previousStep.jenis_pekerjaan}</strong> oleh vendor <strong>{info.previousStep.vendor_nama}</strong>) melaporkan ada barang yang hilang/kurang sebanyak <strong>{info.previousStep.selisih_terima} pcs</strong> saat barang ditransfer.
@@ -576,7 +601,7 @@ export default function VendorSPKPage() {
                         <div key={i} style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 12, padding: "12px", textAlign: "center" }}>
                           <div style={{ fontWeight: 900, fontSize: 16, color: "#0369A1", marginBottom: 2 }}>Size {s.size}</div>
                           <div style={{ fontSize: 14, color: "#64748B", fontWeight: 600 }}>{s.jumlah} pcs</div>
-                          {(s.cacat ?? 0) > 0 && <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 4 }}>⚠️ {s.cacat} cacat</div>}
+                          {(s.cacat ?? 0) > 0 && <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><AlertCircle size={12} /> {s.cacat} cacat</div>}
                         </div>
                       ))}
                     </div>
@@ -604,35 +629,51 @@ export default function VendorSPKPage() {
           const hasLebih = totalSelisih < 0;
           const isMatch = allFilled && totalSelisih === 0;
 
+          const isWajibHitung = step.vendor_wajib_hitung_ulang ?? false;
+
           if (!showCountForm) {
             return (
               <button onClick={async () => {
-                  await fetch(`/api/spk/${token}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ aksi: "mulai-hitung" }),
-                  });
-                  // Init per-size form
-                  if (sizes.length > 0) {
-                    setSizeCountForm(sizes.map((s: any) => ({ size: s.size, jumlah_expected: s.jumlah, jumlah_diterima: "" })));
+                  if (isWajibHitung) {
+                    await fetch(`/api/spk/${token}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ aksi: "mulai-hitung" }),
+                    });
+                    // Init per-size form
+                    if (sizes.length > 0) {
+                      setSizeCountForm(sizes.map((s: any) => ({ size: s.size, jumlah_expected: s.jumlah, jumlah_diterima: "" })));
+                    } else {
+                      setSizeCountForm([{ size: "Umum", jumlah_expected: expectedQty, jumlah_diterima: "" }]);
+                    }
+                    setShowCountForm(true);
                   } else {
-                    setSizeCountForm([{ size: "Umum", jumlah_expected: expectedQty, jumlah_diterima: "" }]);
+                    // Langsung bypass form hitung size
+                    let autoSizes = [];
+                    if (sizes.length > 0) {
+                      autoSizes = sizes.map((s: any) => ({ size: s.size, jumlah_diterima: s.jumlah }));
+                    } else {
+                      autoSizes = [{ size: "Umum", jumlah_diterima: expectedQty }];
+                    }
+                    await doAction("terima", { size_diterima: autoSizes, jumlah_diterima: expectedQty, selisih_terima: 0 });
                   }
-                  setShowCountForm(true);
                 }}
-                style={{ width: "100%", background: "#1D4ED8", color: "white", border: "none", borderRadius: 20, padding: "20px", fontSize: 18, fontWeight: 900, cursor: "pointer", marginBottom: 12, boxShadow: "0 6px 20px rgba(29,78,216,0.35)", transition: "all 0.2s", position: "relative", borderTop: "2px dashed rgba(255,255,255,0.3)", overflow: "hidden" }}>
+                disabled={submitting}
+                style={{ width: "100%", background: "#1D4ED8", color: "white", border: "none", borderRadius: 20, padding: "20px", fontSize: 18, fontWeight: 900, cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.7 : 1, marginBottom: 12, boxShadow: "0 6px 20px rgba(29,78,216,0.35)", transition: "all 0.2s", position: "relative", borderTop: "2px dashed rgba(255,255,255,0.3)", overflow: "hidden" }}>
                 {/* Cutouts on the top border */}
                 <div style={{ position: "absolute", top: -12, left: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset -2px 0 6px rgba(0,0,0,0.1)" }} />
                 <div style={{ position: "absolute", top: -12, right: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset 2px 0 6px rgba(0,0,0,0.1)" }} />
-                📦 Terima &amp; Hitung Barang
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  {submitting ? "Memproses..." : isWajibHitung ? <><PackageCheck size={20} /> Terima & Hitung Barang</> : <><PackageCheck size={20} /> Konfirmasi Terima Barang</>}
+                </div>
               </button>
             );
           }
 
           return (
             <div style={{ background: "white", borderRadius: 20, padding: 24, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", marginBottom: 12 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: "#1D4ED8" }}>
-                📋 Hitung Barang per Size
+              <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: "#1D4ED8", display: "flex", alignItems: "center", gap: 6 }}>
+                <ClipboardCheck size={20} /> Hitung Barang per Size
               </h2>
               <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20 }}>
                 Hitung fisik setiap size. Total SPK: <strong>{expectedQty} pcs</strong>
@@ -653,9 +694,9 @@ export default function VendorSPKPage() {
                           <div style={{ fontWeight: 900, fontSize: 16, color: "#1E293B" }}>Size {row.size}</div>
                           <div style={{ fontSize: 12, color: "#64748B" }}>SPK: <strong>{row.jumlah_expected} pcs</strong></div>
                         </div>
-                        {ok && <span style={{ color: "#065F46", fontWeight: 800, fontSize: 12, background: "#D1FAE5", padding: "4px 8px", borderRadius: 6, flexShrink: 0 }}>✅ Sesuai</span>}
-                        {kurang && <span style={{ color: "#991B1B", fontWeight: 800, fontSize: 12, background: "#FEE2E2", padding: "4px 8px", borderRadius: 6, flexShrink: 0 }}>⚠️ Kurang {sel} pcs</span>}
-                        {lebih && <span style={{ color: "#92400E", fontWeight: 800, fontSize: 12, background: "#FEF3C7", padding: "4px 8px", borderRadius: 6, flexShrink: 0 }}>⚠️ Lebih {Math.abs(sel)} pcs</span>}
+                        {ok && <span style={{ color: "#065F46", fontWeight: 800, fontSize: 12, background: "#D1FAE5", padding: "4px 8px", borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 size={14} /> Sesuai</span>}
+                        {kurang && <span style={{ color: "#991B1B", fontWeight: 800, fontSize: 12, background: "#FEE2E2", padding: "4px 8px", borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle size={14} /> Kurang {sel} pcs</span>}
+                        {lebih && <span style={{ color: "#92400E", fontWeight: 800, fontSize: 12, background: "#FEF3C7", padding: "4px 8px", borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle size={14} /> Lebih {Math.abs(sel)} pcs</span>}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <label style={{ fontSize: 13, color: "#64748B", whiteSpace: "nowrap", flexShrink: 0 }}>Diterima:</label>
@@ -677,10 +718,10 @@ export default function VendorSPKPage() {
                 <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 12,
                   background: isMatch ? "#F0FDF4" : hasKurang ? "#FEF2F2" : "#FFF7ED",
                   border: `1px solid ${isMatch ? "#86EFAC" : hasKurang ? "#FECACA" : "#FDE68A"}` }}>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: isMatch ? "#065F46" : hasKurang ? "#991B1B" : "#92400E" }}>
-                    {isMatch ? `✅ Total sesuai! ${totalDiterima} dari ${totalExpected} pcs` :
-                     hasKurang ? `⚠️ Total kurang ${totalSelisih} pcs — diterima ${totalDiterima} dari ${totalExpected}` :
-                     `⚠️ Total lebih ${Math.abs(totalSelisih)} pcs — diterima ${totalDiterima} dari ${totalExpected}`}
+                  <div style={{ fontSize: 14, fontWeight: 900, color: isMatch ? "#065F46" : hasKurang ? "#991B1B" : "#92400E", display: "flex", alignItems: "center", gap: 6 }}>
+                    {isMatch ? <><CheckCircle2 size={16} /> Total sesuai! {totalDiterima} dari {totalExpected} pcs</> :
+                     hasKurang ? <><AlertTriangle size={16} /> Total kurang {totalSelisih} pcs — diterima {totalDiterima} dari {totalExpected}</> :
+                     <><AlertTriangle size={16} /> Total lebih {Math.abs(totalSelisih)} pcs — diterima {totalDiterima} dari {totalExpected}</>}
                   </div>
                   {hasKurang && <div style={{ fontSize: 12, color: "#B91C1C", marginTop: 4 }}>Selisih akan dicatat dalam laporan SPK.</div>}
                 </div>
@@ -708,8 +749,8 @@ export default function VendorSPKPage() {
                     doAction("terima", { jumlah_diterima: totalDiterima, selisih_terima: totalSelisih, size_diterima: perSize });
                   }}
                   disabled={submitting || !allFilled}
-                  style={{ flex: 2, background: submitting ? "#93C5FD" : hasKurang ? "#EF4444" : "#1D4ED8", color: "white", border: "none", borderRadius: 14, padding: "14px", fontSize: 16, fontWeight: 900, cursor: submitting || !allFilled ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(29,78,216,0.3)", opacity: !allFilled ? 0.5 : 1 }}>
-                  {submitting ? "⏳ Memproses..." : hasKurang ? `⚠️ Konfirmasi (kurang ${totalSelisih} pcs)` : isMatch ? "✅ Konfirmasi Terima Barang" : `⚠️ Konfirmasi (lebih ${Math.abs(totalSelisih)} pcs)`}
+                  style={{ flex: 2, background: submitting ? "#93C5FD" : hasKurang ? "#EF4444" : "#1D4ED8", color: "white", border: "none", borderRadius: 14, padding: "14px", fontSize: 16, fontWeight: 900, cursor: submitting || !allFilled ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(29,78,216,0.3)", opacity: !allFilled ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  {submitting ? <><Loader2 size={18} className="animate-spin"/> Memproses...</> : hasKurang ? <><AlertTriangle size={18} /> Konfirmasi (kurang {totalSelisih} pcs)</> : isMatch ? <><PackageCheck size={18} /> Konfirmasi Terima Barang</> : <><AlertTriangle size={18} /> Konfirmasi (lebih {Math.abs(totalSelisih)} pcs)</>}
                 </button>
               </div>
             </div>
@@ -720,7 +761,7 @@ export default function VendorSPKPage() {
           <div>
             {/* Status confirmed */}
             <div style={{ background: "#DCFCE7", borderRadius: 14, padding: 16, marginBottom: 14, border: "2px solid #86EFAC", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 22 }}>✅</span>
+              <div style={{ color: "#16A34A", display: "flex" }}><CheckCircle2 size={24} /></div>
               <div>
                 <div style={{ fontWeight: 800, color: "#065F46", fontSize: 16 }}>Barang Diterima — Sedang Dikerjakan</div>
                 {step.terima_waktu && (
@@ -735,7 +776,10 @@ export default function VendorSPKPage() {
                 {/* Cutouts on the top border */}
                 <div style={{ position: "absolute", top: -12, left: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset -2px 0 6px rgba(0,0,0,0.1)" }} />
                 <div style={{ position: "absolute", top: -12, right: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset 2px 0 6px rgba(0,0,0,0.1)" }} />
-                {submitting ? "⏳..." : "✅ Selesai & Serahkan ke Berikutnya"}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  {submitting ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
+                  {submitting ? "Memproses..." : "Selesai & Serahkan ke Berikutnya"}
+                </div>
               </button>
 
             ) : !showQC ? (
@@ -744,7 +788,7 @@ export default function VendorSPKPage() {
                 {/* Cutouts on the top border */}
                 <div style={{ position: "absolute", top: -12, left: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset -2px 0 6px rgba(0,0,0,0.1)" }} />
                 <div style={{ position: "absolute", top: -12, right: -12, width: 24, height: 24, background: "#F8FAFC", borderRadius: "50%", boxShadow: "inset 2px 0 6px rgba(0,0,0,0.1)" }} />
-                🔍 Laporkan Hasil QC
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Search size={20} /> Laporkan Hasil QC</div>
               </button>
 
             ) : !showDefectForm ? (
@@ -752,19 +796,19 @@ export default function VendorSPKPage() {
               <div style={{ background: "white", borderRadius: 20, padding: 24, boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
                 <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 18, textAlign: "center" }}>Hasil Pemeriksaan QC?</h2>
                 <button onClick={() => doAction("selesai")} disabled={submitting}
-                  style={{ width: "100%", background: "#10B981", color: "white", border: "none", borderRadius: 14, padding: "20px", fontSize: 19, fontWeight: 800, cursor: "pointer", marginBottom: 12, boxShadow: "0 4px 12px rgba(16,185,129,0.3)" }}>
-                  ✅ QC Lolos — Semua OK
+                  style={{ width: "100%", background: "#10B981", color: "white", border: "none", borderRadius: 14, padding: "20px", fontSize: 19, fontWeight: 800, cursor: "pointer", marginBottom: 12, boxShadow: "0 4px 12px rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <CheckCircle2 size={22} /> QC Lolos — Semua OK
                 </button>
                 <button onClick={initDefectForm} disabled={submitting}
-                  style={{ width: "100%", background: "#EF4444", color: "white", border: "none", borderRadius: 14, padding: "20px", fontSize: 19, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 12px rgba(239,68,68,0.3)" }}>
-                  ❌ Ada Cacat — Isi Detail
+                  style={{ width: "100%", background: "#EF4444", color: "white", border: "none", borderRadius: 14, padding: "20px", fontSize: 19, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 12px rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <XCircle size={22} /> Ada Cacat — Isi Detail
                 </button>
               </div>
 
             ) : (
               /* Form detail cacat per size */
               <div style={{ background: "white", borderRadius: 20, padding: 24, boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
-                <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: "#EF4444" }}>📋 Detail Cacat per Size</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 4, color: "#EF4444", display: "flex", alignItems: "center", gap: 6 }}><ClipboardX size={20} /> Detail Cacat per Size</h2>
                 <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20 }}>
                   Isi jumlah item cacat untuk setiap size. Kosongkan (0) jika tidak ada cacat.
                 </p>
@@ -835,8 +879,8 @@ export default function VendorSPKPage() {
                     ← Kembali
                   </button>
                   <button onClick={submitDefect} disabled={submitting || !defectForm.some(d => d.jumlah_cacat > 0)}
-                    style={{ flex: 2, background: submitting ? "#FCA5A5" : "#EF4444", color: "white", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 900, cursor: "pointer", boxShadow: "0 4px 12px rgba(239,68,68,0.3)", opacity: !defectForm.some(d => d.jumlah_cacat > 0) ? 0.5 : 1 }}>
-                    {submitting ? "⏳ Memproses..." : "✅ Konfirmasi Laporan Cacat"}
+                    style={{ flex: 2, background: submitting ? "#FCA5A5" : "#EF4444", color: "white", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 900, cursor: "pointer", boxShadow: "0 4px 12px rgba(239,68,68,0.3)", opacity: !defectForm.some(d => d.jumlah_cacat > 0) ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {submitting ? <><Loader2 size={18} className="animate-spin" /> Memproses...</> : <><CheckCircle2 size={18} /> Konfirmasi Laporan Cacat</>}
                   </button>
                 </div>
               </div>
@@ -845,11 +889,47 @@ export default function VendorSPKPage() {
         )}
 
 
-        <p style={{ textAlign: "center", fontSize: 12, color: "#CBD5E1", marginTop: 16 }}>
-          🔗 Link aktif selama proses berlangsung · Update otomatis tiap 4 detik
+        <p style={{ textAlign: "center", fontSize: 12, color: "#CBD5E1", marginTop: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          <LinkIcon size={12} /> Link aktif selama proses berlangsung · Update otomatis tiap 4 detik
         </p>
       </div>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+
+      {/* Scroll Down Indicator */}
+      {showScrollIndicator && (phase === "scan" || phase === "confirmed") && (
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 9999, pointerEvents: "none" }}>
+          <div style={{ animation: "bounce 2s infinite" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(8px)", color: "white", padding: "12px 24px", borderRadius: 99, boxShadow: "0 10px 25px rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: 0.5, whiteSpace: "nowrap" }}>Scroll ke Bawah</span>
+              <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ChevronDown size={16} strokeWidth={3} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }
+        @keyframes attention {
+          0%, 100% { transform: translateX(0); }
+          5% { transform: translateX(-2px) rotate(-1deg); }
+          10% { transform: translateX(2px) rotate(1deg); }
+          15% { transform: translateX(-2px) rotate(-1deg); }
+          20% { transform: translateX(1px) rotate(0.5deg); }
+          25% { transform: translateX(0); }
+        }
+        @keyframes bounce {
+          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-10px); }
+          60% { transform: translateY(-5px); }
+        }
+        .animate-attention {
+          animation: attention 3s ease-in-out infinite;
+        }
+        .animate-attention:hover {
+          animation: none;
+        }
+      `}</style>
     </div>
   );
 }

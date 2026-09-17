@@ -17,6 +17,11 @@ export interface DataStore {
   retail_sales: RetailSale[];
   retur_produksi: ReturProduksi[];
   retur_online: ReturOnline[];
+  penjualan_online: PenjualanOnline[];
+  settlement_online: SettlementOnline[];
+  kategori_produk: KategoriProduk[];
+  data_barang: DataBarang[];
+  data_supplier: DataSupplier[];
   _counters: Record<string, number>;
 }
 
@@ -26,6 +31,36 @@ export interface Vendor {
   jenis_default: string;   // default jenis pekerjaan
   kontak: string;
   aktif: boolean;
+  wajib_hitung_ulang?: boolean; // Jika true, vendor wajib isi size di QR SPK
+  created_at: string;
+}
+
+export interface KategoriProduk {
+  id: number;
+  uid: string;
+  nama: string;
+  deskripsi?: string;
+  created_at: string;
+}
+
+export interface DataBarang {
+  id: number;
+  uid: string;
+  kategori_id: number;
+  nama_barang: string;
+  harga_beli: number;
+  harga_jual: number;
+  stok: number;
+  created_at: string;
+}
+
+export interface DataSupplier {
+  id: number;
+  uid: string;
+  nama_supplier: string;
+  kontak: string;
+  alamat: string;
+  jenis_material: string;
   created_at: string;
 }
 
@@ -141,14 +176,62 @@ export interface ReturProduksi {
 
 export interface ReturOnline {
   id: number;
-  no_retur: string;
-  po_id?: number;
+  order_id: string;
+  product_name: string;
+  variation: string;
+  return_quantity: number;
+  return_type: string;
   alasan: string;
-  jumlah: number;
-  kondisi: string;
+  status: string;         // e.g., "Menunggu Gudang", "Masuk Gudang", "Hilang"
+  tanggal_batal: string;  // waktu dari CSV (Cancelled Time / Order Created Time for canceled ones)
+  tanggal_masuk?: string; // kapan diproses masuk ke stok lokal
+  sku_id?: string;
+  buyer_username?: string;
+  recipient?: string;
+  phone?: string;
+  address?: string;
+  tracking_id?: string;
+  shipping_provider?: string;
+  order_amount?: string;
+  payment_method?: string;
+  seller_sku?: string;
+  buyer_note?: string;
+}
+
+export interface PenjualanOnline {
+  id: number;
+  order_id: string;
   status: string;
-  tanggal: string;
-  catatan?: string;
+  product_name: string;
+  variation: string;
+  quantity: number;
+  order_amount: number;
+  seller_sku: string;
+  buyer_username: string;
+  recipient: string;
+  tanggal_pesanan: string;
+  tanggal_diimpor: string;
+  jatuh_tempo?: string;
+  tipe_pesanan?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  tracking_id?: string;
+  shipping_provider?: string;
+  payment_method?: string;
+}
+
+export interface SettlementOnline {
+  id: number;
+  order_id: string;
+  tanggal_settlement: string;
+  total_pendapatan: number;
+  biaya_komisi: number;
+  biaya_ongkir: number;
+  biaya_lainnya: number;
+  penyelesaian_pembayaran: number;
+  status: string;
 }
 
 function uuid(): string {
@@ -164,7 +247,20 @@ function getInitialData(): DataStore {
   const tok1 = uuid(), tok2 = uuid(), tok3 = uuid();
 
   return {
-    _counters: { vendors: 3, batches: 3, batch_steps: 5, tracking_logs: 3, stock: 8, stock_movements: 5, purchase_orders: 5, retail_sales: 6, retur_produksi: 0, retur_online: 0 },
+    _counters: { vendors: 3, batches: 3, batch_steps: 5, tracking_logs: 3, stock: 8, stock_movements: 5, purchase_orders: 5, retail_sales: 6, retur_produksi: 0, retur_online: 0, penjualan_online: 0, settlement_online: 0, kategori_produk: 2, data_barang: 2, data_supplier: 2 },
+    settlement_online: [],
+    kategori_produk: [
+      { id: 1, uid: `KTG-${tok1.substring(0,6)}`, nama: "Jeans Reguler", deskripsi: "Celana jeans potongan reguler fit", created_at: now },
+      { id: 2, uid: `KTG-${tok2.substring(0,6)}`, nama: "Jeans Slim", deskripsi: "Celana jeans potongan slim fit", created_at: now }
+    ],
+    data_barang: [
+      { id: 1, uid: `BRG-${tok1.substring(0,6)}`, kategori_id: 1, nama_barang: "Reguler Denim Biru 12oz", harga_beli: 100000, harga_jual: 150000, stok: 45, created_at: now },
+      { id: 2, uid: `BRG-${tok2.substring(0,6)}`, kategori_id: 2, nama_barang: "Slim Denim Hitam 14oz", harga_beli: 120000, harga_jual: 175000, stok: 35, created_at: now }
+    ],
+    data_supplier: [
+      { id: 1, uid: `SUP-${tok1.substring(0,6)}`, nama_supplier: "Toko Kain Berkah", kontak: "08111222333", alamat: "Jl. Textile No. 1", jenis_material: "Kain Denim", created_at: now },
+      { id: 2, uid: `SUP-${tok2.substring(0,6)}`, nama_supplier: "Benang Warna Jaya", kontak: "08222333444", alamat: "Jl. Industri Raya", jenis_material: "Benang", created_at: now }
+    ],
     vendors: [
       { id: 1, nama: "Vendor A — Mitra Jaya", jenis_default: "Potong & Jahit", kontak: "081234567001", aktif: true, created_at: now },
       { id: 2, nama: "Vendor B — Laundry Prima", jenis_default: "Washing / Laundry", kontak: "081234567002", aktif: true, created_at: now },
@@ -226,6 +322,7 @@ function getInitialData(): DataStore {
       { id: 1, batch_id: 1, step_id: 1, alasan: "Size L: 3 pcs (Jahitan lepas), Size XL: 2 pcs (Kotor)", ke_berapa_kali: 1, status: "menunggu-spk-retur", tanggal: now }
     ],
     retur_online: [],
+    penjualan_online: [],
   };
 }
 

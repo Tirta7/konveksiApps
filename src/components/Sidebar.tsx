@@ -31,7 +31,7 @@ const MENU = [
   { label: "Mutasi Stok",          href: "/mutasi-stok",      icon: RefreshCw },
   { label: "Pembelian (PO)",       href: "/pembelian",        icon: ShoppingCart },
   { label: "Penjualan Grosir",     href: "/penjualan",        icon: BarChart2 },
-  { label: "Penjualan PO Online",  href: "/po-online",        icon: ShoppingCart },
+  { label: "Penjualan Online",     href: "/penjualan-online",   icon: ShoppingCart },
   { label: "Retail Offline",       href: "/retail-offline",   icon: Store },
   { label: "Retur Penjualan",      href: "/retur-online",     icon: RotateCcw },
   

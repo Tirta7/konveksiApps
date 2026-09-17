@@ -7,7 +7,7 @@ export default function AturVendorPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ nama: "", jenis_default: "", kontak: "" });
+  const [form, setForm] = useState({ nama: "", jenis_default: "", kontak: "", wajib_hitung_ulang: false });
   const [saving, setSaving] = useState(false);
 
   const load = () => { setLoading(true); fetch("/api/vendors").then(r => r.json()).then(d => { setVendors(d); setLoading(false); }); };
@@ -25,13 +25,13 @@ export default function AturVendorPage() {
     setSaving(false);
     setShowForm(false);
     setEditId(null);
-    setForm({ nama: "", jenis_default: "", kontak: "" });
+    setForm({ nama: "", jenis_default: "", kontak: "", wajib_hitung_ulang: false });
     load();
   };
 
   const handleEdit = (v: any) => {
     setEditId(v.id);
-    setForm({ nama: v.nama, jenis_default: v.jenis_default, kontak: v.kontak });
+    setForm({ nama: v.nama, jenis_default: v.jenis_default, kontak: v.kontak, wajib_hitung_ulang: v.wajib_hitung_ulang ?? false });
     setShowForm(true);
   };
 
@@ -60,7 +60,7 @@ export default function AturVendorPage() {
             <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", marginBottom: 4 }}>Atur Vendor Produksi</h1>
             <p style={{ fontSize: 13, color: "#64748B" }}>Manajemen direktori vendor dan bengkel produksi jeans Anda</p>
           </div>
-          <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ nama: "", jenis_default: "", kontak: "" }); }} style={{ padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
+          <button className="btn btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm({ nama: "", jenis_default: "", kontak: "", wajib_hitung_ulang: false }); }} style={{ padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
             <Plus size={16} /> Tambah Vendor
           </button>
         </div>
@@ -94,6 +94,21 @@ export default function AturVendorPage() {
                   <div style={{ display: "flex", alignItems: "center", border: "1px solid #CBD5E1", borderRadius: 8, overflow: "hidden" }}>
                     <div style={{ padding: "10px 14px", background: "#F1F5F9", fontSize: 14, fontWeight: 700, color: "#64748B", borderRight: "1px solid #CBD5E1" }}>+62</div>
                     <input style={{ flex: 1, padding: "10px 14px", border: "none", outline: "none", fontSize: 14 }} value={form.kontak} onChange={e => setForm(f => ({ ...f, kontak: e.target.value }))} placeholder="81234567890" />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 24, padding: "12px 14px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>Proses Scan QR SPK</label>
+                  <div style={{ fontSize: 11, color: "#64748B", marginBottom: 12 }}>Apakah vendor ini diwajibkan menghitung fisik ulang jumlah per size saat proses konfirmasi penerimaan barang?</div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <label style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: form.wajib_hitung_ulang ? "#EFF6FF" : "white", border: `1px solid ${form.wajib_hitung_ulang ? "#3B82F6" : "#CBD5E1"}`, borderRadius: 8 }}>
+                      <input type="radio" name="wajib_hitung_ulang" checked={form.wajib_hitung_ulang === true} onChange={() => setForm(f => ({ ...f, wajib_hitung_ulang: true }))} style={{ accentColor: "#3B82F6" }} />
+                      <span style={{ fontSize: 12, fontWeight: form.wajib_hitung_ulang ? 700 : 500, color: form.wajib_hitung_ulang ? "#1D4ED8" : "#475569" }}>Wajib Hitung</span>
+                    </label>
+                    <label style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: !form.wajib_hitung_ulang ? "#EFF6FF" : "white", border: `1px solid ${!form.wajib_hitung_ulang ? "#3B82F6" : "#CBD5E1"}`, borderRadius: 8 }}>
+                      <input type="radio" name="wajib_hitung_ulang" checked={form.wajib_hitung_ulang === false} onChange={() => setForm(f => ({ ...f, wajib_hitung_ulang: false }))} style={{ accentColor: "#3B82F6" }} />
+                      <span style={{ fontSize: 12, fontWeight: !form.wajib_hitung_ulang ? 700 : 500, color: !form.wajib_hitung_ulang ? "#1D4ED8" : "#475569" }}>Langsung Saja</span>
+                    </label>
                   </div>
                 </div>
                 
@@ -136,9 +151,12 @@ export default function AturVendorPage() {
                       <div>
                         <div style={{ fontWeight: 900, fontSize: 16, color: "#0F172A", marginBottom: 2 }}>{v.nama}</div>
                         {v.jenis_default ? (
-                          <span style={{ display: "inline-block", background: "#F1F5F9", color: "#475569", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5 }}>{v.jenis_default}</span>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                            <span style={{ display: "inline-block", background: "#F1F5F9", color: "#475569", padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5 }}>{v.jenis_default}</span>
+                            <span style={{ display: "inline-block", background: v.wajib_hitung_ulang ? "#FEF2F2" : "#F0FDF4", color: v.wajib_hitung_ulang ? "#991B1B" : "#166534", padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: `1px solid ${v.wajib_hitung_ulang ? "#FECACA" : "#DCFCE7"}` }}>{v.wajib_hitung_ulang ? "Wajib Hitung" : "Cepat (Bypass)"}</span>
+                          </div>
                         ) : (
-                          <span style={{ fontSize: 11, color: "#94A3B8" }}>Keahlian belum diatur</span>
+                          <span style={{ display: "inline-block", background: "#F1F5F9", color: "#94A3B8", padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, fontStyle: "italic" }}>Tidak ada keahlian default</span>
                         )}
                       </div>
                     </div>

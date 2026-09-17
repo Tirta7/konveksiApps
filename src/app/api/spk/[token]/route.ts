@@ -19,6 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       ...s,
       vendor_nama: data.vendors.find(v => v.id === s.vendor_id)?.nama ?? "",
       vendor_kontak: data.vendors.find(v => v.id === s.vendor_id)?.kontak ?? "",
+      vendor_wajib_hitung_ulang: data.vendors.find(v => v.id === s.vendor_id)?.wajib_hitung_ulang ?? false,
     }));
 
   const currentStep = steps.find(s => s.step_order === batch.current_step && s.status === "berjalan") ?? null;

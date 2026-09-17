@@ -42,11 +42,11 @@ export default function DaftarSPKPage() {
     fetch("/api/spk").then(r => r.json()).then(d => { setList(d); setLoading(false); });
   }, []);
 
-  const vendors = [...new Set(list.map(s => s.vendor_nama))];
+  const vendors = [...new Set(list.flatMap(s => s.steps?.map((st: any) => st.vendor_nama)).filter(Boolean))];
 
   const filtered = list.filter(s => {
-    const matchSearch = !search || s.no_spk.toLowerCase().includes(search.toLowerCase()) || s.kode_batch.toLowerCase().includes(search.toLowerCase());
-    const matchVendor = !filterVendor || s.vendor_nama === filterVendor;
+    const matchSearch = !search || (s.no_spk && s.no_spk.toLowerCase().includes(search.toLowerCase())) || (s.kode_batch && s.kode_batch.toLowerCase().includes(search.toLowerCase()));
+    const matchVendor = !filterVendor || s.steps?.some((st: any) => st.vendor_nama === filterVendor);
     const matchStatus = !filterStatus || s.status === filterStatus;
     return matchSearch && matchVendor && matchStatus;
   });
@@ -178,7 +178,7 @@ export default function DaftarSPKPage() {
               <Filter size={16} color="#64748B" />
               <select style={{ background: "transparent", border: "none", outline: "none", fontSize: 13, fontWeight: 600, color: "#334155", paddingRight: 8 }} value={filterVendor} onChange={e => setFilterVendor(e.target.value)}>
                 <option value="">Semua Vendor</option>
-                {vendors.map(v => <option key={v} value={v}>{v}</option>)}
+                {vendors.map((v, idx) => <option key={idx} value={v as string}>{v as string}</option>)}
               </select>
             </div>
             

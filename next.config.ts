@@ -5,7 +5,7 @@ const nextConfig = {
       { protocol: "https", hostname: "api.qrserver.com" },
     ],
   },
-  allowedDevOrigins: ['192.168.1.36', 'localhost'],
+  allowedDevOrigins: ['192.168.1.36', 'localhost', '192.168.1.19'],
 };
 
 module.exports = nextConfig;

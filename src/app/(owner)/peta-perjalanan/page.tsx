@@ -161,24 +161,34 @@ export default function PetaPerjalananPage() {
   }, []);
 
   const loadBatches = useCallback(async () => {
-    const res = await fetch("/api/batches", { cache: "no-store" });
-    const d = await res.json();
-    const serial = JSON.stringify(d);
-    if (serial !== prevRef.current) {
-      setPulse(true); setTimeout(() => setPulse(false), 600);
-      prevRef.current = serial; setBatches(d);
-      if (selIdRef.current) {
-        const upd = d.find((b: any) => b.id === selIdRef.current);
-        if (upd) setSelected(upd);
+    try {
+      const res = await fetch("/api/batches", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const d = await res.json();
+      const serial = JSON.stringify(d);
+      if (serial !== prevRef.current) {
+        setPulse(true); setTimeout(() => setPulse(false), 600);
+        prevRef.current = serial; setBatches(d);
+        if (selIdRef.current) {
+          const upd = d.find((b: any) => b.id === selIdRef.current);
+          if (upd) setSelected(upd);
+        }
       }
+    } catch (err) {
+      console.error("Error loadBatches:", err);
+    } finally {
+      setLastUpdated(new Date());
+      setLoading(false);
     }
-    setLastUpdated(new Date());
-    setLoading(false);
   }, []);
 
   const loadDetail = useCallback(async (id: number) => {
-    const res = await fetch(`/api/tracking?batchId=${id}`, { cache: "no-store" });
-    setDetail(await res.json());
+    try {
+      const res = await fetch(`/api/tracking?batchId=${id}`, { cache: "no-store" });
+      setDetail(await res.json());
+    } catch (err) {
+      console.error("Error loadDetail:", err);
+    }
   }, []);
 
   useEffect(() => { loadBatches(); const t = setInterval(loadBatches, 5000); return () => clearInterval(t); }, [loadBatches]);
