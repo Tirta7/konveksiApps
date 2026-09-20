@@ -1,0 +1,492 @@
+Laporan Washing",  badge: washingTransfers.filter((r: any) => r.status === "Kirim").length, badgeColor: "#06B6D4" },
+224:             ] as const).map(tab => (
+225:               <button
+226:                 key={tab.key}
+227:                 onClick={() => setActiveTab(tab.key as any)}
+228:                 style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: activeTab === tab.key ? "#0F172A" : "transparent", color: activeTab === tab.key ? "white" : "#64748B", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 7, position: "relative", whiteSpace: "nowrap" }}
+229:               >
+230:                 <i className={`fi ${tab.icon}`} style={{ fontSize: 14 }} />
+231:                 {tab.label}
+232:                 {tab.badge > 0 && (
+233:                   <span style={{ background: tab.badgeColor, color: "white", borderRadius: "50%", minWidth: 20, height: 20, fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+234:                     {tab.badge}
+235:                   </span>
+236:                 )}
+237:               </button>
+238:             ))}
+239:           </div>
+240:         </div>
+241:       </div>
+242: 
+243:       {/* Info Banner: dari request CMT */}
+244:       {activeTab === "manual" && processRequest && (
+245:         <div style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)", border: "1.5px solid #3B82F6", borderRadius: 14, padding: "14px 20px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+246:           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+247:             <div style={{ background: "#3B82F6", color: "white", width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✦</div>
+248:             <div>
+249:               <div style={{ fontWeight: 800, color: "#1D4ED8", fontSize: 14 }}>Auto-fill dari Request: {processRequest.vendor_nama}</div>
+250:               <div style={{ fontSize: 13, color: "#3B82F6" }}>
+251:                 Target: <strong>{processRequest.total_request} pcs</strong> · Breakdown sudah diisi rata antar size. Sesuaikan jika perlu sebelum terbitkan PO.
+252:               </div>
+253:             </div>
+254:           </div>
+255:           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+256:             <button
+257:               onClick={() => {
+258:                 if (selectedPemotongan) {
+259:                   setSizeBreakdown(distributeEvenly(selectedPemotongan, Number(processRequest.total_request)));
+260:                 }
+261:               }}
+262:               style={{ background: "#3B82F6", color: "white", border: "none", padding: "8px 14px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13 }}
+263:             >
+264:               <i className="fi fi-rr-refresh" style={{ fontSize: 12 }} /> Rata Ulang
+265:             </button>
+266:             <button
+267:               onClick={() => { setProcessRequest(null); }}
+268:               style={{ background: "white", color: "#64748B", border: "1px solid #CBD5E1", padding: "8px 12px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13 }}
+269:             >
+270:               <i className="fi fi-rr-trash" style={{ fontSize: 12 }} /> Hapus
+271:             </button>
+272:           </div>
+273:         </div>
+274:       )}
+275: 
+276:       {/* TAB: Antrean Request CMT */}
+277:       {activeTab === "request" && (
+278:         <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 40 }}>
+279: 
+280:           {/* FILTER BARS */}
+281:           <div style={{ display: "flex", gap: 8 }}>
+282:             {["Semua", "Pending", "Selesai/Dilayani", "Ditolak"].map(f => (
+283:               <button
+284:                 key={f}
+285:                 onClick={() => setRequestFilter(f)}
+286:                 style={{
+287:                   padding: "7px 16px", borderRadius: 20, fontSize: 13, fontWeight: 700, border: "none",
+288:                   cursor: "pointer",
+289:                   background: requestFilter === f ? "#0F172A" : "#E2E8F0",
+290:                   color: requestFilter === f ? "white" : "#64748B"
+291:                 }}
+292:               >
+293:                 {f}
+294:                 {f === "Pending" && cmtRequests.filter((r: any) => r.status === "Pending").length > 0 && (
+295:                   <span style={{ marginLeft: 6, background: "#EF4444", color: "white", borderRadius: 20, fontSize: 10, padding: "1px 6px", fontWeight: 900 }}>
+296:                     {cmtRequests.filter((r: any) => r.status === "Pending").length}
+297:                   </span>
+298:                 )}
+299:               </button>
+300:             ))}
+301:           </div>
+302: 
+303:           {(() => {
+304:             const filtered = cmtRequests.filter((r: any) => {
+305:               if (requestFilter === "Semua") return true;
+306:               if (requestFilter === "Selesai/Dilayani") return r.status === "Selesai" || r.status === "Terpenuhi Sebagian";
+307:               return r.status === requestFilter;
+308:             });
+309: 
+310:             if (filtered.length === 0) return (
+311:               <div style={{ background: "white", borderRadius: 18, padding: 60, textAlign: "center", border: "1px solid #E2E8F0" }}>
+312:                 <Inbox size={44} style={{ color: "#CBD5E1", margin: "0 auto 14px" }} />
+313:                 <div style={{ fontSize: 16, fontWeight: 700, color: "#64748B" }}>Tidak ada Request {requestFilter !== "Semua" ? requestFilter : ""}</div>
+314:               </div>
+315:             );
+316: 
+317:             // Group by vendor type
+318:             const GROUPS: Record<string, { label: string; icon: string; color: string; bg: string; border: string; items: any[] }> = {
+319:               cmt:       { label: "Vendor CMT / Penjahit", icon: "fi-sr-needle", color: "#1D4ED8", bg: "#EFF6FF", border: "#BFDBFE", items: [] },
+320:               washing:   { label: "Vendor Washing / Laundry", icon: "fi-sr-water", color: "#0E7490", bg: "#ECFEFF", border: "#A5F3FC", items: [] },
+321:               benang:    { label: "Vendor Bersih Benang", icon: "fi-sr-scissors", color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE", items: [] },
+322:               finishing: { label: "Vendor Finishing / QC", icon: "fi-sr-badge-check", color: "#059669", bg: "#ECFDF5", border: "#6EE7B7", items: [] },
+323:               lainnya:   { label: "Vendor Lainnya", icon: "fi-sr-box-open", color: "#64748B", bg: "#F8FAFC", border: "#E2E8F0", items: [] },
+324:             };
+325: 
+326:             for (const r of filtered) {
+327:               const v = vendors.find((v: any) => v.id === r.vendor_id);
+328:               const tipe = v?.tipe || "lainnya";
+329:               (GROUPS[tipe] || GROUPS["lainnya"]).items.push(r);
+330:             }
+331: 
+332:             const STATUS_CFG: Record<string, { badge: string; badgeText: string; borderL: string }> = {
+333:               "Pending":            { badge: "#DBEAFE", badgeText: "#1D4ED8", borderL: "#3B82F6" },
+334:               "Terpenuhi Sebagian": { badge: "#FEF3C7", badgeText: "#B45309", borderL: "#F59E0B" },
+335:               "Selesai":            { badge: "#D1FAE5", badgeText: "#065F46", borderL: "#10B981" },
+336:               "Ditolak":            { badge: "#FEE2E2", badgeText: "#991B1B", borderL: "#EF4444" },
+337:             };
+338: 
+339:             return ["cmt", "washing", "benang", "finishing", "lainnya"].map(tipe => {
+340:               const g = GROUPS[tipe];
+341:               if (g.items.length === 0) return null;
+342:               const pendingCount = g.items.filter(r => r.status === "Pending").length;
+343: 
+344:               return (
+345:                 <div key={tipe}>
+346:                   {/* Section Header */}
+347:                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+348:                     <div style={{ background: g.bg, border: `1.5px solid ${g.border}`, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+349:                       <i className={`fi ${g.icon}`} style={{ fontSize: 18, color: g.color }} />
+350:                       <div>
+351:                         <div style={{ fontWeight: 900, fontSize: 14, color: g.color }}>{g.label}</div>
+352:                         <div style={{ fontSize: 11, color: "#64748B" }}>
+353:                           {g.items.length} request
+354:                           {pendingCount > 0 && <span style={{ marginLeft: 6, background: "#EF4444", color: "white", borderRadius: 20, fontSize: 10, padding: "1px 6px", fontWeight: 900 }}>{pendingCount} menunggu</span>}
+355:                         </div>
+356:                       </div>
+357:                     </div>
+358:                     <div style={{ flex: 1, height: 1.5, background: `linear-gradient(to right, ${g.border}, transparent)` }} />
+359:                   </div>
+360: 
+361:                   {/* Cards Grid */}
+362:                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+363:                     {g.items.map((r: any) => {
+364:                       const sc = STATUS_CFG[r.status] || STATUS_CFG["Pending"];
+365:                       const isPending = r.status === "Pending" || r.status === "Terpenuhi Sebagian";
+366:                       const isDitolak = r.status === "Ditolak";
+367:                       const pct = r.total_request > 0 ? Math.round(((r.total_dipenuhi || 0) / r.total_request) * 100) : 0;
+368:                       const sisaKurang = Math.max(0, r.total_request - (r.total_dipenuhi || 0));
+369: 
+370:                       return (
+371:                         <div key={r.id} style={{ background: "white", borderRadius: 16, border: `1px solid ${isPending ? sc.borderL : "#E2E8F0"}`, boxShadow: isPending ? `0 0 0 3px ${sc.badge}` : "0 2px 8px rgba(0,0,0,0.04)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+372: 
+373:                           {/* Card Header */}
+374:                           <div style={{ padding: "14px 18px", background: isPending ? g.bg : "#F8FAFC", borderBottom: `1px solid ${isPending ? g.border : "#E2E8F0"}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+375:                             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+376:                               <div style={{ width: 38, height: 38, borderRadius: 10, background: sc.badge, border: `2px solid ${sc.borderL}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 15, color: sc.badgeText, flexShrink: 0 }}>
+377:                                 {r.vendor_nama?.charAt(0) || "?"}
+378:                               </div>
+379:                               <div>
+380:                                 <div style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{r.vendor_nama}</div>
+381:                                 <div style={{ fontSize: 11, color: "#64748B", display: "flex", gap: 5, alignItems: "center" }}>
+382:                                   <i className="fi fi-rr-clock" style={{ fontSize: 10 }} />
+383:                                   {new Date(r.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+384:                                   &nbsp;·&nbsp;
+385:                                   {new Date(r.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+386:                                   &nbsp;· #{r.id}
+387:                                 </div>
+388:                               </div>
+389:                             </div>
+390:                             <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, background: sc.badge, color: sc.badgeText, border: `1px solid ${sc.borderL}`, flexShrink: 0 }}>
+391:                               {r.status}
+392:                             </span>
+393:                           </div>
+394: 
+395:                           {/* Stats Row */}
+396:                           <div style={{ padding: "12px 18px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, borderBottom: "1px solid #F1F5F9" }}>
+397:                             {[
+398:                               { label: "REQUEST", val: r.total_request, color: "#0F172A" },
+399:                               { label: "DIPENUHI", val: r.total_dipenuhi || 0, color: r.total_dipenuhi > 0 ? "#10B981" : "#CBD5E1" },
+400:                               { label: "SISA", val: sisaKurang, color: sisaKurang > 0 ? "#F59E0B" : "#10B981" },
+401:                             ].map(s => (
+402:                               <div key={s.label} style={{ textAlign: "center" }}>
+403:                                 <div style={{ fontSize: 9, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase" }}>{s.label}</div>
+404:                                 <div style={{ fontSize: 20, fontWeight: 900, color: s.color, lineHeight: 1.2 }}>{s.val}<span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}> pcs</span></div>
+405:                               </div>
+406:                             ))}
+407:                           </div>
+408: 
+409:                           {/* Progress bar */}
+410:                           {!isDitolak && (
+411:                             <div style={{ padding: "8px 18px 0", borderBottom: "1px solid #F1F5F9" }}>
+412:                               <div style={{ width: "100%", background: "#E2E8F0", height: 5, borderRadius: 99, overflow: "hidden", marginBottom: 4 }}>
+413:                                 <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: pct >= 100 ? "#10B981" : pct > 50 ? "#3B82F6" : "#F59E0B", borderRadius: 99, transition: "width 0.5s" }} />
+414:                               </div>
+415:                               <div style={{ fontSize: 10, color: "#94A3B8", textAlign: "right", paddingBottom: 8, fontWeight: 600 }}>{pct}% terpenuhi</div>
+416:                             </div>
+417:                           )}
+418: 
+419:                           {/* Pemotongan Kain Cross-Ref */}
+420:                           {r.pemotongan ? (
+421:                             <div style={{ padding: "10px 18px", background: "#F0FDF4", borderBottom: "1px solid #D1FAE5" }}>
+422:                               <div style={{ fontSize: 10, fontWeight: 800, color: "#16A34A", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+423:                                 <i className="fi fi-rr-layers" style={{ fontSize: 10 }} /> KAIN DIMINTA
+424:                               </div>
+425:                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+426:                                 <div>
+427:                                   <div style={{ fontWeight: 700, fontSize: 12, color: "#0F172A" }}>{r.pemotongan.nama_barang}</div>
+428:                                   <div style={{ fontSize: 10, color: "#64748B" }}>Model: {r.pemotongan.model}</div>
+429:                                 </div>
+430:                                 <div style={{ fontWeight: 900, fontSize: 15, color: "#16A34A" }}>{r.pemotongan.sisa_total}<span style={{ fontSize: 10, color: "#64748B", fontWeight: 600 }}> sisa</span></div>
+431:                               </div>
+432:                               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+433:                                 {(r.pemotongan.sizeBreakdown || []).map((s: any) => (
+434:                                   <span key={s.size} style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 5, background: s.sisa > 0 ? "#DCFCE7" : "#F1F5F9", color: s.sisa > 0 ? "#16A34A" : "#94A3B8", border: `1px solid ${s.sisa > 0 ? "#86EFAC" : "#E2E8F0"}` }}>
+435:                                     {s.size}:{s.sisa}
+436:                                   </span>
+437:                                 ))}
+438:                               </div>
+439:                             </div>
+440:                           ) : (
+441:                             <div style={{ padding: "8px 18px", background: "#FFFBEB", borderBottom: "1px solid #FDE68A", fontSize: 10, color: "#92400E", display: "flex", alignItems: "center", gap: 4 }}>
+442:                               <i className="fi fi-rr-info" style={{ fontSize: 10 }} /> Belum pilih kain - Admin tentukan saat proses
+443:                             </div>
+444:                           )}
+445: 
+446:                           {/* Catatan / Alasan Tolak */}
+447:                           {(r.catatan || (isDitolak && r.alasan_tolak)) && (
+448:                             <div style={{ padding: "8px 18px", borderBottom: "1px solid #F1F5F9", display: "flex", flexDirection: "column", gap: 4 }}>
+449:                               {r.catatan && (
+450:                                 <div style={{ fontSize: 11, color: "#475569", display: "flex", gap: 5 }}>
+451:                                   <i className="fi fi-rr-comment-alt" style={{ fontSize: 11, color: "#94A3B8", flexShrink: 0 }} />
+452:                                   {r.catatan}
+453:                                 </div>
+454:                               )}
+455:                               {isDitolak && r.alasan_tolak && (
+456:                                 <div style={{ fontSize: 11, color: "#991B1B", display: "flex", gap: 5 }}>
+457:                                   <i className="fi fi-rr-cross-circle" style={{ fontSize: 11, flexShrink: 0 }} />
+458:                                   <span style={{ fontWeight: 700 }}>Ditolak:</span> {r.alasan_tolak}
+459:                                 </div>
+460:                               )}
+461:                             </div>
+462:                           )}
+463: 
+464:                           {/* Footer Actions */}
+465:                           <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+466:                             <a href={`/cmt/${r.vendor_id}`} target="_blank" style={{ fontSize: 11, color: "#64748B", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+467:                               <ExternalLink size={12} /> Portal
+468:                             </a>
+469:                             {isPending && (
+470:                               <div style={{ display: "flex", gap: 6 }}>
+471:                                 <button
+472:                                   onClick={() => { setRejectRequest(r); setRejectReason(""); }}
+473:                                   style={{ background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA", padding: "6px 12px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+474:                                 >
+475:                                   <X size={13} /> Tolak
+476:                                 </button>
+477:                                 <button
+478:                                   onClick={() => {
+479:                                     const targetQty = Number(r.total_request);
+480:                                     let bestPemo = pemotonganList[0];
+481:                                     if (pemotonganList.length > 1) {
+482:                                       bestPemo = pemotonganList.reduce((best: any, p: any) => {
+483:                                         const ts = p.sizeBreakdown.reduce((s: number, x: any) => s + (x.sisa || 0), 0);
+484:                                         const bs = best.sizeBreakdown.reduce((s: number, x: any) => s + (x.sisa || 0), 0);
+485:                                         return ts > bs ? p : best;
+486:                                       });
+487:                                     }
+488:                                     // Prefer pemotongan yang dipilih CMT
+489:                                     if (r.pemotongan_id) {
+490:                                       const cmtPemo = pemotonganList.find((p: any) => p.id === r.pemotongan_id);
+491:                                       if (cmtPemo) bestPemo = cmtPemo;
+492:                                     }
+493:                                     setProcessRequest(r);
+494:                                     setForm({ pemotonganId: bestPemo ? String(bestPemo.id) : "", vendorId: String(r.vendor_id), catatan: `Pemenuhan request ${r.total_request} pcs dari ${r.vendor_nama}` });
+495:                                     if (bestPemo) {
+496:                                       const sizes = bestPemo.sizeBreakdown.filter((s: any) => s.sisa > 0);
+497:                                       const numSizes = sizes.length;
+498:                                       if (numSizes > 0) {
+499:                                         const perSize = Math.floor(targetQty / numSizes);
+500:                                         let rem = targetQty - (perSize * numSizes);
+501:                                         const nb = bestPemo.sizeBreakdown.map((s: any) => {
+502:                                           if (s.sisa <= 0) return { size: s.size, jumlah: 0, maxSisa: s.sisa };
+503:                                           const extra = rem > 0 ? 1 : 0; rem -= extra;
+504:                                           return { size: s.size, jumlah: Math.min(perSize + extra, s.sisa), maxSisa: s.sisa };
+505:                                         });
+506:                                         setSizeBreakdown(nb);
+507:                                       }
+508:                                     }
+509:                                     setActiveTab("manual");
+510:                                   }}
+511:                                   style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)", color: "white", border: "none", padding: "6px 14px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4, boxShadow: "0 3px 8px rgba(37,99,235,0.3)" }}
+512:                                 >
+513:                                   <CheckCheck size={13} /> Proses
+514:                                 </button>
+515:                               </div>
+516:                             )}
+517:                           </div>
+518:                         </div>
+519:                       );
+520:                     })}
+521:                   </div>
+522:                 </div>
+523:               );
+524:             });
+525:           })()}
+526:         </div>
+527:       )}
+528: 
+529:       {/* TAB: Laporan Progres */}
+530:       {/* TAB: Laporan CMT */}
+531:       {activeTab === "laporan" && (() => {
+532:         if (cmtProgres.length === 0) return (
+533:           <div style={{ background: "white", borderRadius: 18, padding: 60, textAlign: "center", border: "1px solid #E2E8F0", marginBottom: 40 }}>
+534:             <i className="fi fi-rr-check-circle" style={{ fontSize: 44, color: "#CBD5E1", display: "block", marginBottom: 14 }} />
+535:             <div style={{ fontSize: 16, fontWeight: 700, color: "#64748B" }}>Belum ada Laporan Progres dari Vendor CMT</div>
+536:           </div>
+537:         );
+538: 
+539:         // Group by vendor
+540:         const vendorGroups: Record<string, { nama: string; items: any[] }> = {};
+541:         for (const lp of cmtProgres) {
+542:           const key = String(lp.vendor_id || lp.vendor_nama);
+543:           if (!vendorGroups[key]) vendorGroups[key] = { nama: lp.vendor_nama, items: [] };
+544:           vendorGroups[key].items.push(lp);
+545:         }
+546: 
+547:         // Status config
+548:         const statusCfg: Record<string, { badge: string; text: string; border: string }> = {
+549:           "Menunggu": { badge: "#FEF3C7", text: "#92400E", border: "#FCD34D" },
+550:           "Pending":  { badge: "#FEF3C7", text: "#92400E", border: "#FCD34D" },
+551:           "Diterima": { badge: "#D1FAE5", text: "#065F46", border: "#6EE7B7" },
+552:           "Ditolak":  { badge: "#FEE2E2", text: "#991B1B", border: "#FCA5A5" },
+553:         };
+554: 
+555:         const pendingCount = cmtProgres.filter((r: any) => r.status === "Menunggu" || r.status === "Pending").length;
+556: 
+557:         return (
+558:           <div style={{ marginBottom: 40 }}>
+559:             {/* Section Header */}
+560:             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+561:               <div style={{ background: "#ECFDF5", border: "1.5px solid #6EE7B7", borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+562:                 <i className="fi fi-sr-badge-check" style={{ fontSize: 18, color: "#059669" }} />
+563:                 <div>
+564:                   <div style={{ fontWeight: 900, fontSize: 14, color: "#059669" }}>Laporan Progres CMT</div>
+565:                   <div style={{ fontSize: 11, color: "#64748B" }}>
+566:                     {cmtProgres.length} laporan
+567:                     {pendingCount > 0 && <span style={{ marginLeft: 6, background: "#F59E0B", color: "white", borderRadius: 20, fontSize: 10, padding: "1px 6px", fontWeight: 900 }}>{pendingCount} menunggu ACC</span>}
+568:                   </div>
+569:                 </div>
+570:               </div>
+571:               <div style={{ flex: 1, height: 1.5, background: "linear-gradient(to right, #6EE7B7, transparent)" }} />
+572:             </div>
+573: 
+574:             {/* Cards Grid */}
+575:             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+576:               {cmtProgres.map((lp: any) => {
+577:                 const sc = statusCfg[lp.status] || { badge: "#F1F5F9", text: "#64748B", border: "#E2E8F0" };
+578:                 const isPending = lp.status === "Menunggu" || lp.status === "Pending";
+579:                 return (
+580:                   <div key={lp.id} style={{ background: "white", borderRadius: 16, border: `1px solid ${isPending ? sc.border : "#E2E8F0"}`, boxShadow: isPending ? `0 0 0 3px ${sc.badge}` : "0 2px 8px rgba(0,0,0,0.04)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+581: 
+582:                     {/* Card Header */}
+583:                     <div style={{ padding: "14px 18px", background: isPending ? "#FFFBEB" : "#F8FAFC", borderBottom: `1px solid ${isPending ? "#FDE68A" : "#E2E8F0"}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+584:                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+585:                         <div style={{ width: 38, height: 38, borderRadius: 10, background: sc.badge, border: `2px solid ${sc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 15, color: sc.text, flexShrink: 0 }}>
+586:                           {lp.vendor_nama?.charAt(0) || "?"}
+587:                         </div>
+588:                         <div>
+589:                           <div style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{lp.vendor_nama}</div>
+590:                           <div style={{ fontSize: 11, color: "#64748B", display: "flex", gap: 5, alignItems: "center" }}>
+591:                             <i className="fi fi-rr-clock" style={{ fontSize: 10 }} />
+592:                             {new Date(lp.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+593:                             &nbsp;·&nbsp;
+594:                             {new Date(lp.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+595:                           </div>
+596:                         </div>
+597:                       </div>
+598:                       <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, background: sc.badge, color: sc.text, border: `1px solid ${sc.border}`, flexShrink: 0 }}>
+599:                         {isPending ? "Menunggu" : lp.status}
+600:                       </span>
+601:                     </div>
+602: 
+603:                     {/* PO & Stats */}
+604:                     <div style={{ padding: "12px 18px", borderBottom: "1px solid #F1F5F9" }}>
+605:                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
+606:                         <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "8px 12px" }}>
+607:                           <div style={{ fontSize: 9, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase" }}>PO / Model</div>
+608:                           <div style={{ fontWeight: 900, fontSize: 14, color: "#0F172A" }}>{lp.noPo}</div>
+609:                           <div style={{ fontSize: 11, color: "#64748B" }}>{lp.model}</div>
+610:                         </div>
+611:                         <div style={{ background: "#F0FDF4", borderRadius: 10, padding: "8px 12px" }}>
+612:                           <div style={{ fontSize: 9, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase" }}>Total Selesai</div>
+613:                           <div style={{ fontWeight: 900, fontSize: 22, color: "#10B981", lineHeight: 1.2 }}>{lp.totalJumlah}<span style={{ fontSize: 10, color: "#94A3B8" }}> pcs</span></div>
+614:                         </div>
+615:                       </div>
+616:                       {/* Size breakdown */}
+617:                       <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+618:                         {(lp.items || []).map((it: any, i: number) => (
+619:                           <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE" }}>
+620:                             {it.size}: {it.jumlah}
+621:                           </span>
+622:                         ))}
+623:                       </div>
+624:                     </div>
+625: 
+626:                     {/* Catatan */}
+627:                     {lp.catatan && (
+628:                       <div style={{ padding: "8px 18px", borderBottom: "1px solid #F1F5F9", fontSize: 11, color: "#475569", display: "flex", gap: 5 }}>
+629:                         <i className="fi fi-rr-comment-alt" style={{ fontSize: 11, color: "#94A3B8", flexShrink: 0 }} />
+630:                         {lp.catatan}
+631:                       </div>
+632:                     )}
+633: 
+634:                     {/* Footer Actions */}
+635:                     <div style={{ padding: "10px 16px", display: "flex", justifyContent: isPending ? "flex-end" : "flex-start", alignItems: "center", marginTop: "auto" }}>
+636:                       {isPending ? (
+637:                         <div style={{ display: "flex", gap: 6 }}>
+638:                           <button onClick={() => handleTolakLaporan(lp.id)} style={{ background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA", padding: "6px 12px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+639:                             <X size={13} /> Tolak
+640:                           </button>
+641:                           <button onClick={() => handleTerimaLaporan(lp.id)} style={{ background: "linear-gradient(135deg, #10B981, #059669)", color: "white", border: "none", padding: "6px 14px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4, boxShadow: "0 3px 8px rgba(16,185,129,0.3)" }}>
+642:                             <CheckCheck size={13} /> ACC Terima
+643:                           </button>
+644:                         </div>
+645:                       ) : (
+646:                         <span style={{ fontSize: 11, color: lp.status === "Diterima" ? "#10B981" : "#EF4444", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+647:                           <i className={`fi ${lp.status === "Diterima" ? "fi-rr-check" : "fi-rr-cross-circle"}`} style={{ fontSize: 11 }} />
+648:                           {lp.status === "Diterima" ? "Sudah di-ACC" : "Ditolak"}
+649:                         </span>
+650:                       )}
+651:                     </div>
+652:                   </div>
+653:                 );
+654:               })}
+655:             </div>
+656:           </div>
+657:         );
+658:       })()}
+659: 
+660: 
+661:       {/* TAB: Laporan Washing */}
+662:       {activeTab === "washing" && (() => {
+663:         if (washingTransfers.length === 0) return (
+664:           <div style={{ background: "white", borderRadius: 18, padding: 60, textAlign: "center", border: "1px solid #E2E8F0", marginBottom: 40 }}>
+665:             <i className="fi fi-sr-water" style={{ fontSize: 44, color: "#A5F3FC", display: "block", marginBottom: 14 }} />
+666:             <div style={{ fontSize: 16, fontWeight: 700, color: "#64748B" }}>Belum ada laporan dari Vendor Washing</div>
+667:           </div>
+668:         );
+669: 
+670:         const pendingCount = washingTransfers.filter((r: any) => r.status === "Kirim").length;
+671: 
+672:         return (
+673:           <div style={{ marginBottom: 40 }}>
+674:             {/* Section Header */}
+675:             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+676:               <div style={{ background: "#ECFEFF", border: "1.5px solid #A5F3FC", borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+677:                 <i className="fi fi-sr-water" style={{ fontSize: 18, color: "#0E7490" }} />
+678:                 <div>
+679:                   <div style={{ fontWeight: 900, fontSize: 14, color: "#0E7490" }}>Laporan Vendor Washing / Laundry</div>
+680:                   <div style={{ fontSize: 11, color: "#64748B" }}>
+681:                     {washingTransfers.length} laporan
+682:                     {pendingCount > 0 && <span style={{ marginLeft: 6, background: "#06B6D4", color: "white", borderRadius: 20, fontSize: 10, padding: "1px 6px", fontWeight: 900 }}>{pendingCount} dalam proses</span>}
+683:                   </div>
+684:                 </div>
+685:               </div>
+686:               <div style={{ flex: 1, height: 1.5, background: "linear-gradient(to right, #A5F3FC, transparent)" }} />
+687:             </div>
+688: 
+689:             {/* Cards Grid */}
+690:             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+691:               {washingTransfers.map((wt: any) => {
+692:                 const isPending = wt.status === "Kirim";
+693:                 return (
+694:                   <div key={wt.id} style={{ background: "white", borderRadius: 16, border: `1px solid ${isPending ? "#A5F3FC" : "#E2E8F0"}`, boxShadow: isPending ? "0 0 0 3px #ECFEFF" : "0 2px 8px rgba(0,0,0,0.04)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+695: 
+696:                     {/* Card Header */}
+697:                     <div style={{ padding: "14px 18px", background: isPending ? "#ECFEFF" : "#F8FAFC", borderBottom: `1px solid ${isPending ? "#A5F3FC" : "#E2E8F0"}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+698:                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+699:                         <div style={{ width: 38, height: 38, borderRadius: 10, background: isPending ? "#E0F2FE" : "#D1FAE5", border: `2px solid ${isPending ? "#7DD3FC" : "#6EE7B7"}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 15, color: isPending ? "#0369A1" : "#065F46", flexShrink: 0 }}>
+700:                           {wt.vendor_nama?.charAt(0) || "?"}
+701:                         </div>
+702:                         <div>
+703:                           <div style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{wt.vendor_nama}</div>
+704:                           <div style={{ fontSize: 11, color: "#64748B", display: "flex", gap: 5, alignItems: "center" }}>
+705:                             <i className="fi fi-rr-clock" style={{ fontSize: 10 }} />
+706:                             {new Date(wt.tanggal_kirim).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+707:                           </div>
+708:                         </div>
+709:                       </div>
+710:                       <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, background: isPending ? "#E0F2FE" : "#D1FAE5", color: isPending ? "#0369A1" : "#065F46", border: `1px solid ${isPending ? "#7DD3FC" : "#6EE7B7"}`, flexShrink: 0 }}>
+711:                         {isP
+<truncated 1073 bytes>
+
+NOTE: The output was truncated because it was too long. Use a more targeted query or a smaller range to get the information you need.

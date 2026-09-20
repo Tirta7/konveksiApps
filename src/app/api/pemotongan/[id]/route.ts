@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -76,6 +76,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const updatedPemotongan = {
     ...existingData,
     tanggal,
+    target_selesai: body.target_selesai !== undefined ? body.target_selesai : (existingData.target_selesai || null),
     nama_barang,
     meter_kain: Number(meter_kain) || 0,
     pemakaian_cm: Number(pemakaian_cm) || 0,

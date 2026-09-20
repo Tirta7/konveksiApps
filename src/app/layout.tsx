@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 
@@ -10,7 +10,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "KonveksiApps — Sistem Tracking Produksi Jeans",
+  title: "KonveksiApps  Sistem Tracking Produksi Jeans",
   description: "Sistem tracking produksi dan penjualan konveksi jeans secara real-time",
 };
 

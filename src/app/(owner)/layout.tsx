@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
@@ -54,7 +54,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       
       <main className="app-content">
         <header className="mobile-header">
-           <div className="mobile-header-logo">👖 KonveksiApps</div>
+           <div className="mobile-header-logo"> KonveksiApps</div>
            <button className="mobile-toggle-btn" onClick={() => setIsMobileOpen(true)}>
              <Menu size={24} />
            </button>

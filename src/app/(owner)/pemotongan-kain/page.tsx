@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { Plus, Scissors, Save, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -7,12 +7,14 @@ export default function PemotonganKainPage() {
   const [data, setData] = useState<any[]>([]);
   const [tukangPotong, setTukangPotong] = useState<any[]>([]);
   const [dataKainList, setDataKainList] = useState<any[]>([]);
+  const [kategoriList, setKategoriList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   
   const [submitStatus, setSubmitStatus] = useState("Selesai");
   const [form, setForm] = useState<{
-    id?: number, tanggal: string, nama_barang: string, meter_kain: number, pemakaian_cm: string, tukang_potong_id: string, model: string, selectedRolls: any[], sizeBreakdown: any[]
+    id?: number, tanggal: string, nama_barang: string, meter_kain: number, pemakaian_cm: string, tukang_potong_id: string, model: string, selectedRolls: any[], sizeBreakdown: any[], target_selesai: string
   }>({ 
     tanggal: new Date().toISOString().split("T")[0], 
     nama_barang: "", 
@@ -21,19 +23,22 @@ export default function PemotonganKainPage() {
     tukang_potong_id: "", 
     model: "",
     selectedRolls: [], // Array of roll objects selected
-    sizeBreakdown: [{ size: "M", jumlah: "" }]
+    sizeBreakdown: [{ size: "M", jumlah: "" }],
+    target_selesai: ""
   });
 
   const fetchData = async () => {
     try {
-      const [resPemotongan, resTukang, resKain] = await Promise.all([
+      const [resPemotongan, resTukang, resKain, resKategori] = await Promise.all([
         fetch("/api/pemotongan").then(r => r.json()),
         fetch("/api/tukang-potong").then(r => r.json()),
-        fetch("/api/kain").then(r => r.json())
+        fetch("/api/kain").then(r => r.json()),
+        fetch("/api/kategori").then(r => r.json())
       ]);
       setData(resPemotongan);
       setTukangPotong(resTukang);
       setDataKainList(resKain);
+      setKategoriList(resKategori);
     } catch (e) {
       toast.error("Gagal mengambil data");
     } finally {
@@ -134,7 +139,7 @@ export default function PemotonganKainPage() {
         <button 
           className="btn btn-primary" 
           onClick={() => { 
-            setForm({ id: undefined, tanggal: new Date().toISOString().split("T")[0], nama_barang: "", meter_kain: 0, pemakaian_cm: "", tukang_potong_id: "", model: "", selectedRolls: [], sizeBreakdown: [{ size: "M", jumlah: "" }] }); 
+            setForm({ id: undefined, tanggal: new Date().toISOString().split("T")[0], nama_barang: "", meter_kain: 0, pemakaian_cm: "", tukang_potong_id: "", model: "", selectedRolls: [], sizeBreakdown: [{ size: "M", jumlah: "" }], target_selesai: "" }); 
             setShowForm(true); 
           }}
         >
@@ -143,19 +148,37 @@ export default function PemotonganKainPage() {
       </div>
 
       {showForm && (
-        <div className="card" style={{ marginBottom: 24, border: "2px solid var(--color-primary)" }}>
-          <div className="card-header" style={{ display: "flex", justifyContent: "space-between", background: "#EFF6FF" }}>
-            <h2 className="card-title" style={{ color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 8 }}>
-              <Scissors size={18} /> Form Input Hasil Potongan
-            </h2>
-            <button className="btn btn-secondary" onClick={() => setShowForm(false)} style={{ padding: 8 }}><X size={18} /></button>
-          </div>
-          <form onSubmit={handleSave} style={{ padding: 24 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 900, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#EFF6FF" }}>
+              <h2 className="card-title" style={{ color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                <Scissors size={18} /> Form Input Hasil Potongan
+              </h2>
+              <button type="button" onClick={() => setShowForm(false)} style={{ background: "white", border: "1px solid #E2E8F0", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B" }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              <form onSubmit={handleSave} style={{ padding: 24 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div>
-                  <label className="label">Tanggal Kirim / Potong</label>
-                  <input required type="date" className="form-control" value={form.tanggal} onChange={e => setForm({...form, tanggal: e.target.value})} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div>
+                    <label className="label">Tanggal Kirim / Potong</label>
+                    <input required type="date" className="form-control" value={form.tanggal} onChange={e => setForm({...form, tanggal: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                       Target Selesai Jahit
+                      <span style={{ fontSize: 10, background: "#FEF3C7", color: "#92400E", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>Wajib</span>
+                    </label>
+                    <input required type="date" className="form-control" style={{ borderColor: form.target_selesai ? "#10B981" : "#E2E8F0" }} value={form.target_selesai} onChange={e => setForm({...form, target_selesai: e.target.value})} min={form.tanggal} />
+                    {form.tanggal && form.target_selesai && (
+                      <div style={{ fontSize: 11, color: "#059669", marginTop: 4, fontWeight: 600 }}>
+                         Durasi: {Math.ceil((new Date(form.target_selesai).getTime() - new Date(form.tanggal).getTime()) / (1000*60*60*24))} hari
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="label">Tukang Potong</label>
@@ -223,8 +246,11 @@ export default function PemotonganKainPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="label">Model Pola</label>
-                  <input required className="form-control" value={form.model} onChange={e => setForm({...form, model: e.target.value.toUpperCase()})} placeholder="Misal: GOMBRONG" />
+                  <label className="label">Model Pola (Kategori Produk)</label>
+                  <select required className="form-control" value={form.model} onChange={e => setForm({...form, model: e.target.value})}>
+                    <option value="">-- Pilih Model Pola --</option>
+                    {kategoriList.map(k => <option key={k.id} value={k.nama}>{k.nama}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -296,7 +322,9 @@ export default function PemotonganKainPage() {
               <button type="submit" className="btn btn-secondary" onClick={() => setSubmitStatus("Draft")} style={{ padding: "12px 24px", fontSize: 16 }}>Simpan Draft</button>
               <button type="submit" className="btn btn-primary" onClick={() => setSubmitStatus("Selesai")} style={{ padding: "12px 24px", fontSize: 16 }}><Save size={18} /> Simpan Data Potongan</button>
             </div>
-          </form>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
@@ -318,8 +346,18 @@ export default function PemotonganKainPage() {
             <tbody>
               {data.map(item => {
                 const sisa = item.sizeBreakdown.reduce((sum:number, s:any) => sum + (s.sisa || 0), 0);
+                const isHabis = sisa <= 0;
                 return (
-                  <tr key={item.id}>
+                  <React.Fragment key={item.id}>
+                  <tr 
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    style={{ 
+                      opacity: isHabis ? 0.6 : 1, 
+                      cursor: "pointer",
+                      background: expandedId === item.id ? "#F8FAFC" : "transparent",
+                      transition: "all 0.2s"
+                    }}
+                  >
                     <td>{item.tanggal}</td>
                     <td>
                       <div style={{ fontWeight: 700 }}>{item.tukang_potong_nama}</div>
@@ -338,9 +376,11 @@ export default function PemotonganKainPage() {
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ fontWeight: 800, fontSize: 16, color: "var(--color-primary)" }}>{item.total_pcs} pcs</div>
-                        {sisa < item.total_pcs && (
+                        {isHabis ? (
+                          <div className="badge" style={{ fontSize: 11, background: "#10B981", color: "white" }}> Selesai Dibagi</div>
+                        ) : sisa < item.total_pcs ? (
                           <div className="badge secondary" style={{ fontSize: 11 }}>Sisa Stok: {sisa} pcs</div>
-                        )}
+                        ) : null}
                         {item.status === "Draft" && (
                           <div className="badge" style={{ fontSize: 11, background: "#F59E0B", color: "white" }}>Draft</div>
                         )}
@@ -354,7 +394,7 @@ export default function PemotonganKainPage() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
                         <button className="btn btn-secondary" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => {
                           setForm({
                             id: item.id,
@@ -365,7 +405,8 @@ export default function PemotonganKainPage() {
                             tukang_potong_id: String(item.tukang_potong_id),
                             model: item.model,
                             selectedRolls: item.selectedRolls || [],
-                            sizeBreakdown: item.sizeBreakdown || [{ size: "M", jumlah: "" }]
+                            sizeBreakdown: item.sizeBreakdown || [{ size: "M", jumlah: "" }],
+                            target_selesai: item.target_selesai || ""
                           });
                           setSubmitStatus(item.status || "Selesai");
                           setShowForm(true);
@@ -396,6 +437,70 @@ export default function PemotonganKainPage() {
                       </div>
                     </td>
                   </tr>
+                  
+                  {expandedId === item.id && (
+                    <tr style={{ background: "#F8FAFC", opacity: isHabis ? 0.8 : 1 }}>
+                      <td colSpan={6} style={{ padding: 20 }}>
+                        <div style={{ background: "white", borderRadius: 12, padding: 20, border: "1px solid #E2E8F0", boxShadow: "0 4px 6px rgba(0,0,0,0.02)" }}>
+                        <h4 style={{ marginBottom: 16, fontSize: 14, fontWeight: 800, color: "#0F172A", display: "flex", alignItems: "center", gap: 8 }}>
+                            <i className="fi fi-rr-exchange" style={{ color: "#3B82F6" }}/> Histori Distribusi ke CMT
+                            <span style={{ fontSize: 11, fontWeight: 400, color: "#64748B", marginLeft: 4 }}> Klik No PO untuk detail</span>
+                          </h4>
+                          {item.distribusi && item.distribusi.length > 0 ? (
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead>
+                                <tr style={{ borderBottom: "1px solid #E2E8F0", textAlign: "left", color: "#64748B" }}>
+                                  <th style={{ padding: "8px 12px", fontWeight: 700 }}>#ID PO</th>
+                                  <th style={{ padding: "8px 12px", fontWeight: 700 }}>No PO (Induk)</th>
+                                  <th style={{ padding: "8px 12px", fontWeight: 700 }}>Tanggal Terbit</th>
+                                  <th style={{ padding: "8px 12px", fontWeight: 700 }}>CMT Tujuan</th>
+                                  <th style={{ padding: "8px 12px", fontWeight: 700 }}>Total (pcs)</th>
+                                  <th style={{ padding: "8px 12px", fontWeight: 700 }}>Rincian Size</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.distribusi.map((d: any, idx: number) => (
+                                  <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                                    <td style={{ padding: "10px 12px" }}>
+                                      <span style={{ background: "#F1F5F9", color: "#64748B", padding: "2px 8px", borderRadius: 6, fontWeight: 800, fontSize: 11 }}>#{d.po_id}</span>
+                                    </td>
+                                    <td style={{ padding: "10px 12px" }}>
+                                      <a href="/daftar-spk" style={{ fontWeight: 800, color: "#2563EB", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                                        <i className="fi fi-rr-document" style={{ fontSize: 11 }}/>
+                                        {d.noPo}
+                                      </a>
+                                    </td>
+                                    <td style={{ padding: "10px 12px", color: "#475569" }}>{new Date(d.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</td>
+                                    <td style={{ padding: "10px 12px", color: "#334155", fontWeight: 600 }}>{d.vendor_nama}</td>
+                                    <td style={{ padding: "10px 12px", color: "#10B981", fontWeight: 800 }}>{d.jumlahTerbit} pcs</td>
+                                    <td style={{ padding: "10px 12px" }}>
+                                      {d.sizeBreakdown.map((s:any, i:number) => (
+                                        <span key={i} style={{ marginRight: 6, background: "#EFF6FF", color: "#1D4ED8", padding: "3px 8px", borderRadius: 6, fontWeight: 700, fontSize: 11, border: "1px solid #BFDBFE" }}>
+                                          {s.size}: {s.jumlah}
+                                        </span>
+                                      ))}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr style={{ borderTop: "2px solid #E2E8F0", background: "#F8FAFC" }}>
+                                  <td colSpan={4} style={{ padding: "10px 12px", fontWeight: 800, color: "#0F172A", fontSize: 12 }}>TOTAL TERDISTRIBUSI</td>
+                                  <td style={{ padding: "10px 12px", color: "#10B981", fontWeight: 900, fontSize: 14 }}>
+                                    {item.distribusi.reduce((sum: number, d: any) => sum + (d.jumlahTerbit || 0), 0)} pcs
+                                  </td>
+                                  <td></td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          ) : (
+                            <div style={{ color: "#94A3B8", fontSize: 13, textAlign: "center", padding: "20px 0" }}>Belum ada PO Produksi yang mengambil stok kain ini.</div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
               {data.length === 0 && (

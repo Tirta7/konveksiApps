@@ -17,13 +17,13 @@ if (!g.__redisSubSetup) {
         await redisSub.subscribe(CHANNEL);
         redisSub.on("message", (ch: string) => {
           if (ch === CHANNEL) {
-            // Received change from another process — broadcast to our local SSE clients
+            // Received change from another process  broadcast to our local SSE clients
             broadcast("dataChanged");
           }
         });
         console.log("[SSE] Redis Pub/Sub subscriber ready");
       } catch (e) {
-        // Redis not available — fallback to direct in-process broadcast (still works)
+        // Redis not available  fallback to direct in-process broadcast (still works)
         console.log("[SSE] Redis not available, using in-process broadcast only");
       }
     }
@@ -33,7 +33,7 @@ if (!g.__redisSubSetup) {
 
 /**
  * GET /api/events
- * SSE endpoint — browsers connect here to receive real-time data change notifications.
+ * SSE endpoint  browsers connect here to receive real-time data change notifications.
  */
 export async function GET(req: NextRequest) {
   const clientId = crypto.randomUUID();

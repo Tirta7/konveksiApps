@@ -5,44 +5,53 @@ import Barcode from "react-barcode";
 
 export default function BarcodeProduksiPage() {
   const [barcodes, setBarcodes] = useState<any[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
   const [poList, setPoList] = useState<{id: string; noPo: string; total: number}[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPoId, setSelectedPoId] = useState<string>("");
   const [selectedBarcode, setSelectedBarcode] = useState<any | null>(null);
 
   // Status display config
+    // Status display config (Dynamic)
   const getStatusInfo = (status: string) => {
-    switch (status) {
-      case "siap_jual":  return { label: "SIAP CETAK",    color: "#22C55E", border: "#22C55E", opacity: 1,    clickable: true };
-      case "gudang":     return { label: "GUDANG",        color: "#3B82F6", border: "#3B82F6", opacity: 1,    clickable: false };
-      case "benang":     return { label: "BERSIH BENANG", color: "#F59E0B", border: "#F59E0B", opacity: 1,    clickable: false };
-      case "washing":    return { label: "WASHING",       color: "#06B6D4", border: "#06B6D4", opacity: 1,    clickable: false };
-      case "finishing":  return { label: "FINISHING",     color: "#10B981", border: "#10B981", opacity: 1,    clickable: false };
-      case "cmt":        return { label: "JAHIT SELESAI", color: "#8B5CF6", border: "#8B5CF6", opacity: 1,    clickable: false };
-      case "potong":     return { label: "PROSES JAHIT",  color: "#64748B", border: "#94A3B8", opacity: 0.9,  clickable: false };
-      default:           return { label: "BELUM QC",      color: "#94A3B8", border: "#CBD5E1", opacity: 0.6,  clickable: false };
-    }
+    if (status === "siap_jual") return { label: "SIAP CETAK / SELESAI", color: "#22C55E", border: "#22C55E", opacity: 1, clickable: true };
+    if (status === "gudang") return { label: "GUDANG", color: "#3B82F6", border: "#3B82F6", opacity: 1, clickable: false };
+    if (status === "potong" || status === "cmt") return { label: "SEDANG DIJAHIT", color: "#8B5CF6", border: "#8B5CF6", opacity: 1, clickable: false };
+    
+    // Dynamic stages
+    const stage = pipelineStages.find(s => s.slug === status);
+    if (stage) return { label: `MENUNGGU ${stage.nama.toUpperCase()}`, color: stage.warna || "#06B6D4", border: stage.warna || "#06B6D4", opacity: 1, clickable: false };
+    
+    // Check if it's "selesai_xxx" or something? Actually barcode status is just the "ke" (destination slug)
+    return { label: `${status.toUpperCase()}`, color: "#94A3B8", border: "#CBD5E1", opacity: 0.8, clickable: false };
   };
 
-  const fetchData = () => {
-    fetch("/api/barcode")
-      .then(r => r.json())
-      .then(data => {
-        setBarcodes(data);
-        const poMap = new Map<string, {id: string; noPo: string; total: number}>();
-        data.forEach((b: any) => {
-          const key = String(b.poId);
-          if (!poMap.has(key)) {
-            poMap.set(key, { id: key, noPo: b.noPo, total: 0 });
-          }
-          poMap.get(key)!.total++;
-        });
-        const list = Array.from(poMap.values());
-        setPoList(list);
-        if (list.length > 0 && !selectedPoId) setSelectedPoId(list[0].id);
-      })
-      .catch(() => { /* server sedang restart, abaikan */ })
-      .finally(() => setLoading(false));
+
+  const fetchData = async () => {
+    try {
+      const resStages = await fetch("/api/pipeline-stages");
+      const stages = await resStages.json();
+      setPipelineStages(Array.isArray(stages) ? stages : []);
+
+      const r = await fetch("/api/barcode");
+      const data = await r.json();
+      setBarcodes(data);
+      const poMap = new Map<string, {id: string; noPo: string; total: number}>();
+      data.forEach((b: any) => {
+        const key = String(b.poId);
+        if (!poMap.has(key)) {
+          poMap.set(key, { id: key, noPo: b.noPo, total: 0 });
+        }
+        poMap.get(key)!.total++;
+      });
+      const list = Array.from(poMap.values());
+      setPoList(list);
+      if (list.length > 0 && !selectedPoId) setSelectedPoId(list[0].id);
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -89,7 +98,7 @@ export default function BarcodeProduksiPage() {
   }, []);
 
 
-  if (loading) return <div className="empty-state">⏳ Memuat Barcode...</div>;
+  if (loading) return <div className="empty-state"> Memuat Barcode...</div>;
 
   const filteredBarcodes = barcodes.filter(b => String(b.poId) === selectedPoId);
   const selectedPoInfo = poList.find(p => p.id === selectedPoId);
@@ -187,7 +196,7 @@ export default function BarcodeProduksiPage() {
         <div className={selectedBarcode ? "hide-on-single-print" : "print-area"}>
           {poList.length === 0 ? (
             <div className="empty-state no-print">
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🖨️</div>
+              <div style={{ fontSize: 40, marginBottom: 12 }}></div>
               <div style={{ fontSize: 16, fontWeight: 800 }}>Belum ada barcode</div>
               <div style={{ fontSize: 14 }}>Silakan buat PO Produksi baru untuk menghasilkan barcode otomatis.</div>
             </div>
@@ -200,28 +209,24 @@ export default function BarcodeProduksiPage() {
                 </div>
                 {/* Status Legend */}
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  {[
-                    { color: "#22C55E", label: "Siap Cetak",     status: "siap_jual" },
-                    { color: "#3B82F6", label: "Gudang",         status: "gudang" },
-                    { color: "#F59E0B", label: "Bersih Benang",  status: "benang" },
-                    { color: "#06B6D4", label: "Washing",        status: "washing" },
-                    { color: "#10B981", label: "Finishing",      status: "finishing" },
-                    { color: "#8B5CF6", label: "Jahit Selesai",  status: "cmt" },
-                    { color: "#64748B", label: "Proses Jahit",   status: "potong" },
-                    { color: "#CBD5E1", label: "Belum QC",       status: "__other" },
-                  ].map(({ color, label, status }) => {
-                    const knownStatuses = ["siap_jual","gudang","cmt","washing","benang","finishing", "potong"];
-                    const count = status === "__other"
-                      ? filteredBarcodes.filter(b => !knownStatuses.includes(b.status)).length
-                      : filteredBarcodes.filter(b => b.status === status).length;
-                    if (count === 0) return null;
-                    return (
-                      <div key={status} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#475569" }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-                        {label} ({count})
-                      </div>
-                    );
-                  })}
+                  {(()=>{
+                  // Build dynamic legend
+                  const legendMap = new Map();
+                  filteredBarcodes.forEach(b => {
+                    if (!legendMap.has(b.status)) {
+                       const si = getStatusInfo(b.status);
+                       legendMap.set(b.status, { color: si.color, label: si.label, count: 0 });
+                    }
+                    legendMap.get(b.status).count++;
+                  });
+                  return Array.from(legendMap.entries()).map(([st, data]) => (
+                     <div key={st} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#475569" }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 2, background: data.color, flexShrink: 0 }} />
+                        {data.label} ({data.count})
+                     </div>
+                  ));
+                })()}
+
                 </div>
               </div>
 

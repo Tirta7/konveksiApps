@@ -1,5 +1,5 @@
-/**
- * db-raw.ts — Menggunakan node:sqlite (built-in Node.js 22+)
+﻿/**
+ * db-raw.ts  Menggunakan node:sqlite (built-in Node.js 22+)
  * Tidak butuh instalasi native module apapun.
  */
 import path from "path";
@@ -129,9 +129,9 @@ function seedIfEmpty(db: any) {
   if (row.c > 0) return;
   const now = new Date().toISOString();
 
-  db.prepare(`INSERT INTO vendors (nama, jenis_pekerjaan, kontak, created_at) VALUES (?,?,?,?)`).run("Vendor A — Mitra Jaya", "potong-jahit", "081234567001", now);
-  db.prepare(`INSERT INTO vendors (nama, jenis_pekerjaan, kontak, created_at) VALUES (?,?,?,?)`).run("Vendor B — Laundry Prima", "washing", "081234567002", now);
-  db.prepare(`INSERT INTO vendors (nama, jenis_pekerjaan, kontak, created_at) VALUES (?,?,?,?)`).run("Vendor C — Finishing Mandiri", "finishing-qc-packing", "081234567003", now);
+  db.prepare(`INSERT INTO vendors (nama, jenis_pekerjaan, kontak, created_at) VALUES (?,?,?,?)`).run("Vendor A  Mitra Jaya", "potong-jahit", "081234567001", now);
+  db.prepare(`INSERT INTO vendors (nama, jenis_pekerjaan, kontak, created_at) VALUES (?,?,?,?)`).run("Vendor B  Laundry Prima", "washing", "081234567002", now);
+  db.prepare(`INSERT INTO vendors (nama, jenis_pekerjaan, kontak, created_at) VALUES (?,?,?,?)`).run("Vendor C  Finishing Mandiri", "finishing-qc-packing", "081234567003", now);
 
   const kategoriList = ["Slim Fit","Regular Fit","Bootcut","Skinny","Wide Leg","Mom Jeans","Straight Cut","Cargo Jeans"];
   for (const k of kategoriList) {

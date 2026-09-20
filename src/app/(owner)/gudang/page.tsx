@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Package, Layers, Activity } from "lucide-react";
 
@@ -87,7 +87,7 @@ export default function GudangPage() {
             </div>
             <div style={{ flex: 1, overflow: "auto" }}>
               {loading ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>⏳ Memuat stok...</div>
+                <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}> Memuat stok...</div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
@@ -128,7 +128,7 @@ export default function GudangPage() {
             </div>
             <div style={{ flex: 1, overflow: "auto" }}>
               {loading ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>⏳ Memuat riwayat...</div>
+                <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}> Memuat riwayat...</div>
               ) : !data?.movements?.length ? (
                 <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontSize: 13 }}>Belum ada pergerakan stok dicatat.</div>
               ) : (

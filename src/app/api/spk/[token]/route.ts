@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {

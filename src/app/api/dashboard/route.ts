@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export const dynamic = "force-dynamic";
@@ -61,8 +61,8 @@ export async function GET() {
         model: po.model,
         jumlahTerbit: po.jumlahTerbit,
         tanggalTerbit: po.tanggalTerbit,
-        vendor_nama: vendor?.nama || "–",
-        vendor_tipe: vendor?.tipe || "–",
+        vendor_nama: vendor?.nama || "",
+        vendor_tipe: vendor?.tipe || "",
         pemotongan_nama_barang: pemotongan?.nama_barang || null,
         totalDilaporkan,
         totalDisetujui,
@@ -100,7 +100,7 @@ export async function GET() {
       batchAktif: poAktif,
       totalStok: totalDiGudangSemua,
       spkMenunggu: poList.filter((p: any) => p.stage === "menunggu").length,
-      terlaris: poList[0]?.model || "–",
+      terlaris: poList[0]?.model || "",
       batches: [],
       spkList: [],
       // New fields

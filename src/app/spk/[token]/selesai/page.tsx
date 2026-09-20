@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -41,14 +41,14 @@ export default function VendorSelesaiPage() {
 
   if (loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F1F5F9", fontFamily: "Inter,sans-serif" }}>
-      <div style={{ textAlign: "center" }}><div style={{ fontSize: 48 }}>⏳</div><p style={{ fontSize: 20, color: "#64748B", marginTop: 12 }}>Memuat...</p></div>
+      <div style={{ textAlign: "center" }}><div style={{ fontSize: 48 }}></div><p style={{ fontSize: 20, color: "#64748B", marginTop: 12 }}>Memuat...</p></div>
     </div>
   );
 
   if (error) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F1F5F9", padding: 20, fontFamily: "Inter,sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, maxWidth: 480, width: "100%", textAlign: "center" }}>
-        <div style={{ fontSize: 56 }}>🚫</div>
+        <div style={{ fontSize: 56 }}></div>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginTop: 16 }}>Link Tidak Valid</h1>
         <p style={{ color: "#64748B", fontSize: 16, marginTop: 8 }}>{error}</p>
       </div>
@@ -60,13 +60,13 @@ export default function VendorSelesaiPage() {
       <div style={{ background: "white", borderRadius: 20, padding: 40, maxWidth: 480, width: "100%", textAlign: "center", boxShadow: "0 4px 24px rgba(0,0,0,0.1)" }}>
         {qcResult === "gagal" ? (
           <>
-            <div style={{ fontSize: 72 }}>⚠️</div>
+            <div style={{ fontSize: 72 }}></div>
             <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 8px", color: "#1E293B" }}>QC Gagal Dicatat</h1>
             <p style={{ color: "#64748B", fontSize: 18 }}>Barang akan dikembalikan ke washing. Admin akan menerbitkan SPK retur.</p>
           </>
         ) : (
           <>
-            <div style={{ fontSize: 72 }}>✅</div>
+            <div style={{ fontSize: 72 }}></div>
             <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 8px", color: "#1E293B" }}>Barang Berhasil Dikirim!</h1>
             <p style={{ color: "#64748B", fontSize: 18 }}>Pekerjaan untuk SPK <strong>{spk?.no_spk}</strong> selesai. Terima kasih!</p>
           </>
@@ -82,13 +82,13 @@ export default function VendorSelesaiPage() {
     <div style={{ minHeight: "100vh", background: "#F1F5F9", padding: 20, fontFamily: "Inter,sans-serif" }}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 24, paddingTop: 20 }}>
-          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 4 }}>👖 KonveksiApps</div>
+          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 4 }}> KonveksiApps</div>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B" }}>Konfirmasi Pekerjaan Selesai</h1>
         </div>
 
         {/* Status Dikerjakan */}
         <div style={{ background: "#DBEAFE", borderRadius: 16, padding: 24, marginBottom: 16, textAlign: "center", border: "2px solid #3B82F6" }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>⚙️</div>
+          <div style={{ fontSize: 48, marginBottom: 8 }}></div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#1E40AF" }}>Sedang Dikerjakan</div>
           <div style={{ fontSize: 28, fontWeight: 900, color: "#1E293B", marginTop: 4 }}>{spk.no_spk}</div>
         </div>
@@ -113,7 +113,7 @@ export default function VendorSelesaiPage() {
         {isFinishing && !showQCOptions && (
           <button onClick={() => setShowQCOptions(true)} disabled={submitting}
             style={{ width: "100%", background: "#10B981", color: "white", border: "none", borderRadius: 16, padding: "22px 24px", fontSize: 22, fontWeight: 900, cursor: "pointer", marginBottom: 12 }}>
-            ✅ Laporkan Hasil QC
+             Laporkan Hasil QC
           </button>
         )}
 
@@ -122,11 +122,11 @@ export default function VendorSelesaiPage() {
             <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16, textAlign: "center" }}>Hasil QC Bagaimana?</h2>
             <button onClick={() => handleSelesai("selesai")} disabled={submitting}
               style={{ width: "100%", background: "#10B981", color: "white", border: "none", borderRadius: 12, padding: "18px 24px", fontSize: 20, fontWeight: 800, cursor: "pointer", marginBottom: 10 }}>
-              ✅ QC Lolos — Masuk Gudang
+               QC Lolos  Masuk Gudang
             </button>
             <button onClick={() => handleSelesai("qc-gagal")} disabled={submitting}
               style={{ width: "100%", background: "#EF4444", color: "white", border: "none", borderRadius: 12, padding: "18px 24px", fontSize: 20, fontWeight: 800, cursor: "pointer" }}>
-              ❌ QC Gagal — Ada Cacat Washing
+               QC Gagal  Ada Cacat Washing
             </button>
           </div>
         )}
@@ -134,7 +134,7 @@ export default function VendorSelesaiPage() {
         {!isFinishing && (
           <button onClick={() => handleSelesai("selesai")} disabled={submitting}
             style={{ width: "100%", background: submitting ? "#94A3B8" : "#10B981", color: "white", border: "none", borderRadius: 16, padding: "22px 24px", fontSize: 22, fontWeight: 900, cursor: submitting ? "not-allowed" : "pointer", marginBottom: 12 }}>
-            {submitting ? "⏳ Memproses..." : "✅ Selesai & Kirim ke Vendor Berikutnya"}
+            {submitting ? " Memproses..." : " Selesai & Kirim ke Vendor Berikutnya"}
           </button>
         )}
 

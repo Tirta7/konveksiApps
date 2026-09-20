@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { BarChart2, Users, TrendingUp, CheckCircle, ChevronDown, ChevronUp, Package } from "lucide-react";
 
@@ -101,7 +101,7 @@ export default function LaporanProduksiPage() {
 
   const stats = getStats();
 
-  if (loading) return <div className="empty-state">⏳ Menyusun Laporan...</div>;
+  if (loading) return <div className="empty-state"> Menyusun Laporan...</div>;
 
   return (
     <>
@@ -197,7 +197,7 @@ export default function LaporanProduksiPage() {
         {/* CMT Cards */}
         {stats.vendorStats.length === 0 ? (
           <div className="lspk-kpi-card" style={{ padding: 48, textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}></div>
             <div style={{ fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>Belum ada data CMT</div>
             <div style={{ fontSize: 13, color: "#64748B" }}>Tambahkan vendor bertipe CMT dan buat PO terlebih dahulu.</div>
           </div>

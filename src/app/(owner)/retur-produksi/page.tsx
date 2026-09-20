@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Undo2, Ban, CheckCircle, Factory } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -70,10 +70,10 @@ export default function ReturProduksiPage() {
             
             <div style={{ flex: 1, overflow: "auto" }}>
               {loading ? (
-                <div style={{ padding: 60, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>⏳ Memuat data retur...</div>
+                <div style={{ padding: 60, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat data retur...</div>
               ) : list.length === 0 ? (
                 <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}></div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>Tidak ada retur produksi</div>
                   <div style={{ fontSize: 13 }}>Semua batch saat ini lolos proses Quality Control.</div>
                 </div>
@@ -113,8 +113,8 @@ export default function ReturProduksiPage() {
                             <div style={{ fontWeight: 900, fontSize: 20, color: isMaxReached ? "#EF4444" : "#F59E0B" }}>
                               {r.ke_berapa_kali} <span style={{fontSize: 12, color:"#94A3B8"}}>/ 2</span>
                             </div>
-                            {isMaxReached && !isRejectPerm && <div style={{ color: "#EF4444", fontWeight: 800, fontSize: 10, marginTop: 4, textTransform: "uppercase" }}>⚠️ Kesempatan Terakhir</div>}
-                            {isRejectPerm && <div style={{ color: "#991B1B", fontWeight: 800, fontSize: 10, marginTop: 4, textTransform: "uppercase" }}>🚫 Limit Tercapai</div>}
+                            {isMaxReached && !isRejectPerm && <div style={{ color: "#EF4444", fontWeight: 800, fontSize: 10, marginTop: 4, textTransform: "uppercase" }}> Kesempatan Terakhir</div>}
+                            {isRejectPerm && <div style={{ color: "#991B1B", fontWeight: 800, fontSize: 10, marginTop: 4, textTransform: "uppercase" }}> Limit Tercapai</div>}
                           </td>
                           
                           <td style={{ padding: "16px 24px", textAlign: "center" }}>
@@ -133,7 +133,7 @@ export default function ReturProduksiPage() {
                                 <Undo2 size={14} /> Buat SPK Retur
                               </button>
                             ) : r.status === "selesai" ? (
-                              <span style={{ color: "#10B981", fontSize: 12, fontWeight: 700 }}>✅ Retur selesai</span>
+                              <span style={{ color: "#10B981", fontSize: 12, fontWeight: 700 }}> Retur selesai</span>
                             ) : (
                               <span style={{ color: "#64748B", fontSize: 12, fontWeight: 700 }}>SPK sudah dibuat</span>
                             )}

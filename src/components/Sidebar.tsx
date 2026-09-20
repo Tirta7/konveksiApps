@@ -27,11 +27,15 @@ const MENU = [
   { label: "Pemotongan Kain",      href: "/pemotongan-kain",  icon: FilePlus },
   { label: "Buat PO / SPK",        href: "/buat-spk",         icon: FilePlus },
   { label: "Daftar PO / SPK",      href: "/daftar-spk",       icon: FileText },
+  { label: "Alur Produksi",         href: "/alur-produksi",    icon: Factory },
   { label: "Barcode Produksi",     href: "/barcode-produksi", icon: ScanBarcode },
   { label: "Gudang Produksi",      href: "/gudang-produksi",  icon: Factory },
   { label: "Laporan SPK",          href: "/laporan-spk",      icon: ClipboardList },
   { label: "Daftar Bundle",        href: "/barang-jadi",      icon: Package },
   { label: "Retur Produksi",       href: "/retur-produksi",   icon: RotateCcw },
+
+  { divider: "PENGATURAN SISTEM" },
+  { label: "Pengaturan Alur Produksi", href: "/alur-produksi-settings", icon: Settings },
 
   { divider: "TRANSAKSI & GUDANG" },
   { label: "Gudang & Stok",        href: "/gudang",           icon: Warehouse },
@@ -66,7 +70,7 @@ export default function Sidebar({
     <aside className="app-sidebar">
       <div className="sidebar-logo">
         <div>
-          <div className="sidebar-logo-title">👖 KonveksiApps</div>
+          <div className="sidebar-logo-title"> KonveksiApps</div>
           <div className="sidebar-logo-sub">Sistem Tracking Produksi Jeans</div>
         </div>
         {toggleSidebar && (

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
 import { Package, AlertCircle, CheckCircle2, Clock, ArrowRight, ExternalLink, Banknote, Layers } from "lucide-react";
 
@@ -7,11 +7,11 @@ function formatRp(n: number) {
 }
 
 const GROUP_META: Record<string, { label: string; emoji: string; color: string; accent: string; bg: string; border: string; gradFrom: string; gradTo: string }> = {
-  cmt:       { label: "Vendor CMT / Penjahit",      emoji: "🧵", color: "#1D4ED8", accent: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE", gradFrom: "#1E3A5F", gradTo: "#2563EB" },
-  washing:   { label: "Vendor Washing / Laundry",   emoji: "🫧", color: "#0E7490", accent: "#06B6D4", bg: "#ECFEFF", border: "#A5F3FC", gradFrom: "#0C3A47", gradTo: "#0891B2" },
-  benang:    { label: "Vendor Bersih Benang",        emoji: "✂️", color: "#7C3AED", accent: "#8B5CF6", bg: "#F5F3FF", border: "#DDD6FE", gradFrom: "#2D1B69", gradTo: "#6D28D9" },
-  finishing: { label: "Vendor Finishing / QC",      emoji: "✅", color: "#059669", accent: "#10B981", bg: "#ECFDF5", border: "#6EE7B7", gradFrom: "#064E3B", gradTo: "#059669" },
-  lainnya:   { label: "Vendor Lainnya",              emoji: "📦", color: "#475569", accent: "#64748B", bg: "#F8FAFC", border: "#E2E8F0", gradFrom: "#1E293B", gradTo: "#475569" },
+  cmt:       { label: "Vendor CMT / Penjahit",      emoji: "", color: "#1D4ED8", accent: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE", gradFrom: "#1E3A5F", gradTo: "#2563EB" },
+  washing:   { label: "Vendor Washing / Laundry",   emoji: "", color: "#0E7490", accent: "#06B6D4", bg: "#ECFEFF", border: "#A5F3FC", gradFrom: "#0C3A47", gradTo: "#0891B2" },
+  benang:    { label: "Vendor Bersih Benang",        emoji: "", color: "#7C3AED", accent: "#8B5CF6", bg: "#F5F3FF", border: "#DDD6FE", gradFrom: "#2D1B69", gradTo: "#6D28D9" },
+  finishing: { label: "Vendor Finishing / QC",      emoji: "", color: "#059669", accent: "#10B981", bg: "#ECFDF5", border: "#6EE7B7", gradFrom: "#064E3B", gradTo: "#059669" },
+  lainnya:   { label: "Vendor Lainnya",              emoji: "", color: "#475569", accent: "#64748B", bg: "#F8FAFC", border: "#E2E8F0", gradFrom: "#1E293B", gradTo: "#475569" },
 };
 
 export default function DashboardCMTPage() {
@@ -65,7 +65,7 @@ export default function DashboardCMTPage() {
     finally { setIsSubmitting(false); }
   };
 
-  if (loading && vendorLedgers.length === 0) return <div style={{ padding: 40, textAlign: "center", color: "#64748B" }}>⏳ Memuat Ledger...</div>;
+  if (loading && vendorLedgers.length === 0) return <div style={{ padding: 40, textAlign: "center", color: "#64748B" }}> Memuat Ledger...</div>;
 
   const groups: Record<string, { meta: typeof GROUP_META["cmt"]; vendors: any[] }> = {};
   for (const key of ["cmt", "washing", "benang", "finishing", "lainnya"]) {
@@ -162,7 +162,7 @@ export default function DashboardCMTPage() {
                 Dari Vendor: <strong>{activePo.vendor_nama}</strong> &nbsp;·&nbsp; Model: <strong>{activePo.po.model}</strong>
               </p>
               <div style={{ background: "#F0FDF4", border: "1px solid #10B981", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#065F46", marginBottom: 8 }}>✓ Hasil ACC Admin — Siap Ditarik</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#065F46", marginBottom: 8 }}> Hasil ACC Admin  Siap Ditarik</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                   {sizeKeys.length > 0 ? sizeKeys.map(size => (
                     <span key={size} style={{ background: "#DCFCE7", color: "#065F46", fontSize: 12, fontWeight: 800, padding: "4px 12px", borderRadius: 8, border: "1px solid #10B981" }}>
@@ -174,7 +174,7 @@ export default function DashboardCMTPage() {
               </div>
               {jumlahTarik === 0 ? (
                 <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 16 }}>
-                  ⚠️ Belum ada laporan yang di-ACC admin untuk PO ini.
+                   Belum ada laporan yang di-ACC admin untuk PO ini.
                 </div>
               ) : (
                 <form onSubmit={handleTarikBarang}>
@@ -182,7 +182,8 @@ export default function DashboardCMTPage() {
                     <label className="form-label">Tujuan (Vendor Lanjutan / Gudang)</label>
                     <select required className="form-control" value={tarikForm.ke_vendor_id} onChange={e => setTarikForm({ ...tarikForm, ke_vendor_id: e.target.value })}>
                       <option value="">-- Pilih Tujuan --</option>
-                      <option value="GUDANG" style={{ fontWeight: "bold" }}>📦 MASUK GUDANG PRODUKSI (SELESAI)</option>
+                      <option value="GUDANG" style={{ fontWeight: "bold" }}> MASUK GUDANG PRODUKSI (SELESAI)</option>
+                      <option value="STANDBY" style={{ fontWeight: "bold", color: "#2563EB" }}> LEMPAR KE STANDBY POOL (BISA DITARIK VENDOR LANJUTAN)</option>
                       {allVendors.filter(v => String(v.id) !== String(activePo.dari_vendor_id)).map((v: any) => (
                         <option key={v.id} value={v.id}>{v.nama} ({v.jenis_pekerjaan || "Lainnya"})</option>
                       ))}
@@ -271,11 +272,11 @@ export default function DashboardCMTPage() {
                             <div className="vc-stat-val">{totalPO} PO</div>
                           </div>
                           <div className="vc-stat">
-                            <div className="vc-stat-label">✓ Di-ACC</div>
+                            <div className="vc-stat-label"> Di-ACC</div>
                             <div className="vc-stat-val">{totalDisetujuiAll} pcs</div>
                           </div>
                           <div className="vc-stat">
-                            <div className="vc-stat-label">⏳ Pending</div>
+                            <div className="vc-stat-label"> Pending</div>
                             <div className="vc-stat-val">{totalPendingAll} pcs</div>
                           </div>
                           {gajiInfo && (
@@ -300,7 +301,7 @@ export default function DashboardCMTPage() {
                         {v.kontak && (
                           <a href={`https://wa.me/62${v.kontak.replace(/^0/, "")}`} target="_blank" rel="noreferrer"
                             style={{ background: "#F0FDF4", color: "#16A34A", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #86EFAC", textDecoration: "none" }}>
-                            💬 WA
+                             WA
                           </a>
                         )}
                         {portalHref && (
@@ -315,7 +316,7 @@ export default function DashboardCMTPage() {
                       <div className="vc-body">
                         <div className="vc-body-title">
                           <Layers size={12} color="#94A3B8" /> Rincian PO Aktif
-                          {totalPO === 0 && <span style={{ color: "#CBD5E1" }}>— tidak ada</span>}
+                          {totalPO === 0 && <span style={{ color: "#CBD5E1" }}> tidak ada</span>}
                         </div>
 
                         {v.poList.length === 0 ? (
@@ -344,7 +345,7 @@ export default function DashboardCMTPage() {
                                   </div>
                                   <div className="po-item-right">
                                     <div className={`po-saldo-badge${po.saldo_di_vendor === 0 ? " zero" : ""}`}>
-                                      {po.saldo_di_vendor === 0 ? "✓ Kosong" : `${po.saldo_di_vendor} pcs`}
+                                      {po.saldo_di_vendor === 0 ? " Kosong" : `${po.saldo_di_vendor} pcs`}
                                     </div>
                                   </div>
                                 </div>

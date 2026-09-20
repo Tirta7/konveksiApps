@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { UploadCloud, Search, ShoppingCart, User, FileText, ChevronRight, CreditCard, Box, Calendar, Truck, MapPin, TableIcon, BarChart2, X, Eye, Clock } from "lucide-react";
@@ -233,7 +233,7 @@ export default function PenjualanOnlinePage() {
             <div style={{ flex: 1, background: "white", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
             
             {loading ? (
-              <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>⏳ Memuat data...</div>
+              <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}> Memuat data...</div>
             ) : viewMode === "summary" ? (
               <div style={{ padding: "32px", overflow: "auto", flex: 1, background: "#F8FAFC" }}>
                 <div style={{ marginBottom: 24 }}>

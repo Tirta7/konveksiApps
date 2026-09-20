@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import { Warehouse, Send, CheckCheck, ChevronRight, RefreshCw, Package, AlertCircle } from "lucide-react";
@@ -106,7 +106,7 @@ export default function GudangProduksiPage() {
   const tipeVendorForStage: Record<string, string[]> = { washing: ["washing"], benang: ["benang", "bersih_benang"], finishing: ["finishing", "qc_finishing"] };
   const vendorForKe = (ke: string) => vendors.filter(v => (tipeVendorForStage[ke] || []).includes(v.tipe));
 
-  if (loading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0F172A", color: "white", fontSize: 18 }}>⏳ Memuat Gudang Produksi...</div>;
+  if (loading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0F172A", color: "white", fontSize: 18 }}> Memuat Gudang Produksi...</div>;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0F172A", padding: 0 }}>
@@ -138,7 +138,7 @@ export default function GudangProduksiPage() {
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
           {(["masuk", "kirim", "semua"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: activeTab === tab ? "#3B82F6" : "#1E293B", color: activeTab === tab ? "white" : "#64748B", position: "relative", transition: "all 0.2s" }}>
-              {tab === "masuk" ? "⬇️ Barang Masuk" : tab === "kirim" ? "⬆️ Kirim ke Proses" : "📋 Semua Riwayat"}
+              {tab === "masuk" ? " Barang Masuk" : tab === "kirim" ? " Kirim ke Proses" : " Semua Riwayat"}
               {tab === "masuk" && masuk.length > 0 && <span style={{ position: "absolute", top: -6, right: -6, background: "#EF4444", color: "white", borderRadius: "50%", width: 20, height: 20, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>{masuk.length}</span>}
             </button>
           ))}
@@ -161,7 +161,7 @@ export default function GudangProduksiPage() {
                       <ChevronRight size={16} color="#64748B" />
                       <span style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: "#3B82F633", color: "#3B82F6" }}>Gudang Produksi</span>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>{t.noPo} — {t.model}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>{t.noPo}  {t.model}</div>
                     <div style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>Dari: {t.vendor_nama} · {new Date(t.tanggal_kirim).toLocaleDateString("id-ID")} · <b style={{ color: "#F59E0B" }}>{t.jumlah_kirim} pcs</b></div>
                     <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                       {(t.sizeBreakdown || []).map((s: any, i: number) => <span key={i} style={{ background: "#0F172A", color: "white", padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 700 }}>{s.size}: {s.jumlah} pcs</span>)}
@@ -189,7 +189,7 @@ export default function GudangProduksiPage() {
               <div key={t.id} style={{ background: "#1E293B", borderRadius: 16, padding: 24, border: "1px solid #334155" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>{t.noPo} — {t.model}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>{t.noPo}  {t.model}</div>
                     <div style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>Dari: {STAGE_LABELS[t.dari]} · Diterima: <b style={{ color: "#10B981" }}>{t.jumlah_diterima} pcs</b></div>
                     <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                       {(t.sizeBreakdown_diterima || t.sizeBreakdown || []).map((s: any, i: number) => <span key={i} style={{ background: "#0F172A", color: "white", padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 700 }}>{s.size}: {s.jumlah} pcs</span>)}
@@ -255,7 +255,7 @@ export default function GudangProduksiPage() {
               <div style={{ display: "flex", gap: 12 }}>
                 <button type="button" onClick={() => setShowTerimaModal(null)} style={{ flex: 1, background: "#0F172A", color: "#64748B", padding: 14, borderRadius: 12, border: "1px solid #334155", fontWeight: 700, cursor: "pointer" }}>Batal</button>
                 <button type="submit" disabled={submitting} style={{ flex: 2, background: "#10B981", color: "white", padding: 14, borderRadius: 12, border: "none", fontWeight: 800, cursor: "pointer" }}>
-                  {submitting ? "Menyimpan..." : "✅ Konfirmasi Diterima"}
+                  {submitting ? "Menyimpan..." : " Konfirmasi Diterima"}
                 </button>
               </div>
             </form>
@@ -269,7 +269,7 @@ export default function GudangProduksiPage() {
           <div style={{ background: "#1E293B", borderRadius: 20, width: "100%", maxWidth: 520, border: "1px solid #334155", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #334155", background: "#0F172A", borderRadius: "20px 20px 0 0" }}>
               <h3 style={{ margin: 0, color: "white", fontWeight: 800 }}>Kirim ke Tahap Produksi</h3>
-              <div style={{ fontSize: 13, color: "#64748B" }}>{showKirimModal.noPo} — {showKirimModal.model}</div>
+              <div style={{ fontSize: 13, color: "#64748B" }}>{showKirimModal.noPo}  {showKirimModal.model}</div>
             </div>
             <form onSubmit={submitKirim} style={{ padding: 24 }}>
               <div style={{ marginBottom: 20 }}>
@@ -286,7 +286,7 @@ export default function GudangProduksiPage() {
                 <div style={{ marginBottom: 20 }}>
                   <label style={{ display: "block", color: "#94A3B8", fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Vendor / Tim:</label>
                   <select value={kirimForm.vendor_id} onChange={e => setKirimForm({ ...kirimForm, vendor_id: e.target.value })} style={{ width: "100%", background: "#0F172A", border: "1px solid #334155", color: "white", padding: "12px 16px", borderRadius: 10, outline: "none", fontSize: 14 }}>
-                    <option value="">— Pilih Vendor —</option>
+                    <option value=""> Pilih Vendor </option>
                     {vendorForKe(kirimForm.ke).map((v: any) => <option key={v.id} value={v.id}>{v.nama}</option>)}
                     {vendorForKe(kirimForm.ke).length === 0 && <option disabled>Tidak ada vendor terdaftar untuk tahap ini</option>}
                   </select>
@@ -310,7 +310,7 @@ export default function GudangProduksiPage() {
               <div style={{ display: "flex", gap: 12 }}>
                 <button type="button" onClick={() => setShowKirimModal(null)} style={{ flex: 1, background: "#0F172A", color: "#64748B", padding: 14, borderRadius: 12, border: "1px solid #334155", fontWeight: 700, cursor: "pointer" }}>Batal</button>
                 <button type="submit" disabled={submitting} style={{ flex: 2, background: "#F59E0B", color: "white", padding: 14, borderRadius: 12, border: "none", fontWeight: 800, cursor: "pointer" }}>
-                  {submitting ? "Mengirim..." : "📦 Kirim Sekarang"}
+                  {submitting ? "Mengirim..." : " Kirim Sekarang"}
                 </button>
               </div>
             </form>

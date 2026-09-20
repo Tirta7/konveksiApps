@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 import React, { use, useEffect, useState, useRef } from "react";
 import { Briefcase, CheckCircle2, Clock, DollarSign, Package, PlusCircle, RefreshCw, X, AlertCircle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
-// ── Radial Progress Bar ─────────────────────────────────────────────────────
+//  Radial Progress Bar 
 function RadialProgress({ pct, size = 80, stroke = 7, color = "#3B82F6", label }: { pct: number; size?: number; stroke?: number; color?: string; label?: string }) {
   const r = (size - stroke * 2) / 2;
   const circ = 2 * Math.PI * r;
@@ -68,14 +68,29 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
     return () => clearInterval(interval);
   }, [id]);
 
+  // Real-time sync: auto-refresh when another admin makes a change
+  useEffect(() => {
+    const handler = () => fetchData();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!requestForm.pemotongan_id) {
+      toast.error("Silakan pilih kain yang tersedia terlebih dahulu!");
+      return;
+    }
     if (!requestForm.total_request || Number(requestForm.total_request) <= 0) {
       toast.error("Masukkan jumlah yang valid");
       return;
     }
     setSubmitting(true);
     try {
+      const selectedP = data.pemotonganReady.find((p: any) => String(p.id) === requestForm.pemotongan_id);
+          const isTransfer = selectedP?.is_transfer;
+          
       const res = await fetch("/api/cmt-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,7 +98,8 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
           vendor_id: Number(id),
           total_request: Number(requestForm.total_request),
           catatan: requestForm.catatan,
-          pemotongan_id: requestForm.pemotongan_id ? Number(requestForm.pemotongan_id) : null,
+          pemotongan_id: isTransfer ? null : (requestForm.pemotongan_id ? Number(requestForm.pemotongan_id) : null),
+          transfer_id: isTransfer ? Number(requestForm.pemotongan_id) : null,
         })
       });
       if (!res.ok) throw new Error("Gagal mengirim request");
@@ -109,6 +125,14 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
       return;
     }
 
+    // Validasi: tidak boleh melebihi sisa masing-masing size
+    for (const item of items) {
+      if (Number(item.jumlah) > item.maxSisa) {
+        toast.error(`Size ${item.size}: Jumlah (${item.jumlah}) melebihi sisa yang tersedia (${item.maxSisa} pcs)`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/cmt-progres", {
@@ -123,7 +147,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
       });
       if (!res.ok) throw new Error("Gagal mengirim laporan progres");
       
-      toast.success("✅ Laporan progres berhasil dikirim ke Admin!");
+      toast.success(" Laporan progres berhasil dikirim ke Admin!");
       setJustSubmittedPo(showProgresModal.id);
       setTimeout(() => setJustSubmittedPo(null), 4000);
       setShowProgresModal(null);
@@ -159,13 +183,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
   const totalSelesai = data.historiPO.reduce((sum: number, po: any) => sum + (po.jumlah_terbit || 0), 0);
   const pendingRequests = (data.requests || []).filter((r: any) => r.status === "Pending" || r.status === "Terpenuhi Sebagian");
 
-  // Real-time sync: auto-refresh when another admin makes a change
-  useEffect(() => {
-    const handler = () => fetchData();
-    window.addEventListener("konveksi-sync", handler);
-    return () => window.removeEventListener("konveksi-sync", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
   return (
     <div style={{ position: "fixed", inset: 0, overflowY: "auto", background: "#0F172A", color: "white", fontFamily: "Inter, sans-serif" }}>
       
@@ -185,20 +203,99 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {pendingRequests.length > 0 && (
             <span style={{ background: "#FEF3C7", color: "#92400E", padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-              ⏳ {pendingRequests.length} Request Diproses
+               {pendingRequests.length} Request Diproses
             </span>
           )}
-          <button 
-            onClick={() => setShowRequestModal(true)}
-            style={{ background: "linear-gradient(135deg, #10B981, #059669)", color: "white", border: "none", padding: "10px 18px", borderRadius: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 14, boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}
-          >
-            <PlusCircle size={16} /> Minta Kerjaan
-          </button>
+          {data.canRequest === false ? (
+            <button 
+              onClick={() => alert(` Request diblokir!\n\nAnda baru menyelesaikan ${data.blockInfo?.overallPct}% dari target ${data.blockInfo?.minPct}%.\nSelesaikan ${data.blockInfo?.neededPcs} pcs lagi dan tunggu ACC Admin untuk bisa request kain baru.`)}
+              style={{ background: "#374151", color: "#9CA3AF", border: "1px solid #4B5563", padding: "10px 18px", borderRadius: 10, fontWeight: 700, cursor: "not-allowed", display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}
+            >
+               Minta Kerjaan
+            </button>
+          ) : (
+            <button 
+              onClick={() => setShowRequestModal(true)}
+              style={{ background: "linear-gradient(135deg, #10B981, #059669)", color: "white", border: "none", padding: "10px 18px", borderRadius: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 14, boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}
+            >
+              <PlusCircle size={16} /> Minta Kerjaan
+            </button>
+          )}
         </div>
       </div>
 
       {/* Content */}
       <div style={{ padding: "32px", maxWidth: 1100, margin: "0 auto" }}>
+
+        {/* === Smart Tracking Banner + Throttle Health === */}
+        {data.blockInfo && data.blockInfo.totalJumlahTerbit > 0 && (() => {
+          const bi = data.blockInfo;
+          const isBlocked = !data.canRequest;
+          const hasOverdue = bi.maxOverdueDays > 0;
+          const borderColor = isBlocked ? "#EF4444" : hasOverdue ? "#F59E0B" : "#10B981";
+          const bgColor = isBlocked ? "rgba(239,68,68,0.06)" : hasOverdue ? "rgba(245,158,11,0.06)" : "rgba(16,185,129,0.06)";
+          return (
+            <div style={{ marginBottom: 24, borderRadius: 16, border: `1.5px solid ${borderColor}`, background: bgColor, overflow: "hidden" }}>
+              {/* Header row */}
+              <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, borderBottom: `1px solid ${borderColor}30` }}>
+                <div style={{ fontSize: 28 }}>{isBlocked ? "" : hasOverdue ? "" : ""}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: isBlocked ? "#FCA5A5" : hasOverdue ? "#FCD34D" : "#6EE7B7" }}>
+                    {isBlocked ? `Request Diblokir  Progress ${bi.overallPct}% dari ${bi.effectiveMinPct}% (target)` 
+                     : hasOverdue ? ` Ada PO Terlambat  Progress ${bi.overallPct}%  (Request Masih Bisa)`
+                     : ` Akun Aman  Progress ${bi.overallPct}% dari ${bi.effectiveMinPct}% target`}
+                  </div>
+                  {bi.throttlePenalty > 0 && (
+                    <div style={{ fontSize: 11, color: "#F87171", marginTop: 2, fontWeight: 600 }}>
+                       Penalti Keterlambatan: +{bi.throttlePenalty}% (Base {bi.baseMinPct}%  Efektif {bi.effectiveMinPct}%)
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: "center", flexShrink: 0, background: "rgba(0,0,0,0.2)", padding: "8px 16px", borderRadius: 12 }}>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: isBlocked ? "#EF4444" : hasOverdue ? "#F59E0B" : "#10B981", lineHeight: 1 }}>{bi.overallPct}%</div>
+                  <div style={{ fontSize: 9, color: "#64748B", fontWeight: 700, marginTop: 2 }}>dari {bi.effectiveMinPct}%</div>
+                </div>
+              </div>
+
+              {/* Throttle Health bar */}
+              <div style={{ padding: "10px 20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700 }}>PROGRES ANDA</span>
+                  <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700 }}>TARGET {bi.effectiveMinPct}%</span>
+                </div>
+                <div style={{ position: "relative", background: "#1E293B", borderRadius: 8, height: 12, overflow: "hidden" }}>
+                  {/* Progress fill */}
+                  <div style={{ width: `${Math.min(bi.overallPct, 100)}%`, height: "100%", background: isBlocked ? "linear-gradient(90deg,#EF4444,#F87171)" : "linear-gradient(90deg,#10B981,#34D399)", borderRadius: 8, transition: "width 0.8s ease" }} />
+                  {/* Target marker */}
+                  <div style={{ position: "absolute", top: 0, bottom: 0, left: `${bi.effectiveMinPct}%`, width: 2, background: "#F59E0B", borderRadius: 2 }} />
+                </div>
+                {isBlocked && (
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
+                    Selesaikan & lapor <strong style={{ color: "white" }}>{bi.neededPcs} pcs lagi</strong> dan tunggu ACC Admin
+                  </div>
+                )}
+              </div>
+
+              {/* Overdue warning strip */}
+              {bi.overduePoList && bi.overduePoList.length > 0 && (
+                <div style={{ padding: "10px 20px", background: "rgba(239,68,68,0.08)", borderTop: "1px solid rgba(239,68,68,0.2)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#FCA5A5", marginBottom: 6 }}> PO MELEBIHI TARGET TANGGAL SELESAI</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {bi.overduePoList.map((op: any, i: number) => (
+                      <div key={i} style={{ background: "rgba(239,68,68,0.15)", border: "1px solid #EF444460", borderRadius: 8, padding: "4px 10px", fontSize: 11 }}>
+                        <span style={{ fontWeight: 800, color: "#FCA5A5" }}>{op.noPo}</span>
+                        <span style={{ color: "#94A3B8" }}> · target {new Date(op.targetSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} · </span>
+                        <span style={{ color: "#EF4444", fontWeight: 700 }}>+{op.overdueDays} hari</span>
+                        <span style={{ color: "#F87171" }}>  -{op.overdueDays}% throttle</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
 
         {/* Stat Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20, marginBottom: 32 }}>
@@ -245,16 +342,42 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
               const totalDone = po.totalDiambil || 0;
               const pct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
               const isJustSubmitted = justSubmittedPo === po.id;
+              const isOverdue = po.isOverdue;
+              const overdueDays = po.overdueDays || 0;
+              const targetSelesai = po.targetSelesai;
               return (
-              <div key={po.id} style={{ background: isJustSubmitted ? "#0D2137" : "#1E293B", borderRadius: 16, padding: 24, border: isJustSubmitted ? "2px solid #10B981" : "1px solid #334155", transition: "all 0.5s" }}>
+              <div key={po.id} style={{ background: isJustSubmitted ? "#0D2137" : "#1E293B", borderRadius: 16, border: isJustSubmitted ? "2px solid #10B981" : isOverdue ? "2px solid #EF4444" : "1px solid #334155", transition: "all 0.5s", overflow: "hidden" }}>
+                {/* Overdue Warning Strip */}
+                {isOverdue && (
+                  <div style={{ background: "linear-gradient(135deg,#7F1D1D,#991B1B)", padding: "8px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 16 }}></span>
+                    <div>
+                      <span style={{ fontWeight: 800, fontSize: 12, color: "#FCA5A5" }}>
+                        PO INI MELEBIHI TARGET SELESAI {overdueDays} HARI
+                      </span>
+                      <span style={{ fontSize: 11, color: "#FCA5A5", marginLeft: 8, opacity: 0.8 }}>
+                        Target: {new Date(targetSelesai).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}
+                      </span>
+                    </div>
+                    <div style={{ marginLeft: "auto", background: "#EF4444", color: "white", fontSize: 11, fontWeight: 800, padding: "2px 10px", borderRadius: 20 }}>
+                      -{overdueDays}% Throttle
+                    </div>
+                  </div>
+                )}
+                <div style={{ padding: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "white", marginBottom: 4 }}>{po.no_po || po.noPo || "—"}</div>
-                    <div style={{ fontSize: 13, color: "#64748B", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "white", marginBottom: 4 }}>{po.no_po || po.noPo || ""}</div>
+                    <div style={{ fontSize: 13, color: "#64748B", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                       <div>Model: <span style={{ color: "#94A3B8", fontWeight: 600 }}>{po.model}</span></div>
                       <div style={{ background: "#451A03", color: "#F59E0B", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
                         Sisa Jahitan: {Math.max(0, totalTarget - totalDone)} pcs
                       </div>
+                      {targetSelesai && !isOverdue && (
+                        <div style={{ background: "#064E3B", color: "#34D399", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                           Target: {new Date(targetSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      )}
                     </div>
                     {isJustSubmitted && (
                       <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6, background: "#064E3B", padding: "6px 12px", borderRadius: 8, width: "fit-content" }}>
@@ -263,6 +386,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                       </div>
                     )}
                   </div>
+
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     {/* Radial progress */}
                     <RadialProgress pct={pct} size={72} stroke={6} color="#3B82F6" />
@@ -329,8 +453,9 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                     }}
                     style={{ background: pct >= 100 ? "#064E3B" : "linear-gradient(135deg,#3B82F6,#6366F1)", color: pct >= 100 ? "#10B981" : "white", padding: "10px 20px", borderRadius: 10, fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: pct >= 100 ? "none" : "0 4px 12px rgba(59,130,246,0.35)" }}
                   >
-                    {pct >= 100 ? <><CheckCircle2 size={16} /> Sudah 100% — Lapor Lagi?</> : <><TrendingUp size={16} /> Lapor Progres Selesai</>}
+                    {pct >= 100 ? <><CheckCircle2 size={16} /> Sudah 100%  Lapor Lagi?</> : <><TrendingUp size={16} /> Lapor Progres Selesai</>}
                   </button>
+                </div>
                 </div>
               </div>
               );
@@ -355,7 +480,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                 <tbody>
                   {data.historiPO.map((po: any, i: number) => (
                     <tr key={po.id} style={{ borderTop: "1px solid #334155" }}>
-                      <td style={{ padding: "14px 20px", fontFamily: "monospace", color: "#94A3B8", fontSize: 14 }}>{po.no_po || po.noPo || "—"}</td>
+                      <td style={{ padding: "14px 20px", fontFamily: "monospace", color: "#94A3B8", fontSize: 14 }}>{po.no_po || po.noPo || ""}</td>
                       <td style={{ padding: "14px 20px", fontWeight: 600, color: "white" }}>{po.model}</td>
                       <td style={{ padding: "14px 20px", fontWeight: 700, color: "#10B981" }}>{po.jumlah_terbit} pcs</td>
                       <td style={{ padding: "14px 20px" }}>
@@ -499,7 +624,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>Minta Kerjaan Baru</h2>
-                <p style={{ fontSize: 12, color: "#64748B", margin: "3px 0 0" }}>Pilih bahan kain dan beritahu Admin jumlah yang Anda sanggup</p>
+                <p style={{ fontSize: 12, color: "#64748B", margin: "3px 0 0" }}>Pilih pekerjaan dan beritahu Admin jumlah yang Anda sanggup</p>
               </div>
               <button onClick={() => setShowRequestModal(false)} style={{ background: "#334155", border: "none", color: "#94A3B8", padding: 8, borderRadius: 8, cursor: "pointer" }}><X size={18} /></button>
             </div>
@@ -509,7 +634,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
               {/* STEP 1: Pilih Pemotongan Kain */}
               <div>
                 <div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-                  ✂️ Pilih Kain yang Tersedia
+                   Pilih Kain yang Tersedia
                 </div>
                 {(data?.pemotonganReady || []).length === 0 ? (
                   <div style={{ background: "#0F172A", borderRadius: 12, padding: 16, textAlign: "center", color: "#475569", fontSize: 13 }}>
@@ -528,13 +653,36 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                             <div>
                               <div style={{ fontWeight: 800, color: "white", fontSize: 14 }}>{p.nama_barang}</div>
-                              <div style={{ fontSize: 11, color: "#64748B" }}>Model: {p.model} · {new Date(p.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</div>
+                              <div style={{ fontSize: 11, color: "#64748B", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
+                                <span>Model: {p.model} · {new Date(p.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                {p.target_selesai && (() => {
+                                  const t = new Date(p.target_selesai);
+                                  const now = new Date(); now.setHours(0,0,0,0);
+                                  const graceDate = new Date(t); graceDate.setDate(graceDate.getDate()+1);
+                                  const isOvd = now > graceDate;
+                                  const daysLeft = Math.ceil((t.getTime() - now.getTime()) / (1000*60*60*24));
+                                  return (
+                                    <span style={{ background: isOvd ? "#7F1D1D" : daysLeft <= 3 ? "#451A03" : "#064E3B", color: isOvd ? "#FCA5A5" : daysLeft <= 3 ? "#FCD34D" : "#34D399", padding: "1px 7px", borderRadius: 6, fontWeight: 800, fontSize: 11 }}>
+                                       Target: {t.toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                                      {isOvd ? "  LEWAT!" : daysLeft <= 0 ? " (Hari ini!)" : ` (${daysLeft} hari lagi)`}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
                             </div>
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontWeight: 900, fontSize: 18, color: isSelected ? "#3B82F6" : "#10B981" }}>{p.sisa_total}</div>
                               <div style={{ fontSize: 10, color: "#64748B" }}>sisa pcs</div>
                             </div>
                           </div>
+                          
+                          {/* NEW: show pending requests info */}
+                          {p.pending_requests && p.pending_requests.length > 0 && (
+                            <div style={{ fontSize: 11, color: "#F59E0B", marginBottom: 8, background: "#451A03", padding: "4px 8px", borderRadius: 6, display: "inline-block" }}>
+                               Sedang di-Request: {p.pending_requests.map((pr: any) => `${pr.vendor_nama} (${pr.total_request} pcs)`).join(', ')}
+                            </div>
+                          )}
+
                           {/* Size sisa */}
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {(p.sizeBreakdown || []).map((s: any) => (
@@ -544,7 +692,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                             ))}
                           </div>
                           {isSelected && (
-                            <div style={{ marginTop: 8, fontSize: 11, color: "#3B82F6", fontWeight: 700 }}>✓ Dipilih</div>
+                            <div style={{ marginTop: 8, fontSize: 11, color: "#3B82F6", fontWeight: 700 }}> Dipilih</div>
                           )}
                         </div>
                       );
@@ -556,7 +704,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
               {/* STEP 2: Jumlah */}
               <div>
                 <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-                  📦 Berapa pcs yang Anda sanggup kerjakan? <span style={{ color: "#EF4444" }}>*</span>
+                   Berapa pcs yang Anda sanggup kerjakan? <span style={{ color: "#EF4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <input
@@ -576,8 +724,8 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                   return p ? (
                     <div style={{ marginTop: 6, fontSize: 11, color: Number(requestForm.total_request) > p.sisa_total ? "#EF4444" : "#10B981", fontWeight: 700 }}>
                       {Number(requestForm.total_request) > p.sisa_total
-                        ? `⚠️ Melebihi sisa stok! Sisa hanya ${p.sisa_total} pcs`
-                        : `✓ Stok cukup (sisa ${p.sisa_total} pcs)`}
+                        ? ` Melebihi sisa stok! Sisa hanya ${p.sisa_total} pcs`
+                        : ` Stok cukup (sisa ${p.sisa_total} pcs)`}
                     </div>
                   ) : null;
                 })()}
@@ -585,7 +733,7 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
 
               {/* STEP 3: Catatan */}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>💬 Catatan (Opsional)</label>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}> Catatan (Opsional)</label>
                 <textarea
                   rows={2}
                   placeholder="Misal: Saya bisa mulai Senin, atau ada preferensi model tertentu..."
@@ -614,13 +762,24 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0F172A" }}>
               <div>
                 <h3 style={{ margin: 0, color: "white", fontSize: 18, fontWeight: 800 }}>Lapor Progres Jahitan</h3>
-                <div style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>PO: {showProgresModal.no_po || showProgresModal.noPo || "—"} — Model: {showProgresModal.model}</div>
+                <div style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>PO: {showProgresModal.no_po || showProgresModal.noPo || ""}  Model: {showProgresModal.model}</div>
               </div>
               <button onClick={() => setShowProgresModal(null)} style={{ background: "transparent", border: "none", color: "#64748B", cursor: "pointer" }}><X size={24} /></button>
             </div>
             <form onSubmit={handleLaporProgres} style={{ padding: 24 }}>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: "block", color: "#94A3B8", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Masukkan Jumlah Selesai per Size:</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <label style={{ display: "block", color: "#94A3B8", fontSize: 13, fontWeight: 700 }}>Masukkan Jumlah Selesai per Size:</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProgresForm(prev => prev.map(pf => ({ ...pf, jumlah: pf.maxSisa > 0 ? pf.maxSisa : pf.jumlah })));
+                    }}
+                    style={{ background: "#1E3A5F", color: "#3B82F6", border: "1px solid #3B82F6", padding: "4px 12px", borderRadius: 8, fontSize: 11, fontWeight: 800, cursor: "pointer" }}
+                  >
+                     Isi Semua
+                  </button>
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {progresForm.map((pf, idx) => (
                     <div key={pf.size} style={{ display: "flex", alignItems: "center", gap: 12, background: "#0F172A", padding: 12, borderRadius: 12 }}>
@@ -633,10 +792,20 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                           type="number" 
                           placeholder="0"
                           min="0"
-                          style={{ width: "100%", background: "transparent", border: "none", color: "white", fontSize: 20, fontWeight: 700, outline: "none" }}
+                          max={pf.maxSisa}
+                          style={{ 
+                            width: "100%", background: "transparent", border: "none", 
+                            color: Number(pf.jumlah) > pf.maxSisa ? "#EF4444" : "white", 
+                            fontSize: 20, fontWeight: 700, outline: "none" 
+                          }}
                           value={pf.jumlah}
                           onChange={e => {
-                            const val = e.target.value ? Number(e.target.value) : "";
+                            const rawVal = e.target.value ? Number(e.target.value) : "";
+                            // Clamp to maxSisa
+                            const val = rawVal !== "" && Number(rawVal) > pf.maxSisa ? pf.maxSisa : rawVal;
+                            if (rawVal !== "" && Number(rawVal) > pf.maxSisa) {
+                              toast.warning(`Size ${pf.size}: Maksimal ${pf.maxSisa} pcs`);
+                            }
                             const newForm = [...progresForm];
                             newForm[idx].jumlah = val;
                             setProgresForm(newForm);
@@ -644,10 +813,25 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                         />
                       </div>
                       <div style={{ textAlign: "right", minWidth: 90 }}>
-                        <div style={{ fontSize: 12, color: "#64748B", fontWeight: 700 }}>Sisa: <span style={{ color: pf.maxSisa === 0 ? "#10B981" : "white" }}>{pf.maxSisa} pcs</span></div>
-                        {pf.done > 0 && <div style={{ fontSize: 10, color: "#10B981", fontWeight: 700 }}>✓ Setuju: {pf.done}</div>}
-                        {(pf as any).pending > 0 && <div style={{ fontSize: 10, color: "#F59E0B", fontWeight: 700 }}>⏳ Pending: {(pf as any).pending}</div>}
-                        {pf.maxSisa === 0 && <div style={{ fontSize: 10, color: "#10B981", fontWeight: 700 }}>✅ Selesai!</div>}
+                        {pf.maxSisa > 0 ? (
+                          <div 
+                            onClick={() => {
+                              const newForm = [...progresForm];
+                              newForm[idx].jumlah = pf.maxSisa;
+                              setProgresForm(newForm);
+                            }}
+                            title="Klik untuk isi otomatis"
+                            style={{ fontSize: 12, color: "#3B82F6", fontWeight: 700, cursor: "pointer", padding: "4px 8px", borderRadius: 6, border: "1px dashed #3B82F6", display: "inline-block", transition: "all 0.15s" }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "#1E3A5F")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                          >
+                            Sisa: <strong>{pf.maxSisa} pcs </strong>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "#10B981", fontWeight: 700 }}> Selesai!</div>
+                        )}
+                        {pf.done > 0 && <div style={{ fontSize: 10, color: "#10B981", fontWeight: 700, marginTop: 2 }}> ACC: {pf.done}</div>}
+                        {(pf as any).pending > 0 && <div style={{ fontSize: 10, color: "#F59E0B", fontWeight: 700, marginTop: 2 }}> Pending: {(pf as any).pending}</div>}
                       </div>
                     </div>
                   ))}

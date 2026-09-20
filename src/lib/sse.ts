@@ -34,7 +34,7 @@ export function broadcast(event: string = "dataChanged", payload: Record<string,
     try {
       client.controller.enqueue(encoded);
     } catch {
-      // Client disconnected – remove it
+      // Client disconnected  remove it
       clients.delete(id);
     }
   }

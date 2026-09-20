@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function POST(req: NextRequest) {
@@ -51,10 +51,28 @@ export async function POST(req: NextRequest) {
       if (!data.produksi_transfers) data.produksi_transfers = [];
 
       // Tentukan stage berdasarkan tipe vendor
-      const keVendor = (data.vendors || []).find((v: any) => String(v.id) === String(ke_vendor_id));
+      
       const dariVendor = (data.vendors || []).find((v: any) => String(v.id) === String(dari_vendor_id));
-      const keTipe = keVendor?.tipe || "vendor";
       const dariTipe = dariVendor?.tipe || "cmt";
+
+      let keTipe = "vendor";
+      let keVendorIdNum = null;
+
+      if (ke_vendor_id === "STANDBY") {
+        const dariVendor = (data.vendors || []).find((v: any) => String(v.id) === String(dari_vendor_id));
+        const stages = (data.pipeline_stages || []).sort((a: any,b: any) => a.urutan - b.urutan);
+        const myIdx = stages.findIndex((s: any) => s.slug === (dariVendor?.tipe || "cmt"));
+        if (myIdx >= 0 && myIdx < stages.length - 1) {
+            keTipe = stages[myIdx + 1].slug;
+        } else {
+            keTipe = "washing"; // fallback
+        }
+      } else {
+        const keVendor = (data.vendors || []).find((v: any) => String(v.id) === String(ke_vendor_id));
+        keTipe = keVendor?.tipe || "vendor";
+        keVendorIdNum = Number(ke_vendor_id);
+      }
+
 
       // Build sizeBreakdown: gunakan dari frontend jika ada, fallback ke po.sizeBreakdown
       let breakdown = [];
@@ -74,7 +92,7 @@ export async function POST(req: NextRequest) {
         po_id: Number(poId),
         dari: dariTipe,
         ke: keTipe,
-        vendor_id: Number(ke_vendor_id),
+        vendor_id: keVendorIdNum,
         dari_vendor_id: Number(dari_vendor_id),
         jumlah_kirim: jml,
         jumlah_diterima: null,
@@ -87,7 +105,7 @@ export async function POST(req: NextRequest) {
       };
       data.produksi_transfers.push(transfer);
 
-      // Update barcode: gudang → washing (untuk washing)
+      // Update barcode: gudang  washing (untuk washing)
       if (keTipe === "washing" && data.barcode_item) {
         const po = (data.po_produksi || []).find((p: any) => String(p.id) === String(poId));
         let updated = 0;

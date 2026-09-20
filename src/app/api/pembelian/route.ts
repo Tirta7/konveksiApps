@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function GET() {

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export async function GET(req: NextRequest) {
@@ -63,10 +63,10 @@ export async function GET(req: NextRequest) {
       .filter((l: any) => String(l.poId) === String(po.id))
       .map((l: any) => {
         const vendorKe = l.ke_vendor_id === "GUDANG"
-          ? { nama: "📦 Gudang Produksi" }
+          ? { nama: " Gudang Produksi" }
           : vendors.find((v: any) => String(v.id) === String(l.ke_vendor_id));
         const vendorDari = l.dari_vendor_id === "SISTEM" || l.dari === "SISTEM"
-          ? { nama: "🔧 Pemotongan Kain (Sistem)" }
+          ? { nama: " Pemotongan Kain (Sistem)" }
           : vendors.find((v: any) => String(v.id) === String(l.dari_vendor_id || l.dari));
         return {
           ...l,

@@ -1,4 +1,4 @@
-import fs from "fs";
+﻿import fs from "fs";
 import path from "path";
 import { broadcast } from "./sse";
 import { getCached, setCache, publishChange, isRedisReady } from "./redis";
@@ -35,6 +35,8 @@ export interface DataStore {
   vendor_types: any[];
   produksi_transfers: any[];
   po_ledgers: any[];
+  pipeline_stages: any[];
+  po_pipeline: any[];
   _counters: Record<string, number>;
 }
 
@@ -44,11 +46,13 @@ function getInitialData(): DataStore {
     tracking_logs: [], stock: [], stock_movements: [], purchase_orders: [], retail_sales: [],
     retur_produksi: [], retur_online: [], kategori_produk: [], data_barang: [], data_supplier: [],
     po_produksi: [], po_pengambilan: [], barcode_item: [], cmt_requests: [], cmt_progres: [], vendor_types: [], produksi_transfers: [], po_ledgers: [],
+    pipeline_stages: [], po_pipeline: [],
     _counters: {}
   };
 }
 
-// ─── Write Queue (Mutex) ──────────────────────────────────────────────────────
+
+//  Write Queue (Mutex) 
 const g = global as any;
 if (!g.__writeQueue) g.__writeQueue = Promise.resolve();
 
@@ -58,21 +62,21 @@ function enqueueWrite(fn: () => void): void {
   });
 }
 
-// ─── Atomic File Write ────────────────────────────────────────────────────────
+//  Atomic File Write 
 function atomicWriteFile(content: string): void {
   fs.writeFileSync(TEMP_PATH, content, "utf-8");
   fs.renameSync(TEMP_PATH, DATA_PATH);
 }
 
-// ─── In-Memory Cache ──────────────────────────────────────────────────────────
-// Read order: RAM (< 0.1ms) → Redis (1ms) → File (5-8ms)
+//  In-Memory Cache 
+// Read order: RAM (< 0.1ms)  Redis (1ms)  File (5-8ms)
 // Cleared when writeData() is called from another process via Redis Pub/Sub.
 if (!g.__memCache) g.__memCache = null;
 const getMemCache = (): DataStore | null => g.__memCache;
 const setMemCache = (d: DataStore) => { g.__memCache = d; };
 const clearMemCache = () => { g.__memCache = null; };
 
-// ─── Read ─────────────────────────────────────────────────────────────────────
+//  Read 
 function readFromFile(): DataStore {
   try {
     if (fs.existsSync(DATA_PATH)) {
@@ -95,18 +99,18 @@ function readFromFile(): DataStore {
 }
 
 /**
- * Read data — in-memory cache first (fastest), then Redis, then file.
+ * Read data  in-memory cache first (fastest), then Redis, then file.
  */
 export function readData(): DataStore {
   const mem = getMemCache();
-  if (mem) return mem;          // ← ~0.1ms from RAM
-  const data = readFromFile();  // ← ~5ms from disk
+  if (mem) return mem;          //  ~0.1ms from RAM
+  const data = readFromFile();  //  ~5ms from disk
   setMemCache(data);
   return data;
 }
 
 /**
- * Async version — tries Redis cache first (much faster), fallback to file.
+ * Async version  tries Redis cache first (much faster), fallback to file.
  */
 export async function readDataAsync(): Promise<DataStore> {
   if (isRedisReady()) {
@@ -122,12 +126,12 @@ export async function readDataAsync(): Promise<DataStore> {
 
 /**
  * Write data safely:
- * 1. Queued   — concurrent writes serialized, never overlapping
- * 2. Atomic   — temp→rename, no partial writes
- * 3. Backup   — keeps .bak copy before each write
- * 4. MemCache — update in-memory instantly
- * 5. Redis    — update distributed cache
- * 6. Broadcast — push SSE to all open browsers
+ * 1. Queued    concurrent writes serialized, never overlapping
+ * 2. Atomic    temprename, no partial writes
+ * 3. Backup    keeps .bak copy before each write
+ * 4. MemCache  update in-memory instantly
+ * 5. Redis     update distributed cache
+ * 6. Broadcast  push SSE to all open browsers
  */
 export function writeData(data: DataStore): void {
   const jsonStr = JSON.stringify(data, null, 2);

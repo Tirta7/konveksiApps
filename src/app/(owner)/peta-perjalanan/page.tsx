@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 
 function fmtDate(str?: string) {
@@ -78,7 +78,7 @@ export default function PetaPerjalananPage() {
   });
 
   const getStageLabel = (po: any) => {
-    if (!po.stats) return "–";
+    if (!po.stats) return "";
     if (po.stats.totalDiGudang >= po.jumlahTerbit) return "Selesai";
     if (po.stats.totalWashing > 0 && po.stats.totalWashingDone < po.stats.totalWashing) return "Washing";
     if (po.stats.totalWashingDone > 0) return "Selesai Washing";
@@ -116,7 +116,7 @@ export default function PetaPerjalananPage() {
 
       <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#F1F5F9" }}>
 
-        {/* ─── LEFT PANEL ─── */}
+        {/*  LEFT PANEL  */}
         <div className={`pp-left-panel ${selectedPoId ? "hide-on-mobile" : ""}`} style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", background: "white", borderRight: "1px solid #E2E8F0" }}>
           {/* Header */}
           <div style={{ padding: "18px 16px 12px", borderBottom: "1px solid #E2E8F0" }}>
@@ -173,7 +173,7 @@ export default function PetaPerjalananPage() {
                       <FI name="notebook" size={11} color="#94A3B8" />
                       {po.pemotongan.nama_barang}
                       <FI name="scissors" size={11} color="#94A3B8" />
-                      {po.pemotongan.tukang?.nama || "–"}
+                      {po.pemotongan.tukang?.nama || ""}
                     </div>
                   )}
                   <div style={{ width: "100%", background: "#E2E8F0", height: 4, borderRadius: 3, overflow: "hidden", position: "relative" }}>
@@ -187,7 +187,7 @@ export default function PetaPerjalananPage() {
           </div>
         </div>
 
-        {/* ─── RIGHT PANEL ─── */}
+        {/*  RIGHT PANEL  */}
         <div className={`pp-right-panel ${!selectedPoId ? "hide-on-mobile" : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {selectedPoId && (
             <div className="pp-back-btn" style={{ padding: "12px 20px", background: "white", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center" }}>
@@ -213,7 +213,7 @@ export default function PetaPerjalananPage() {
           ) : (
             <div style={{ flex: 1, overflowY: "auto" }}>
 
-              {/* ── HEADER SNAPSHOT ── */}
+              {/*  HEADER SNAPSHOT  */}
               <div style={{ background: "white", borderBottom: "1px solid #E2E8F0", padding: "20px 28px" }}>
                 <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
                   {/* Donut progress */}
@@ -273,14 +273,14 @@ export default function PetaPerjalananPage() {
                 </div>
               </div>
 
-              {/* ── ASAL USUL KAIN ── */}
+              {/*  ASAL USUL KAIN  */}
               {detail.pemotongan && (
                 <div style={{ margin: "20px 28px 0", background: "white", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden" }}>
                   <div style={{ background: "#0F172A", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 28, height: 28, borderRadius: 8, background: "#1E293B", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FIS name="tool-box" size={14} color="#F59E0B" />
                     </div>
-                    <span style={{ fontWeight: 800, fontSize: 13, color: "white" }}>Asal Usul Bahan — Pemotongan Kain</span>
+                    <span style={{ fontWeight: 800, fontSize: 13, color: "white" }}>Asal Usul Bahan  Pemotongan Kain</span>
                     <span style={{ marginLeft: "auto", background: "#1E293B", color: "#64748B", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 8 }}>
                       ID #{detail.pemotongan.id}
                     </span>
@@ -289,9 +289,9 @@ export default function PetaPerjalananPage() {
                     {[
                       { icon: "notebook", iconColor: "#3B82F6", label: "Kode Kain", value: detail.pemotongan.nama_barang, sub: [detail.pemotongan.kain?.jenis, detail.pemotongan.kain?.warna].filter(Boolean).join(" · ") || null },
                       { icon: "calendar", iconColor: "#10B981", label: "Dipotong Tanggal", value: fmtDate(detail.pemotongan.tanggal), sub: `Input: ${fmtDT(detail.pemotongan.createdAt)}` },
-                      { icon: "scissors", iconColor: "#8B5CF6", label: "Tukang Potong", value: detail.pemotongan.tukang?.nama || "–", sub: detail.pemotongan.tukang ? `Kode: ${detail.pemotongan.tukang.kode} · ${detail.pemotongan.tukang.kontak}` : null },
+                      { icon: "scissors", iconColor: "#8B5CF6", label: "Tukang Potong", value: detail.pemotongan.tukang?.nama || "", sub: detail.pemotongan.tukang ? `Kode: ${detail.pemotongan.tukang.kode} · ${detail.pemotongan.tukang.kontak}` : null },
                       { icon: "ruler-combined", iconColor: "#F59E0B", label: "Kain Terpakai", value: `${detail.pemotongan.meter_kain} meter`, sub: `${detail.pemotongan.pemakaian_cm} cm/pcs · Total: ${detail.pemotongan.total_pcs} pcs` },
-                      { icon: "user", iconColor: "#06B6D4", label: "Vendor CMT", value: detail.vendorCMT?.nama || "–", sub: detail.vendorCMT?.jenis_pekerjaan || detail.vendorCMT?.tipe || null },
+                      { icon: "user", iconColor: "#06B6D4", label: "Vendor CMT", value: detail.vendorCMT?.nama || "", sub: detail.vendorCMT?.jenis_pekerjaan || detail.vendorCMT?.tipe || null },
                     ].map((item, i) => (
                       <div key={i}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -320,7 +320,7 @@ export default function PetaPerjalananPage() {
                 </div>
               )}
 
-              {/* ── TIMELINE ── */}
+              {/*  TIMELINE  */}
               <div style={{ margin: "20px 28px", paddingBottom: 40 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                   <FIS name="time-forward" size={13} color="#94A3B8" />
@@ -336,7 +336,7 @@ export default function PetaPerjalananPage() {
                     badge="Penerbitan PO" badgeBg="#F1F5F9" badgeColor="#64748B"
                     time={fmtDT(detail.tanggalTerbit)}
                     title={`PO ${detail.noPo} diterbitkan`}
-                    subtitle={`Model: ${detail.model} · Vendor: ${detail.vendorCMT?.nama || "–"} · ${detail.jumlahTerbit} pcs`}
+                    subtitle={`Model: ${detail.model} · Vendor: ${detail.vendorCMT?.nama || ""} · ${detail.jumlahTerbit} pcs`}
                     extra={detail.catatan}
                     sizes={detail.sizeBreakdown}
                   />
@@ -349,7 +349,7 @@ export default function PetaPerjalananPage() {
                       <TLCard
                         key={`cmt-${rec.id}`}
                         fiIcon="needle" iconBg={isACC ? "#DCFCE7" : "#FEF3C7"} iconColor={isACC ? "#10B981" : "#F59E0B"} iconBorder={isACC ? "#10B981" : "#F59E0B"}
-                        badge={isACC ? "Laporan CMT — Di-ACC" : "Laporan CMT — Pending"}
+                        badge={isACC ? "Laporan CMT  Di-ACC" : "Laporan CMT  Pending"}
                         badgeBg={isACC ? "#D1FAE5" : "#FEF3C7"} badgeColor={isACC ? "#065F46" : "#92400E"}
                         time={fmtDT(rec.createdAt)}
                         title={`${rec.vendor_nama} melaporkan ${totalRec} pcs selesai dijahit`}
@@ -381,16 +381,16 @@ export default function PetaPerjalananPage() {
 
                   {/* Produksi Transfers */}
                   {(detail.transfers || []).map((t: any) => {
-                    const cfg = STAGE_CONFIG[t.ke] || STAGE_CONFIG.gudang;
+                    const cfg = STAGE_CONFIG[t.ke] || { label: t.ke.toUpperCase(), color: "#3B82F6", bg: "#EFF6FF", fiIcon: "box-open" };
                     const isDone = t.status === "Diverifikasi";
                     return (
                       <TLCard
                         key={`tr-${t.id}`}
                         fiIcon={cfg.fiIcon} iconBg={isDone ? "#DCFCE7" : cfg.bg} iconColor={isDone ? "#10B981" : cfg.color} iconBorder={isDone ? "#10B981" : cfg.color}
-                        badge={`${cfg.label}${isDone ? " — Selesai" : " — Dalam Proses"}`}
+                        badge={`${cfg.label}${isDone ? "  Selesai" : "  Dalam Proses"}`}
                         badgeBg={isDone ? "#D1FAE5" : cfg.bg} badgeColor={isDone ? "#065F46" : cfg.color}
                         time={fmtDT(t.tanggal_kirim)}
-                        title={`Dikirim ke: ${t.vendor_ke_nama || cfg.label}`}
+                        title={t.vendor_ke_nama ? `Dikirim ke: ${t.vendor_ke_nama} (${cfg.label})` : `Siap melakukan ${cfg.label}`}
                         subtitle={isDone ? `Selesai & Diverifikasi · Diterima: ${t.jumlah_diterima || t.jumlah_kirim} pcs` : `Dalam proses · ${t.jumlah_kirim} pcs`}
                         extra={t.catatan}
                         sizes={t.sizeBreakdown}
@@ -414,7 +414,7 @@ export default function PetaPerjalananPage() {
   );
 }
 
-/* ── Timeline Card ── */
+/*  Timeline Card  */
 function TLCard({ fiIcon, iconBg, iconColor, iconBorder, badge, badgeBg, badgeColor, time, title, subtitle, extra, sizes, pcs }: {
   fiIcon: string; iconBg: string; iconColor: string; iconBorder: string;
   badge: string; badgeBg: string; badgeColor: string;

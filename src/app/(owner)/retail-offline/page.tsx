@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { Plus, X, Store, ShoppingCart, BarChart2 } from "lucide-react";
 
@@ -84,7 +84,7 @@ export default function RetailOfflinePage() {
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>Kategori Jeans <span style={{color:"#EF4444"}}>*</span></label>
                   <select style={{ width: "100%", padding: "10px 14px", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 14 }} value={form.kategori} onChange={e => setForm(f => ({ ...f, kategori: e.target.value }))}>
-                    <option value="">— Pilih kategori —</option>
+                    <option value=""> Pilih kategori </option>
                     {KATEGORI.map(k => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </div>
@@ -156,10 +156,10 @@ export default function RetailOfflinePage() {
             </div>
             <div style={{ flex: 1, overflow: "auto" }}>
               {loading ? (
-                <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>⏳ Memuat data...</div>
+                <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}> Memuat data...</div>
               ) : !data?.list?.length ? (
                 <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>🏪</div>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}></div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>Belum ada transaksi</div>
                   <div style={{ fontSize: 13 }}>Transaksi offline yang ditambahkan akan muncul di sini</div>
                 </div>

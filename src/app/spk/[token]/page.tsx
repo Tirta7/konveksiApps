@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Clock, Shirt, CheckCircle2, Loader2, Hourglass, Package, FileText, ClipboardList, AlertTriangle, AlertCircle, PackageCheck, ClipboardCheck, CheckCircle, Search, XCircle, ClipboardX, Link as LinkIcon, ChevronDown } from "lucide-react";
@@ -18,7 +18,7 @@ function fmtTime(str?: string) {
   return new Date(str).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Derive phase from server data — so reload restores to correct state */
+/** Derive phase from server data  so reload restores to correct state */
 function derivePhase(info: any): "scan" | "confirmed" | "done" {
   if (!info) return "scan";
   if (info.routeSelesai) return "done";
@@ -44,7 +44,7 @@ export default function VendorSPKPage() {
   const [flashSuccess, setFlashSuccess] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Hitung barang sebelum konfirmasi terima — per size
+  // Hitung barang sebelum konfirmasi terima  per size
   type SizeCount = { size: string; jumlah_expected: number; jumlah_diterima: string };
   const [sizeCountForm, setSizeCountForm] = useState<SizeCount[]>([]);
   const [showCountForm, setShowCountForm] = useState(false);
@@ -140,7 +140,7 @@ export default function VendorSPKPage() {
     if (sizes.length > 0) {
       setDefectForm(sizes.map((s: any) => ({ size: s.size, jumlah_cacat: 0, alasan: "" })));
     } else {
-      // Batch lama tanpa size breakdown — fallback freeform
+      // Batch lama tanpa size breakdown  fallback freeform
       const totalPcs = info?.batch?.jumlah_pcs ?? 0;
       const stepJumlah = info?.currentStep?.jumlah_barang ?? totalPcs;
       setDefectForm([{ size: `Umum (${stepJumlah} pcs)`, jumlah_cacat: 0, alasan: "" }]);
@@ -173,7 +173,7 @@ export default function VendorSPKPage() {
   if (loading) return (
     <div style={{ ...pageStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 52 }}>⏳</div>
+        <div style={{ fontSize: 52 }}></div>
         <p style={{ fontSize: 20, color: "#64748B", marginTop: 12, fontWeight: 600 }}>Memuat data...</p>
       </div>
     </div>
@@ -182,14 +182,14 @@ export default function VendorSPKPage() {
   if (error) return (
     <div style={{ ...pageStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "white", borderRadius: 20, padding: 40, maxWidth: 480, width: "100%", textAlign: "center" }}>
-        <div style={{ fontSize: 64 }}>🚫</div>
+        <div style={{ fontSize: 64 }}></div>
         <h1 style={{ fontSize: 26, fontWeight: 800, marginTop: 16 }}>Link Tidak Valid</h1>
         <p style={{ color: "#64748B", marginTop: 8, fontSize: 17 }}>{error}</p>
       </div>
     </div>
   );
 
-  // ─── SELESAI / QC FAIL ─────────────────────────────────────────────
+  //  SELESAI / QC FAIL 
   if (phase === "done" || info?.routeSelesai) {
     const isQcFail = nextStepInfo?.qcFail;
     const hasNext = nextStepInfo && !isQcFail;
@@ -220,10 +220,10 @@ export default function VendorSPKPage() {
       <div style={{ minHeight: "100vh", background: "#E2E8F0", fontFamily: "Inter,system-ui,sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", overflowX: "hidden", width: "100%" }}>
 
 
-        {/* ── BOARDING PASS CARD ── */}
+        {/*  BOARDING PASS CARD  */}
         <div style={{ width: "100%", maxWidth: 480, boxShadow: "0 20px 40px rgba(0,0,0,0.18)", animation: "slideDown 0.9s cubic-bezier(0.16,1,0.3,1) both" }}>
 
-          {/* ── TOP SECTION (header tiket) ── */}
+          {/*  TOP SECTION (header tiket)  */}
           <div style={{ background: `linear-gradient(135deg, ${ticketColor} 0%, ${isQcFail ? "#7F1D1D" : isFullSelesai ? "#1E3A5F" : "#1E40AF"} 100%)`, borderRadius: "0 0 0 0", padding: "22px 20px 18px", color: "white", position: "relative", overflow: "hidden" }}>
             {/* Dekoratif lingkaran */}
             <div style={{ position: "absolute", top: -40, right: -40, width: 130, height: 130, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
@@ -232,23 +232,23 @@ export default function VendorSPKPage() {
             {/* Status badge */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 99, padding: "5px 14px", marginBottom: 16, fontSize: 12, fontWeight: 800, letterSpacing: 0.5 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: ticketAccent, display: "inline-block" }} />
-              {isQcFail ? "QC GAGAL" : isFullSelesai ? "SELESAI • GUDANG" : "STEP SELESAI"}
+              {isQcFail ? "QC GAGAL" : isFullSelesai ? "SELESAI  GUDANG" : "STEP SELESAI"}
             </div>
 
             {/* Kode batch besar */}
             <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -1, marginBottom: 4 }}>
-              {batch?.kode_batch ?? "—"}
+              {batch?.kode_batch ?? ""}
             </div>
             <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 20 }}>
               {batch?.jenis_kain} · {batch?.jumlah_pcs ?? 0} pcs
             </div>
 
-            {/* Info row (FROM → TO style) */}
+            {/* Info row (FROM  TO style) */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase" }}>Mulai</div>
                 <div style={{ fontSize: 18, fontWeight: 900 }}>
-                  {steps[0] ? new Date(steps[0].mulai_waktu).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "—"}
+                  {steps[0] ? new Date(steps[0].mulai_waktu).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : ""}
                 </div>
               </div>
               <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4 }}>
@@ -257,20 +257,20 @@ export default function VendorSPKPage() {
                   <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.5)", flexShrink: 0 }} />
                 ))}
                 <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.3)" }} />
-                <span style={{ fontSize: 18 }}>{isQcFail ? "⚠️" : isFullSelesai ? "🏭" : "✈️"}</span>
+                <span style={{ fontSize: 18 }}>{isQcFail ? "" : isFullSelesai ? "" : ""}</span>
               </div>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase" }}>Selesai</div>
                 <div style={{ fontSize: 18, fontWeight: 900 }}>
                   {isFullSelesai
-                    ? (steps[steps.length-1]?.selesai_waktu ? new Date(steps[steps.length-1].selesai_waktu).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "—")
+                    ? (steps[steps.length-1]?.selesai_waktu ? new Date(steps[steps.length-1].selesai_waktu).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "")
                     : isQcFail ? "CACAT" : "NEXT"}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── PERFORATED DIVIDER ── */}
+          {/*  PERFORATED DIVIDER  */}
           <div style={{ background: "white", position: "relative", height: 28, display: "flex", alignItems: "center" }}>
             {/* Notch kiri */}
             <div style={{ position: "absolute", left: -18, width: 36, height: 36, borderRadius: "50%", background: "#E2E8F0", zIndex: 2 }} />
@@ -280,14 +280,14 @@ export default function VendorSPKPage() {
             <div style={{ position: "absolute", right: -18, width: 36, height: 36, borderRadius: "50%", background: "#E2E8F0", zIndex: 2 }} />
           </div>
 
-          {/* ── BOTTOM SECTION (detail tiket) ── */}
+          {/*  BOTTOM SECTION (detail tiket)  */}
           <div style={{ background: "white", padding: "4px 18px 20px" }}>
 
-            {/* QC Gagal — kode item merah */}
+            {/* QC Gagal  kode item merah */}
             {isQcFail && (
               <div style={{ marginBottom: 16, padding: "14px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: "#991B1B", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  🔴 Kode Item Cacat — {nextStepInfo.totalCacat} pcs
+                   Kode Item Cacat  {nextStepInfo.totalCacat} pcs
                 </div>
                 {defectCodes.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
@@ -299,7 +299,7 @@ export default function VendorSPKPage() {
                   </div>
                 )}
                 {(nextStepInfo.defect_detail ?? []).filter((d: any) => d.jumlah_cacat > 0).map((d: any, i: number) => (
-                  <div key={i} style={{ fontSize: 12, color: "#7F1D1D", marginTop: 2 }}>Size {d.size}: {d.jumlah_cacat} pcs — {d.alasan}</div>
+                  <div key={i} style={{ fontSize: 12, color: "#7F1D1D", marginTop: 2 }}>Size {d.size}: {d.jumlah_cacat} pcs  {d.alasan}</div>
                 ))}
               </div>
             )}
@@ -307,7 +307,7 @@ export default function VendorSPKPage() {
             {/* Step berikutnya (hasNext) */}
             {hasNext && (
               <div style={{ marginBottom: 16, padding: "14px 16px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#1E40AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>✈️ Diserahkan ke</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#1E40AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}> Diserahkan ke</div>
                 <div style={{ fontWeight: 900, fontSize: 18, color: "#0F172A" }}>{nextStepInfo.vendor_nama}</div>
                 <div style={{ fontSize: 14, color: "#3B82F6", marginTop: 2, fontWeight: 600 }}>{nextStepInfo.jenis_pekerjaan}</div>
                 <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 6 }}>Scan QR yang sama untuk mulai step berikutnya.</div>
@@ -318,7 +318,7 @@ export default function VendorSPKPage() {
 
             {isQcFail && nextStepInfo.status === "reject-permanen" && (
               <div style={{ padding: "14px 16px", background: "#FEF2F2", borderRadius: 12, color: "#991B1B", fontWeight: 700, textAlign: "center", marginBottom: 16 }}>
-                🚫 Sudah 2x gagal — Batch REJECT PERMANEN
+                 Sudah 2x gagal  Batch REJECT PERMANEN
               </div>
             )}
 
@@ -327,24 +327,24 @@ export default function VendorSPKPage() {
             {steps.map((s: any, i: number) => (
               <div key={i} style={{ display: "flex", gap: 12, marginBottom: i < steps.length - 1 ? 12 : 0, padding: "10px 12px", background: s.status === "selesai" ? "#F0FDF4" : "#FAFAFA", borderRadius: 10, border: `1px solid ${s.status === "selesai" ? "#BBF7D0" : "#F1F5F9"}` }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: s.status === "selesai" ? "#10B981" : s.status === "berjalan" ? "#3B82F6" : "#E2E8F0", color: s.status === "menunggu" ? "#94A3B8" : "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13, flexShrink: 0 }}>
-                  {s.status === "selesai" ? "✓" : i + 1}
+                  {s.status === "selesai" ? "" : i + 1}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{s.jenis_pekerjaan}</div>
                   <div style={{ fontSize: 12, color: "#64748B", marginTop: 1 }}>{s.vendor_nama}</div>
                   <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 11, color: "#94A3B8", flexWrap: "wrap" }}>
-                    {s.mulai_waktu && <span>🕐 {fmtDateTime(s.mulai_waktu)}</span>}
-                    {s.selesai_waktu && <span>✅ {fmtDateTime(s.selesai_waktu)}</span>}
+                    {s.mulai_waktu && <span> {fmtDateTime(s.mulai_waktu)}</span>}
+                    {s.selesai_waktu && <span> {fmtDateTime(s.selesai_waktu)}</span>}
                   </div>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6, height: "fit-content", alignSelf: "flex-start", background: s.status === "selesai" ? "#DCFCE7" : "#F1F5F9", color: s.status === "selesai" ? "#065F46" : "#94A3B8" }}>
-                  {s.status === "selesai" ? "✅" : "⏳"}
+                  {s.status === "selesai" ? "" : ""}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* ── BARCODE STRIP (dekoratif) ── */}
+          {/*  BARCODE STRIP (dekoratif)  */}
           <div style={{ background: "#0F172A", borderRadius: "0 0 24px 24px", padding: "14px 28px", display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ display: "flex", gap: 2, flex: 1 }}>
               {Array.from({ length: 40 }).map((_, i) => (
@@ -371,7 +371,7 @@ export default function VendorSPKPage() {
   }
 
 
-  // ─── BELUM ADA STEP AKTIF ───────────────────────────────────────────
+  //  BELUM ADA STEP AKTIF 
   if (!step) return (
     <div style={{ ...pageStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "white", borderRadius: 20, padding: 40, maxWidth: 480, width: "100%", textAlign: "center" }}>
@@ -382,7 +382,7 @@ export default function VendorSPKPage() {
     </div>
   );
 
-  // ─── HALAMAN UTAMA VENDOR ───────────────────────────────────────────
+  //  HALAMAN UTAMA VENDOR 
   return (
     <div style={pageStyle}>
       <div style={{ maxWidth: 500, margin: "0 auto" }}>
@@ -448,7 +448,7 @@ export default function VendorSPKPage() {
             
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
               <span style={{ fontWeight: 800, color: "#334155" }}>{info.batch.kode_batch}</span>
-              <span style={{ color: "#CBD5E1" }}>•</span>
+              <span style={{ color: "#CBD5E1" }}></span>
               <span style={{ color: "#64748B", fontWeight: 600 }}>{info.batch.jenis_kain}</span>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function VendorSPKPage() {
           </div>
         </div>
 
-        {/* ─── INFO SPK DETAIL (selalu tampil) ─── */}
+        {/*  INFO SPK DETAIL (selalu tampil)  */}
         {(() => {
           let sizes: any[] = info?.batch?.size_breakdown ?? [];
           let previousMissing = false;
@@ -531,7 +531,7 @@ export default function VendorSPKPage() {
                     <div style={{ background: previousMissing ? "#EF4444" : "#4F46E5", color: "white", padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 800, animation: "pulse 2s infinite", boxShadow: previousMissing ? "0 4px 12px rgba(239, 68, 68, 0.3)" : "0 4px 12px rgba(79, 70, 229, 0.3)" }}>
                       {previousMissing ? "Cek barang hilang" : "Buka cek ukuran"}
                     </div>
-                    <div style={{ fontSize: 13, color: previousMissing ? "#EF4444" : "#4F46E5", fontWeight: 800 }}>Lihat Detail →</div>
+                    <div style={{ fontSize: 13, color: previousMissing ? "#EF4444" : "#4F46E5", fontWeight: 800 }}>Lihat Detail </div>
                   </div>
                 </button>
               </div>
@@ -550,7 +550,7 @@ export default function VendorSPKPage() {
                   >
                     {/* Handle pill (iOS style) */}
                     <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", width: 40, height: 4, borderRadius: 2, background: "#CBD5E1" }}></div>
-                    <button onClick={() => setShowDetailPopup(false)} style={{ position: "absolute", top: 16, right: 16, background: "#F1F5F9", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B", transition: "0.2s" }}>✕</button>
+                    <button onClick={() => setShowDetailPopup(false)} style={{ position: "absolute", top: 16, right: 16, background: "#F1F5F9", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B", transition: "0.2s" }}></button>
                     
                     <div style={{ fontWeight: 800, fontSize: 18, color: "#1E293B", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                       <ClipboardList size={20} /> Detail SPK Batch
@@ -612,7 +612,7 @@ export default function VendorSPKPage() {
           );
         })()}
 
-        {/* ─── ACTION BUTTONS ─── */}
+        {/*  ACTION BUTTONS  */}
         {phase === "scan" && (() => {
           let sizes: any[] = info?.batch?.size_breakdown ?? [];
           if (info?.previousStep?.size_diterima) {
@@ -720,8 +720,8 @@ export default function VendorSPKPage() {
                   border: `1px solid ${isMatch ? "#86EFAC" : hasKurang ? "#FECACA" : "#FDE68A"}` }}>
                   <div style={{ fontSize: 14, fontWeight: 900, color: isMatch ? "#065F46" : hasKurang ? "#991B1B" : "#92400E", display: "flex", alignItems: "center", gap: 6 }}>
                     {isMatch ? <><CheckCircle2 size={16} /> Total sesuai! {totalDiterima} dari {totalExpected} pcs</> :
-                     hasKurang ? <><AlertTriangle size={16} /> Total kurang {totalSelisih} pcs — diterima {totalDiterima} dari {totalExpected}</> :
-                     <><AlertTriangle size={16} /> Total lebih {Math.abs(totalSelisih)} pcs — diterima {totalDiterima} dari {totalExpected}</>}
+                     hasKurang ? <><AlertTriangle size={16} /> Total kurang {totalSelisih} pcs  diterima {totalDiterima} dari {totalExpected}</> :
+                     <><AlertTriangle size={16} /> Total lebih {Math.abs(totalSelisih)} pcs  diterima {totalDiterima} dari {totalExpected}</>}
                   </div>
                   {hasKurang && <div style={{ fontSize: 12, color: "#B91C1C", marginTop: 4 }}>Selisih akan dicatat dalam laporan SPK.</div>}
                 </div>
@@ -739,13 +739,13 @@ export default function VendorSPKPage() {
                     setSizeCountForm([]);
                   }}
                   style={{ flex: 1, background: "#F1F5F9", color: "#64748B", border: "none", borderRadius: 14, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                  ← Batal (Periksa Ulang)
+                   Batal (Periksa Ulang)
                 </button>
                 <button
                   onClick={() => {
                     if (!allFilled) return alert("Isi jumlah diterima untuk semua size.");
                     const perSize = sizeCountForm.map(r => ({ size: r.size, jumlah_diterima: parseInt(r.jumlah_diterima) || 0, selisih: r.jumlah_expected - (parseInt(r.jumlah_diterima) || 0) }));
-                    // Langsung konfirmasi — warning selisih sudah tampil di UI
+                    // Langsung konfirmasi  warning selisih sudah tampil di UI
                     doAction("terima", { jumlah_diterima: totalDiterima, selisih_terima: totalSelisih, size_diterima: perSize });
                   }}
                   disabled={submitting || !allFilled}
@@ -763,7 +763,7 @@ export default function VendorSPKPage() {
             <div style={{ background: "#DCFCE7", borderRadius: 14, padding: 16, marginBottom: 14, border: "2px solid #86EFAC", display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ color: "#16A34A", display: "flex" }}><CheckCircle2 size={24} /></div>
               <div>
-                <div style={{ fontWeight: 800, color: "#065F46", fontSize: 16 }}>Barang Diterima — Sedang Dikerjakan</div>
+                <div style={{ fontWeight: 800, color: "#065F46", fontSize: 16 }}>Barang Diterima  Sedang Dikerjakan</div>
                 {step.terima_waktu && (
                   <div style={{ fontSize: 13, color: "#16A34A", marginTop: 2 }}>Terima: {fmtDateTime(step.terima_waktu)}</div>
                 )}
@@ -797,11 +797,11 @@ export default function VendorSPKPage() {
                 <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 18, textAlign: "center" }}>Hasil Pemeriksaan QC?</h2>
                 <button onClick={() => doAction("selesai")} disabled={submitting}
                   style={{ width: "100%", background: "#10B981", color: "white", border: "none", borderRadius: 14, padding: "20px", fontSize: 19, fontWeight: 800, cursor: "pointer", marginBottom: 12, boxShadow: "0 4px 12px rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <CheckCircle2 size={22} /> QC Lolos — Semua OK
+                  <CheckCircle2 size={22} /> QC Lolos  Semua OK
                 </button>
                 <button onClick={initDefectForm} disabled={submitting}
                   style={{ width: "100%", background: "#EF4444", color: "white", border: "none", borderRadius: 14, padding: "20px", fontSize: 19, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 12px rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <XCircle size={22} /> Ada Cacat — Isi Detail
+                  <XCircle size={22} /> Ada Cacat  Isi Detail
                 </button>
               </div>
 
@@ -840,7 +840,7 @@ export default function VendorSPKPage() {
                       />
                     </div>
 
-                    {/* Alasan — hanya tampil jika ada cacat */}
+                    {/* Alasan  hanya tampil jika ada cacat */}
                     {row.jumlah_cacat > 0 && (
                       <div>
                         <label style={{ fontSize: 13, fontWeight: 700, color: "#64748B", display: "block", marginBottom: 4 }}>
@@ -864,7 +864,7 @@ export default function VendorSPKPage() {
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#991B1B", marginBottom: 6 }}>Ringkasan Cacat:</div>
                     {defectForm.filter(d => d.jumlah_cacat > 0).map((d, i) => (
                       <div key={i} style={{ fontSize: 13, color: "#7F1D1D" }}>
-                        Size {d.size}: {d.jumlah_cacat} pcs — {d.alasan || "belum diisi"}
+                        Size {d.size}: {d.jumlah_cacat} pcs  {d.alasan || "belum diisi"}
                       </div>
                     ))}
                     <div style={{ fontWeight: 900, fontSize: 16, color: "#EF4444", marginTop: 8, paddingTop: 8, borderTop: "1px solid #FECACA" }}>
@@ -876,7 +876,7 @@ export default function VendorSPKPage() {
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setShowDefectForm(false)}
                     style={{ flex: 1, background: "#F1F5F9", color: "#64748B", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                    ← Kembali
+                     Kembali
                   </button>
                   <button onClick={submitDefect} disabled={submitting || !defectForm.some(d => d.jumlah_cacat > 0)}
                     style={{ flex: 2, background: submitting ? "#FCA5A5" : "#EF4444", color: "white", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 900, cursor: "pointer", boxShadow: "0 4px 12px rgba(239,68,68,0.3)", opacity: !defectForm.some(d => d.jumlah_cacat > 0) ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>

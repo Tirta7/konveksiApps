@@ -1,4 +1,4 @@
-export default function PlaceholderPage() {
+﻿export default function PlaceholderPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", overflow: "hidden" }}>
       <div style={{ padding: "24px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0 }}>

@@ -1,16 +1,32 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function GET() {
   const data = readData();
   
-  // Join dengan data tukang potong
+  // Join dengan data tukang potong & PO Produksi
   const pemotongan = (data.pemotongan_kain || []).map((p: any) => {
     const tp = (data.tukang_potong || []).find((t: any) => t.id === p.tukang_potong_id);
+    
+    // Ambil history PO berdasarkan pemotongan_id (snake_case)
+    const poList = (data.po_produksi || []).filter((po: any) => String(po.pemotongan_id) === String(p.id));
+    const distribusi = poList.map((po: any) => {
+      const vendor = (data.vendors || []).find((v: any) => String(v.id) === String(po.vendorId));
+      return {
+        noPo: po.noPo,
+        po_id: po.id,
+        vendor_nama: vendor ? vendor.nama : "Unknown",
+        tanggal: po.tanggalTerbit || po.tanggal,
+        jumlahTerbit: po.jumlahTerbit,
+        sizeBreakdown: po.sizeBreakdown
+      };
+    });
+
     return {
       ...p,
       tukang_potong_nama: tp ? tp.nama : "Unknown",
       tukang_potong_kode: tp ? tp.kode : "??",
+      distribusi
     };
   }).reverse();
 
@@ -34,6 +50,7 @@ export async function POST(req: Request) {
   const newPemotongan = {
     id: newId,
     tanggal,
+    target_selesai: body.target_selesai || null,
     nama_barang,
     meter_kain: Number(meter_kain) || 0,
     pemakaian_cm: Number(pemakaian_cm) || 0,

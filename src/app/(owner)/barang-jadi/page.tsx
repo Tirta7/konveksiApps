@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Package, Plus, ChevronRight, X, Layers, AlertTriangle } from "lucide-react";
@@ -91,10 +91,10 @@ export default function BarangJadiPage() {
         <div style={{ flex: 1, padding: "24px 32px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ flex: 1, background: "white", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
             {loading ? (
-              <div style={{ padding: 60, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>⏳ Memuat bundle...</div>
+              <div style={{ padding: 60, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat bundle...</div>
             ) : filtered.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
+                <div style={{ fontSize: 48, marginBottom: 16 }}></div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>Tidak Ada Bundle</div>
                 <div style={{ fontSize: 13, color: "#64748B" }}>Belum ada bundle yang sesuai pencarian.</div>
               </div>
@@ -191,7 +191,7 @@ export default function BarangJadiPage() {
               <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
                 {(!selected.size_breakdown || selected.size_breakdown.length === 0) ? (
                   <div style={{ textAlign: "center", padding: 40 }}>
-                    <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}></div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>Data Size Tidak Ditemukan</div>
                     <div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Bundle ini belum memiliki pembagian size atau belum selesai proses pemotongan.</div>
                     <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => router.push(`/laporan-spk/${selected.id}`)}>Buka Laporan Lengkap</button>
@@ -199,7 +199,7 @@ export default function BarangJadiPage() {
                 ) : (
                   <>
                     <button className="btn btn-primary" style={{ width: "100%", marginBottom: 24, padding: "10px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }} onClick={() => router.push(`/laporan-spk/${selected.id}`)}>
-                      📄 Lihat Laporan SPK Lengkap
+                       Lihat Laporan SPK Lengkap
                     </button>
                     {selected.size_breakdown.map((sz: any, si: number) => (
                       <div key={si} style={{ marginBottom: 32 }}>

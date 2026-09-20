@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 import crypto from "crypto";
 import QRCode from "qrcode";
@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
     vendorId: Number(vendorId),
     status: "Open",
     catatan: catatan || "",
+    target_selesai: body.target_selesai || null,
     tanggalTerbit: now
   };
 

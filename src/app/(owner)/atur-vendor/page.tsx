@@ -1,11 +1,11 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 "use client";
 import React, { useEffect, useState } from "react";
 import { Plus, X, Pencil, Settings2, Globe, Banknote, ExternalLink, Phone, Tag, ChevronRight, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
-const emptyVendor = { nama: "", tipe: "", jenis_default: "", kontak: "", wajib_hitung_ulang: false, hargaPerPcs: 0, tarifPotongan: {} };
-const emptyType = { nama: "", slug: "", emoji: "📦", perlu_portal: false, portal_path: "", perlu_gaji: false };
+const emptyVendor = { nama: "", tipe: "", jenis_default: "", kontak: "", wajib_hitung_ulang: false, hargaPerPcs: 0, tarifPotongan: {}, min_progress_pct: 70 };
+const emptyType = { nama: "", slug: "", emoji: "", perlu_portal: false, portal_path: "", perlu_gaji: false, perlu_throttle: false };
 
 // Gradient per tipe
 const TIPE_STYLE: Record<string, { grad: string; light: string; border: string; color: string }> = {
@@ -64,7 +64,7 @@ export default function AturVendorPage() {
   const getTipeInfo = (slug) => vendorTypes.find(t => t.slug === slug);
 
   const openAddVendor = () => { setEditVendorId(null); setVendorForm({ ...emptyVendor, tipe: vendorTypes[0]?.slug || "" }); setShowVendorForm(true); };
-  const openEditVendor = (v) => { setEditVendorId(v.id); setVendorForm({ nama: v.nama, tipe: v.tipe || "", jenis_default: v.jenis_default || "", kontak: v.kontak || "", wajib_hitung_ulang: !!v.wajib_hitung_ulang, hargaPerPcs: v.hargaPerPcs || 0, tarifPotongan: v.tarifPotongan || {} }); setShowVendorForm(true); };
+  const openEditVendor = (v) => { setEditVendorId(v.id); setVendorForm({ nama: v.nama, tipe: v.tipe || "", jenis_default: v.jenis_default || "", kontak: v.kontak || "", wajib_hitung_ulang: !!v.wajib_hitung_ulang, hargaPerPcs: v.hargaPerPcs || 0, tarifPotongan: v.tarifPotongan || {}, min_progress_pct: v.min_progress_pct ?? 70 }); setShowVendorForm(true); };
   const handleSaveVendor = async (e) => {
     e.preventDefault(); if (!vendorForm.nama) return;
     setSavingVendor(true);
@@ -206,11 +206,11 @@ export default function AturVendorPage() {
           {/* ===== TAB VENDOR ===== */}
           {activeTab === "vendor" && (
             <>
-              {loading ? <div style={{ textAlign: "center", padding: 48, color: "#64748B" }}>⏳ Memuat vendor...</div> : (
+              {loading ? <div style={{ textAlign: "center", padding: 48, color: "#64748B" }}> Memuat vendor...</div> : (
 
                 Object.keys(groupedByTipe).length === 0 ? (
                   <div style={{ background: "white", borderRadius: 16, padding: 60, textAlign: "center", border: "1px solid #E2E8F0" }}>
-                    <div style={{ fontSize: 48, marginBottom: 12 }}>🏭</div>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}></div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "#0F172A" }}>Belum ada vendor aktif</div>
                     <div style={{ fontSize: 13, color: "#64748B", marginTop: 6 }}>Klik "Tambah Vendor" untuk memulai.</div>
                   </div>
@@ -222,7 +222,7 @@ export default function AturVendorPage() {
                       <div key={slug} className="av-section">
                         <div className="av-section-hdr">
                           <div className="av-section-pill" style={{ background: st.light, border: `1.5px solid ${st.border}` }}>
-                            <span style={{ fontSize: 20 }}>{ti?.emoji || "📦"}</span>
+                            <span style={{ fontSize: 20 }}>{ti?.emoji || ""}</span>
                             <div>
                               <div style={{ fontWeight: 900, fontSize: 14, color: st.color }}>Vendor {ti?.nama || slug}</div>
                               <div style={{ fontSize: 11, color: "#64748B" }}>{vlist.length} vendor aktif</div>
@@ -281,16 +281,16 @@ export default function AturVendorPage() {
                                   {/* Badges */}
                                   <div className="vc2-badges">
                                     <span className="vc2-badge" style={{ background: v.wajib_hitung_ulang ? "#FEF2F2" : "#F0FDF4", color: v.wajib_hitung_ulang ? "#DC2626" : "#16A34A", borderColor: v.wajib_hitung_ulang ? "#FECACA" : "#BBF7D0" }}>
-                                      {v.wajib_hitung_ulang ? "⚖️ Wajib Hitung" : "⚡ Cepat Bypass"}
+                                      {v.wajib_hitung_ulang ? " Wajib Hitung" : " Cepat Bypass"}
                                     </span>
                                     {ti?.perlu_gaji && (
                                       <span className="vc2-badge" style={{ background: "#EFF6FF", color: "#1D4ED8", borderColor: "#BFDBFE" }}>
-                                        💰 Pencatatan Gaji
+                                         Pencatatan Gaji
                                       </span>
                                     )}
                                     {ti?.perlu_portal && (
                                       <span className="vc2-badge" style={{ background: "#F5F3FF", color: "#7C3AED", borderColor: "#DDD6FE" }}>
-                                        🌐 Punya Portal
+                                         Punya Portal
                                       </span>
                                     )}
                                   </div>
@@ -312,7 +312,7 @@ export default function AturVendorPage() {
                                   {/* Footer actions */}
                                   <div className="vc2-footer">
                                     {v.kontak
-                                      ? <a href={`https://wa.me/62${v.kontak.replace(/^0/, "")}`} target="_blank" rel="noreferrer" className="vc2-wa">💬 Chat WA</a>
+                                      ? <a href={`https://wa.me/62${v.kontak.replace(/^0/, "")}`} target="_blank" rel="noreferrer" className="vc2-wa"> Chat WA</a>
                                       : <div className="vc2-nowa">Tanpa No HP</div>
                                     }
                                     {portalHref && (
@@ -383,13 +383,13 @@ export default function AturVendorPage() {
                         <div className="tc-prop">
                           <div className="tc-prop-lbl"><Globe size={13} /> Portal Akses</div>
                           <div className="tc-prop-val" style={{ color: t.perlu_portal ? "#2563EB" : "#94A3B8" }}>
-                            {t.perlu_portal ? `✓ ${t.portal_path}/[id]` : "Tidak ada"}
+                            {t.perlu_portal ? ` ${t.portal_path}/[id]` : "Tidak ada"}
                           </div>
                         </div>
                         <div className="tc-prop">
                           <div className="tc-prop-lbl"><Banknote size={13} /> Pencatatan Gaji</div>
                           <div className="tc-prop-val" style={{ color: t.perlu_gaji ? "#16A34A" : "#94A3B8" }}>
-                            {t.perlu_gaji ? "✓ Aktif" : "Tidak ada"}
+                            {t.perlu_gaji ? " Aktif" : "Tidak ada"}
                           </div>
                         </div>
                         <div className="tc-prop">
@@ -416,7 +416,7 @@ export default function AturVendorPage() {
             <div style={{ padding: "20px 26px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {vendorTypes.find(t => t.slug === vendorForm.tipe)?.emoji || "🏭"}
+                  {vendorTypes.find(t => t.slug === vendorForm.tipe)?.emoji || ""}
                 </div>
                 <h2 style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0F172A" }}>{editVendorId ? "Edit Vendor" : "Tambah Vendor Baru"}</h2>
               </div>
@@ -486,6 +486,45 @@ export default function AturVendorPage() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* === Batas Minimum Progres untuk Request Baru (CMT only) === */}
+              {getTipeInfo(vendorForm.tipe)?.perlu_throttle && (
+                <div style={{ marginBottom: 22, padding: "14px 16px", background: "linear-gradient(135deg,#FFF7ED,#FFFBEB)", border: "1.5px solid #FCD34D", borderRadius: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 13, color: "#92400E", display: "flex", alignItems: "center", gap: 6 }}> Batas Minimum Progres untuk Request</div>
+                      <div style={{ fontSize: 11, color: "#B45309", marginTop: 3 }}>{getTipeInfo(vendorForm.tipe)?.nama || "Vendor"} harus mencapai persentase ini sebelum bisa request kerjaan baru</div>
+                    </div>
+                    <div style={{ background: "#F59E0B", color: "white", fontWeight: 900, fontSize: 18, padding: "4px 14px", borderRadius: 10, minWidth: 60, textAlign: "center" }}>
+                      {vendorForm.min_progress_pct ?? 70}%
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={vendorForm.min_progress_pct ?? 70}
+                    onChange={e => setVendorForm(f => ({ ...f, min_progress_pct: Number(e.target.value) }))}
+                    style={{ width: "100%", accentColor: "#F59E0B" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#B45309", fontWeight: 700, marginTop: 4 }}>
+                    <span>0% (Bebas Request)</span>
+                    <span>50% (Moderat)</span>
+                    <span>100% (Ketat)</span>
+                  </div>
+                  <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(245,158,11,0.1)", borderRadius: 8, fontSize: 11, color: "#92400E" }}>
+                    {(vendorForm.min_progress_pct ?? 70) === 0
+                      ? ` ${getTipeInfo(vendorForm.tipe)?.nama || "Vendor"} bebas request kapan saja tanpa syarat.`
+                      : (vendorForm.min_progress_pct ?? 70) < 50
+                      ? ` Ringan: ${getTipeInfo(vendorForm.tipe)?.nama || "Vendor"} baru bisa request setelah ${vendorForm.min_progress_pct}% selesai di-ACC Admin.`
+                      : (vendorForm.min_progress_pct ?? 70) < 80
+                      ? ` Sedang: ${getTipeInfo(vendorForm.tipe)?.nama || "Vendor"} baru bisa request setelah ${vendorForm.min_progress_pct}% selesai di-ACC Admin.`
+                      : ` Ketat: ${getTipeInfo(vendorForm.tipe)?.nama || "Vendor"} baru bisa request setelah ${vendorForm.min_progress_pct}% selesai di-ACC Admin.`
+                    }
                   </div>
                 </div>
               )}
@@ -561,6 +600,16 @@ export default function AturVendorPage() {
                     <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Apakah perlu input upah/gaji per pcs?</div>
                   </div>
                   <Toggle value={tipeForm.perlu_gaji} onChange={() => setTipeForm(f => ({ ...f, perlu_gaji: !f.perlu_gaji }))} colorOn="#16A34A" />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24, padding: "14px", background: "#F8FAFC", borderRadius: 12, border: "1px solid #E2E8F0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}><Settings2 size={14} /> Gunakan Throttle (Batas Request)?</div>
+                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Vendor wajib menyelesaikan persentase progres sebelum menarik kerjaan baru.</div>
+                  </div>
+                  <Toggle value={tipeForm.perlu_throttle || false} onChange={() => setTipeForm(f => ({ ...f, perlu_throttle: !f.perlu_throttle }))} colorOn="#F59E0B" />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>

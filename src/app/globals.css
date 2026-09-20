@@ -88,7 +88,16 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   flex-direction: column;
   z-index: 100;
   overflow-y: auto;
+  overflow-x: hidden;
   transition: width 0.3s ease;
+  /* Hide scrollbar — Firefox */
+  scrollbar-width: none;
+  /* Hide scrollbar — IE/Edge */
+  -ms-overflow-style: none;
+}
+/* Hide scrollbar — Chrome/Safari/Opera */
+.app-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .app-content {
@@ -98,8 +107,11 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   padding: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   transition: margin-left 0.3s ease;
+  width: calc(100vw - var(--sidebar-width));
+  box-sizing: border-box;
 }
 
 /* ─── Sidebar Collapsed State ────────────────────────────────────────── */
@@ -108,6 +120,7 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
 }
 .app-layout.sidebar-collapsed .app-content {
   margin-left: 80px;
+  width: calc(100vw - 80px);
 }
 .app-layout.sidebar-collapsed .sidebar-logo-title,
 .app-layout.sidebar-collapsed .sidebar-logo-sub,

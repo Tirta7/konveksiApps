@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export async function GET(req: NextRequest) {

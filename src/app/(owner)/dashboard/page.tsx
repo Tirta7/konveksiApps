@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -7,7 +7,7 @@ function fmtWaktu(d: Date) {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 function fmtDate(str?: string) {
-  if (!str) return "–";
+  if (!str) return "";
   return new Date(str).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -105,7 +105,7 @@ export default function DashboardPage() {
 
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "20px 28px", gap: 20 }}>
 
-          {/* ── STATS ROW ── */}
+          {/*  STATS ROW  */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, flexShrink: 0 }}>
             {[
               { fiIcon: "fi-sr-document", bg: "#EFF6FF", color: "#1D4ED8", label: "PO Aktif", val: data?.poAktif ?? 0 },
@@ -126,7 +126,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* ── MAIN TWO-COLUMN ── */}
+          {/*  MAIN TWO-COLUMN  */}
           <div style={{ display: "flex", gap: 20, flex: 1, overflow: "hidden" }}>
 
             {/* LEFT: PO Progress */}
@@ -173,10 +173,10 @@ export default function DashboardPage() {
                         <div style={{ position: "absolute", left: `${po.pctDisetujui}%`, top: 0, height: "100%", width: `${Math.min(po.pctCMT - po.pctDisetujui, 100)}%`, background: "#F59E0B", borderRadius: 3 }} />
                       </div>
                       <div style={{ display: "flex", gap: 10, marginTop: 5, fontSize: 10, color: "#94A3B8" }}>
-                        {po.totalDiGudang > 0 && <span style={{ color: "#10B981", fontWeight: 700 }}>✓ {po.totalDiGudang} gudang</span>}
-                        {po.totalDisetujui > 0 && <span style={{ color: "#3B82F6", fontWeight: 700 }}>✓ {po.totalDisetujui} ACC</span>}
-                        {po.totalDilaporkan > 0 && <span style={{ color: "#F59E0B", fontWeight: 700 }}>⏳ {po.totalDilaporkan} laporan</span>}
-                        {po.totalWashing > 0 && <span style={{ color: "#06B6D4", fontWeight: 700 }}>🫧 {po.totalWashingDone}/{po.totalWashing} washing</span>}
+                        {po.totalDiGudang > 0 && <span style={{ color: "#10B981", fontWeight: 700 }}> {po.totalDiGudang} gudang</span>}
+                        {po.totalDisetujui > 0 && <span style={{ color: "#3B82F6", fontWeight: 700 }}> {po.totalDisetujui} ACC</span>}
+                        {po.totalDilaporkan > 0 && <span style={{ color: "#F59E0B", fontWeight: 700 }}> {po.totalDilaporkan} laporan</span>}
+                        {po.totalWashing > 0 && <span style={{ color: "#06B6D4", fontWeight: 700 }}> {po.totalWashingDone}/{po.totalWashing} washing</span>}
                         <span style={{ marginLeft: "auto" }}>{po.pctGudang}% selesai</span>
                       </div>
                     </div>
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                             <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", marginBottom: 2 }}>{v.nama}</div>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, background: tc.bg, color: tc.color }}>{v.tipe}</span>
-                              <span style={{ fontSize: 11, color: "#94A3B8" }}>{v.jenis_pekerjaan || "–"}</span>
+                              <span style={{ fontSize: 11, color: "#94A3B8" }}>{v.jenis_pekerjaan || ""}</span>
                             </div>
                           </div>
                           <div style={{ textAlign: "right" }}>

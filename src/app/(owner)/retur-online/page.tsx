@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { UploadCloud, CheckCircle, Search, XCircle, FileText, Download, ChevronRight, User, MapPin, Truck, CreditCard, BarChart2, Table as TableIcon } from "lucide-react";
@@ -276,7 +276,7 @@ export default function ReturOnlinePage() {
             <div style={{ flex: 1, background: "white", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
             
             {loading ? (
-              <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>⏳ Memuat data...</div>
+              <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}> Memuat data...</div>
             ) : viewMode === "summary" ? (
               <div style={{ padding: "32px", overflow: "auto", flex: 1, background: "#F8FAFC" }}>
                 <div style={{ marginBottom: 24 }}>
@@ -370,7 +370,7 @@ export default function ReturOnlinePage() {
               </div>
             ) : filtered.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
+                <div style={{ fontSize: 40, marginBottom: 12 }}></div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>Belum Ada Data Retur</div>
                 <div style={{ fontSize: 13 }}>Silakan upload file CSV laporan pesanan dari TikTok Shop.</div>
               </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { Search, Printer, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
@@ -80,10 +80,10 @@ export default function DaftarSPKPage() {
         {/* Table */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {loading ? (
-            <div className="empty-state">⏳ Memuat data...</div>
+            <div className="empty-state"> Memuat data...</div>
           ) : filtered.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
+              <div style={{ fontSize: 48, marginBottom: 16 }}></div>
               <h3 style={{ margin: 0, color: "var(--text-primary)" }}>Belum ada PO</h3>
               <p style={{ marginTop: 8 }}>PO yang diterbitkan akan tampil di sini.</p>
             </div>
@@ -140,21 +140,21 @@ export default function DaftarSPKPage() {
                               <div className="badge info"><Clock size={12} /> Proses</div>
                               {(po.totalDilaporkan || 0) > 0 && (
                                 <div style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: "#FEF3C7", color: "#92400E" }}>
-                                  📋 {po.totalDilaporkan} dilaporkan
+                                   {po.totalDilaporkan} dilaporkan
                                 </div>
                               )}
                               {(po.totalDisetujui || 0) > 0 && (
                                 <div style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: "#DCFCE7", color: "#166534" }}>
-                                  ✅ {po.totalDisetujui} disetujui
+                                   {po.totalDisetujui} disetujui
                                 </div>
                               )}
                               {(po.washingKirim || 0) > 0 && (
                                 <div style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, background: (po.washingACC || 0) > 0 ? "#CFFAFE" : "#E0F2FE", color: (po.washingACC || 0) > 0 ? "#0E7490" : "#0369A1" }}>
-                                  🫧 {po.washingACC > 0 ? `${po.washingACC} washing ✓` : `${po.washingKirim} di washing`}
+                                   {po.washingACC > 0 ? `${po.washingACC} washing ` : `${po.washingKirim} di washing`}
                                 </div>
                               )}
                             </div>
-                            {/* Multi-stage progress bar: CMT → Washing */}
+                            {/* Multi-stage progress bar: CMT  Washing */}
                             <div style={{ width: "100%", background: "#E2E8F0", height: 8, borderRadius: 4, overflow: "hidden", position: "relative" }}>
                               {/* Layer 1: washing ACC (cyan) */}
                               <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(po.pctWashingACC || 0, 100)}%`, background: "#06B6D4", borderRadius: 4 }} />

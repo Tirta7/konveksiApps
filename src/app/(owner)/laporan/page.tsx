@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { BarChart2, TrendingUp, Store, ShoppingBag, UploadCloud, DollarSign, Wallet, FileX, CreditCard, ChevronRight, Calculator, PieChart } from "lucide-react";
@@ -270,7 +270,7 @@ export default function LaporanPage() {
                     </thead>
                     <tbody>
                       {loading ? (
-                        <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>⏳ Memuat data rekonsiliasi...</td></tr>
+                        <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat data rekonsiliasi...</td></tr>
                       ) : unifiedOrders.length === 0 ? (
                         <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>Belum ada data penjualan atau settlement.</td></tr>
                       ) : (
@@ -351,10 +351,10 @@ export default function LaporanPage() {
                   </div>
                   <div style={{ padding: 24 }}>
                     {loading ? (
-                      <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontWeight: 600 }}>⏳ Memuat grafik...</div>
+                      <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat grafik...</div>
                     ) : data.length === 0 ? (
                       <div style={{ height: 320, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#94A3B8" }}>
-                        <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+                        <div style={{ fontSize: 48, marginBottom: 16 }}></div>
                         <div style={{ fontWeight: 800, color: "#0F172A" }}>Belum ada data penjualan</div>
                         <div style={{ fontSize: 13, marginTop: 4 }}>Data akan muncul di sini setelah ada PO / retail</div>
                       </div>
@@ -385,7 +385,7 @@ export default function LaporanPage() {
                   </div>
                   <div style={{ flex: 1, overflowY: "auto" }}>
                     {loading ? (
-                      <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>⏳ Memuat peringkat...</div>
+                      <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat peringkat...</div>
                     ) : data.length === 0 ? (
                       <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>Belum ada data.</div>
                     ) : (
@@ -403,7 +403,7 @@ export default function LaporanPage() {
                           {data.map((d, i) => (
                             <tr key={d.kategori} className="table-row-hover" style={{ background: i === 0 ? "#FFFBEB" : "transparent", borderBottom: "1px solid #F1F5F9" }}>
                               <td style={{ padding: "16px 20px", fontWeight: 900, fontSize: 18, color: i === 0 ? "#D97706" : i === 1 ? "#94A3B8" : i === 2 ? "#B45309" : "#CBD5E1" }}>
-                                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                                {i === 0 ? "" : i === 1 ? "" : i === 2 ? "" : `#${i + 1}`}
                               </td>
                               <td style={{ padding: "16px 20px", fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{d.kategori}</td>
                               <td style={{ padding: "16px 20px", fontWeight: 700, color: "#3B82F6", fontSize: 13 }}>{d.total_po ?? 0}</td>

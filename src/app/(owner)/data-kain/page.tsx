@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState, useRef } from "react";
 import { Plus, Edit2, Trash2, Save, X, ShoppingCart, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -235,26 +235,74 @@ export default function DataKainPage() {
 
       {/* MODAL LIHAT DETAIL ROLL */}
       {viewRolls && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ background: "white", width: 600, borderRadius: 16, overflow: "hidden", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
-            <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC" }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: 0 }}>
-                Rincian Roll: {viewRolls.nama_kain} ({viewRolls.warna})
-              </h2>
-              <button onClick={() => setViewRolls(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
-            </div>
-            <div style={{ padding: 24, maxHeight: "60vh", overflowY: "auto" }}>
-              {(!viewRolls.rolls || viewRolls.rolls.length === 0) ? (
-                <div style={{ textAlign: "center", color: "#64748B", padding: 20 }}>Tidak ada rincian roll yang tersedia.</div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 12 }}>
-                  {viewRolls.rolls.map((r: any, i: number) => (
-                    <div key={i} style={{ padding: "12px 8px", background: "#F1F5F9", borderRadius: 8, textAlign: "center", border: "1px solid #E2E8F0" }}>
-                      <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700, marginBottom: 4 }}>ROLL {i+1}</div>
-                      <div style={{ fontSize: 16, fontWeight: 900, color: "#0F172A" }}>{r.meter} <span style={{ fontSize: 12, fontWeight: 500 }}>m</span></div>
-                    </div>
-                  ))}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 640, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(135deg, #1E293B, #0F172A)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ShoppingCart size={20} color="#38BDF8" />
                 </div>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, color: "white", margin: 0 }}>Rincian Roll</h2>
+                  <div style={{ fontSize: 13, color: "#94A3B8", marginTop: 2 }}>{viewRolls.nama_kain} ({viewRolls.warna})</div>
+                </div>
+              </div>
+              <button onClick={() => setViewRolls(null)} style={{ background: "rgba(255,255,255,0.1)", border: "none", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "white", transition: "background 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "rgba(255,255,255,0.2)"} onMouseOut={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}>
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div style={{ padding: 24, overflowY: "auto", background: "#F8FAFC" }}>
+              {(!viewRolls.rolls || viewRolls.rolls.length === 0) ? (
+                <div style={{ textAlign: "center", color: "#64748B", padding: "40px 20px" }}>
+                  <ShoppingCart size={32} color="#CBD5E1" style={{ margin: "0 auto 12px" }} />
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>Tidak ada rincian roll</div>
+                  <div style={{ fontSize: 13, marginTop: 4 }}>Data roll tidak tersedia untuk item ini.</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, background: "white", padding: "12px 16px", borderRadius: 12, border: "1px solid #E2E8F0" }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{ fontSize: 13, color: "#64748B", fontWeight: 600 }}>Total Roll:</span>
+                      <span style={{ fontSize: 15, fontWeight: 900, color: "#0F172A", background: "#F1F5F9", padding: "4px 10px", borderRadius: 8 }}>{viewRolls.rolls.length}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{ fontSize: 13, color: "#64748B", fontWeight: 600 }}>Total Meter:</span>
+                      <span style={{ fontSize: 15, fontWeight: 900, color: "#059669", background: "#D1FAE5", padding: "4px 10px", borderRadius: 8 }}>
+                        {viewRolls.rolls.reduce((sum: number, r: any) => sum + Number(typeof r === 'object' ? (r.meter || 0) : (r || 0)), 0)} <span style={{ fontSize: 12, color: "#047857" }}>m</span>
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 12 }}>
+                    {viewRolls.rolls.map((r: any, i: number) => {
+                      const meter = typeof r === 'object' ? (r.meter || 0) : (r || 0);
+                      return (
+                        <div key={i} style={{ 
+                          background: "white", 
+                          borderRadius: 12, 
+                          textAlign: "center", 
+                          border: "1px solid #E2E8F0",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+                          overflow: "hidden",
+                          transition: "transform 0.2s, box-shadow 0.2s"
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.06)"; }}
+                        onMouseOut={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.02)"; }}
+                        >
+                          <div style={{ background: "#F1F5F9", padding: "6px 0", fontSize: 11, color: "#64748B", fontWeight: 800, borderBottom: "1px solid #E2E8F0", letterSpacing: 0.5 }}>
+                            ROLL {i+1}
+                          </div>
+                          <div style={{ padding: "16px 10px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                            <div style={{ fontSize: 20, fontWeight: 900, color: "#0F172A", lineHeight: 1 }}>
+                              {meter} <span style={{ fontSize: 12, fontWeight: 600, color: "#94A3B8", marginLeft: 2 }}>m</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           </div>

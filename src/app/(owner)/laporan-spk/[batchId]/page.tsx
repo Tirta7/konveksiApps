@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Printer, Activity, Package, Scissors, CheckCircle, AlertTriangle } from "lucide-react";
@@ -13,10 +13,10 @@ function fmtDT(str?: string) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string; label: string }> = {
-    selesai: { bg: "#DCFCE7", color: "#065F46", label: "✅ Selesai" },
-    berjalan: { bg: "#DBEAFE", color: "#1E40AF", label: "⚙️ Berjalan" },
-    menunggu: { bg: "#F1F5F9", color: "#64748B", label: "⏳ Menunggu" },
-    reject:   { bg: "#FEE2E2", color: "#991B1B", label: "❌ Reject" },
+    selesai: { bg: "#DCFCE7", color: "#065F46", label: " Selesai" },
+    berjalan: { bg: "#DBEAFE", color: "#1E40AF", label: " Berjalan" },
+    menunggu: { bg: "#F1F5F9", color: "#64748B", label: " Menunggu" },
+    reject:   { bg: "#FEE2E2", color: "#991B1B", label: " Reject" },
   };
   const s = map[status] ?? { bg: "#F1F5F9", color: "#64748B", label: status };
   return (
@@ -43,13 +43,13 @@ export default function LaporanSPKDetailPage() {
 
   if (loading) return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", alignItems: "center", justifyContent: "center", color: "#64748B" }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+      <div style={{ fontSize: 48, marginBottom: 16 }}></div>
       <div style={{ fontSize: 16, fontWeight: 700 }}>Memuat Laporan Lengkap...</div>
     </div>
   );
   if (!data || data.error) return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", alignItems: "center", justifyContent: "center", color: "#EF4444" }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+      <div style={{ fontSize: 48, marginBottom: 16 }}></div>
       <div style={{ fontSize: 16, fontWeight: 700 }}>{data?.error ?? "Gagal memuat laporan"}</div>
       <button onClick={() => router.back()} style={{ marginTop: 20, padding: "10px 20px", background: "#F1F5F9", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>Kembali</button>
     </div>
@@ -147,7 +147,7 @@ export default function LaporanSPKDetailPage() {
                             <td style={{ padding: "16px 24px", fontWeight: 800, fontSize: 14 }}>Size {s.size}</td>
                             <td style={{ padding: "16px 24px", textAlign: "center", fontWeight: 700, color: "#334155" }}>{s.jumlah} <span style={{fontSize: 11, color: "#94A3B8"}}>pcs</span></td>
                             <td style={{ padding: "16px 24px", textAlign: "center", color: (s.cacat ?? 0) > 0 ? "#EF4444" : "#94A3B8", fontWeight: (s.cacat ?? 0) > 0 ? 800 : 400 }}>
-                              {(s.cacat ?? 0) > 0 ? `${s.cacat} pcs` : "—"}
+                              {(s.cacat ?? 0) > 0 ? `${s.cacat} pcs` : ""}
                             </td>
                             <td style={{ padding: "16px 24px", textAlign: "center", color: "#10B981", fontWeight: 800, fontSize: 14 }}>{final} <span style={{fontSize: 11, color: "#94A3B8"}}>pcs</span></td>
                             <td style={{ padding: "16px 24px", textAlign: "center" }}>
@@ -159,7 +159,7 @@ export default function LaporanSPKDetailPage() {
                       <tr style={{ background: "#F8FAFC", borderTop: "2px solid #E2E8F0" }}>
                         <td style={{ padding: "16px 24px", fontWeight: 900, fontSize: 14, color: "#0F172A" }}>TOTAL</td>
                         <td style={{ padding: "16px 24px", textAlign: "center", fontWeight: 900, color: "#0F172A", fontSize: 14 }}>{rekap.jumlah_awal} pcs</td>
-                        <td style={{ padding: "16px 24px", textAlign: "center", color: rekap.total_cacat > 0 ? "#EF4444" : "#94A3B8", fontWeight: 900, fontSize: 14 }}>{rekap.total_cacat > 0 ? `${rekap.total_cacat} pcs` : "—"}</td>
+                        <td style={{ padding: "16px 24px", textAlign: "center", color: rekap.total_cacat > 0 ? "#EF4444" : "#94A3B8", fontWeight: 900, fontSize: 14 }}>{rekap.total_cacat > 0 ? `${rekap.total_cacat} pcs` : ""}</td>
                         <td style={{ padding: "16px 24px", textAlign: "center", color: "#10B981", fontWeight: 900, fontSize: 14 }}>{rekap.jumlah_final} pcs</td>
                         <td style={{ padding: "16px 24px", textAlign: "center" }}>
                           <span style={{ background: "#DCFCE7", color: "#065F46", borderRadius: 6, padding: "4px 10px", fontWeight: 900, fontSize: 12 }}>
@@ -193,7 +193,7 @@ export default function LaporanSPKDetailPage() {
                             {s.jenis_pekerjaan}
                             {hasCacat && <span style={{ background: "#FEE2E2", color: "#991B1B", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800 }}><AlertTriangle size={12} style={{display: "inline", verticalAlign: "middle"}}/> {s.total_cacat} Cacat</span>}
                           </div>
-                          <div style={{ fontSize: 14, color: "#475569", fontWeight: 600, marginTop: 4 }}>🏢 {s.vendor_nama}</div>
+                          <div style={{ fontSize: 14, color: "#475569", fontWeight: 600, marginTop: 4 }}> {s.vendor_nama}</div>
                         </div>
                         <StatusBadge status={s.status} />
                       </div>
@@ -209,7 +209,7 @@ export default function LaporanSPKDetailPage() {
                           background: (s.selisih_terima ?? 0) === 0 ? "#F0FDF4" : (s.selisih_terima ?? 0) > 0 ? "#FEF2F2" : "#FFFBEB",
                           border: `1px solid ${(s.selisih_terima ?? 0) === 0 ? "#86EFAC" : (s.selisih_terima ?? 0) > 0 ? "#FECACA" : "#FDE68A"}` }}>
                           <div style={{ display: "flex", gap: 20, fontSize: 13, flexWrap: "wrap", alignItems: "center" }}>
-                            <span>📦 <strong>Diterima: {s.jumlah_diterima} pcs</strong> <span style={{color:"#64748B", fontSize:12}}>(Sesuai SPK: {s.jumlah_barang} pcs)</span></span>
+                            <span> <strong>Diterima: {s.jumlah_diterima} pcs</strong> <span style={{color:"#64748B", fontSize:12}}>(Sesuai SPK: {s.jumlah_barang} pcs)</span></span>
                             {(s.selisih_terima ?? 0) === 0 && <span style={{ color: "#065F46", fontWeight: 800, display:"flex", alignItems:"center", gap:6 }}><CheckCircle size={14}/> Valid (Sesuai)</span>}
                             {(s.selisih_terima ?? 0) > 0 && <span style={{ color: "#991B1B", fontWeight: 800, display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={14}/> Kurang {s.selisih_terima} pcs saat transfer</span>}
                             {(s.selisih_terima ?? 0) < 0 && <span style={{ color: "#92400E", fontWeight: 800, display:"flex", alignItems:"center", gap:6 }}><AlertTriangle size={14}/> Lebih {Math.abs(s.selisih_terima)} pcs dari SPK</span>}
@@ -225,7 +225,7 @@ export default function LaporanSPKDetailPage() {
                               <div key={j} style={{ fontSize: 13, color: "#7F1D1D", display: "flex", alignItems: "center", gap: 8 }}>
                                 <span style={{width: 6, height: 6, borderRadius: "50%", background: "#EF4444"}} />
                                 <strong>Size {d.size}: {d.jumlah_cacat} pcs</strong>
-                                <span style={{color: "#475569"}}>— {d.alasan}</span>
+                                <span style={{color: "#475569"}}> {d.alasan}</span>
                                 {d.waktu && <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto" }}>{fmtDT(d.waktu)}</span>}
                               </div>
                             ))}

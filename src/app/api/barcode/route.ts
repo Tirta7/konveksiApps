@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export async function GET() {
@@ -37,7 +37,7 @@ export async function GET() {
       // Sort by id so assignment is deterministic
       const sorted = [...items].sort((a, b) => a.id - b.id);
       let i = 0;
-      // First `approved` barcodes → gudang (or better if already advanced)
+      // First `approved` barcodes  gudang (or better if already advanced)
       for (; i < sorted.length && i < approved; i++) {
         const stored = sorted[i].status;
         if (["siap_jual","washing","benang","finishing"].includes(stored)) {
@@ -46,7 +46,7 @@ export async function GET() {
           effectiveStatus[sorted[i].id] = "gudang";
         }
       }
-      // Next `pending` barcodes → cmt
+      // Next `pending` barcodes  cmt
       for (; i < sorted.length && i < approved + pending; i++) {
         const stored = sorted[i].status;
         if (["siap_jual","washing","benang","finishing","gudang"].includes(stored)) {
@@ -55,7 +55,7 @@ export async function GET() {
           effectiveStatus[sorted[i].id] = "cmt";
         }
       }
-      // Rest → use stored status
+      // Rest  use stored status
       for (; i < sorted.length; i++) {
         effectiveStatus[sorted[i].id] = sorted[i].status;
       }
