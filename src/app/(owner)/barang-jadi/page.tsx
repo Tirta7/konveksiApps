@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Search, Package, Plus, ChevronRight, X, Layers, AlertTriangle } from "lucide-react";
 
 function fmtDT(str?: string) {
+
   if (!str) return "-";
   return new Date(str).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -15,12 +16,15 @@ export default function BarangJadiPage() {
   const [selected, setSelected] = useState<any>(null);
   const router = useRouter();
 
-  useEffect(() => {
+  const fetchData = () => {
     fetch("/api/spk").then(r => r.json()).then(d => {
       setBatches(d.filter((b: any) => b.route_selesai || b.size_breakdown?.length > 0));
       setLoading(false);
     });
-  }, []);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
 
   const [returList, setReturList] = useState<any[]>([]);
   useEffect(() => {
@@ -42,6 +46,13 @@ export default function BarangJadiPage() {
     return b.jumlah_pcs ?? 0;
   };
 
+  // Real-time sync: auto-refresh when another admin makes a change
+  useEffect(() => {
+    const handler = () => fetchData();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <>
       <style>{`

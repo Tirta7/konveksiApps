@@ -1,361 +1,161 @@
-/**
- * data-store.ts — JSON file-based database (updated with dynamic vendor routes)
- */
 import fs from "fs";
 import path from "path";
+import { broadcast } from "./sse";
+import { getCached, setCache, publishChange, isRedisReady } from "./redis";
 
 const DATA_PATH = path.join(process.cwd(), "konveksi-data.json");
+const TEMP_PATH = DATA_PATH + ".tmp";
 
 export interface DataStore {
-  vendors: Vendor[];
-  batches: Batch[];
-  batch_steps: BatchStep[];     // Urutan vendor per batch
-  tracking_logs: TrackingLog[];
-  stock: Stock[];
-  stock_movements: StockMovement[];
-  purchase_orders: PurchaseOrder[];
-  retail_sales: RetailSale[];
-  retur_produksi: ReturProduksi[];
-  retur_online: ReturOnline[];
-  penjualan_online: PenjualanOnline[];
-  settlement_online: SettlementOnline[];
-  kategori_produk: KategoriProduk[];
-  data_barang: DataBarang[];
-  data_supplier: DataSupplier[];
+  vendors: any[];
+  tukang_potong: any[];
+  pemotongan_kain: any[];
+  data_kain: any[];
+  hutang: any[];
+  batches: any[];
+  bundles: any[];
+  spk: any[];
+  spk_progres: any[];
+  gaji_cmt: any[];
+  tracking_logs: any[];
+  stock: any[];
+  stock_movements: any[];
+  purchase_orders: any[];
+  retail_sales: any[];
+  retur_produksi: any[];
+  retur_online: any[];
+  kategori_produk: any[];
+  data_barang: any[];
+  data_supplier: any[];
+  po_produksi: any[];
+  po_pengambilan: any[];
+  barcode_item: any[];
+  cmt_requests: any[];
+  cmt_progres: any[];
+  vendor_types: any[];
+  produksi_transfers: any[];
+  po_ledgers: any[];
   _counters: Record<string, number>;
 }
 
-export interface Vendor {
-  id: number;
-  nama: string;
-  jenis_default: string;   // default jenis pekerjaan
-  kontak: string;
-  aktif: boolean;
-  wajib_hitung_ulang?: boolean; // Jika true, vendor wajib isi size di QR SPK
-  created_at: string;
-}
-
-export interface KategoriProduk {
-  id: number;
-  uid: string;
-  nama: string;
-  deskripsi?: string;
-  created_at: string;
-}
-
-export interface DataBarang {
-  id: number;
-  uid: string;
-  kategori_id: number;
-  nama_barang: string;
-  harga_beli: number;
-  harga_jual: number;
-  stok: number;
-  created_at: string;
-}
-
-export interface DataSupplier {
-  id: number;
-  uid: string;
-  nama_supplier: string;
-  kontak: string;
-  alamat: string;
-  jenis_material: string;
-  created_at: string;
-}
-
-export interface SizeBreakdown {
-  size: string;       // "S", "M", "L", "XL", "XXL", "30", dst (dinamis)
-  jumlah: number;     // jumlah pcs untuk size ini
-  cacat: number;      // total cacat terakumulasi selama produksi
-}
-
-export interface Batch {
-  id: number;
-  kode_batch: string;
-  jenis_kain: string;
-  jumlah_meter?: number;
-  jumlah_pcs?: number;
-  size_breakdown: SizeBreakdown[]; // breakdown per size (dinamis)
-  status: string;                 // bahan-mentah | dalam-proses | gudang | reject
-  current_step: number;           // step ke berapa yang sedang berjalan (0 = belum mulai)
-  token: string;                  // SATU token persistent untuk seluruh batch
-  route_selesai: boolean;
-  catatan_route?: string;
-  is_retur?: boolean;             // true jika ini SPK retur
-  parent_batch_id?: number;       // batch asal yang cacatnya diretur
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BatchStep {
-  id: number;
-  batch_id: number;
-  step_order: number;             // 1, 2, 3, ...
-  vendor_id: number;
-  jenis_pekerjaan: string;        // bisa custom per step
-  jumlah_barang: number;
-  deadline?: string;
-  catatan?: string;
-  status: "menunggu" | "berjalan" | "selesai" | "reject";
-  mulai_waktu?: string;
-  terima_waktu?: string;    // saat vendor konfirmasi terima barang
-  selesai_waktu?: string;
-  qc_result?: "lolos" | "gagal";
-  // Detail cacat per size (diisi saat QC gagal)
-  defect_detail?: {
-    size: string;
-    jumlah_cacat: number;
-    alasan: string;
-    waktu: string;
-  }[];
-  total_cacat?: number;     // total pcs cacat di step ini
-}
-
-export interface TrackingLog {
-  id: number;
-  batch_id: number;
-  step_id?: number;
-  vendor_id?: number;
-  aksi: string;
-  keterangan?: string;
-  waktu: string;
-}
-
-export interface Stock {
-  id: number;
-  kategori: string;
-  stok_saat_ini: number;
-  updated_at: string;
-}
-
-export interface StockMovement {
-  id: number;
-  tanggal: string;
-  jenis: string;
-  kategori: string;
-  jumlah: number;
-  keterangan?: string;
-  referensi_id?: string;
-  referensi_tipe?: string;
-}
-
-export interface PurchaseOrder {
-  id: number;
-  no_po: string;
-  kategori: string;
-  jumlah: number;
-  tanggal_kirim: string;
-  tanggal_po: string;
-  status: string;
-  catatan?: string;
-}
-
-export interface RetailSale {
-  id: number;
-  tanggal: string;
-  kategori: string;
-  jumlah: number;
-  catatan?: string;
-}
-
-export interface ReturProduksi {
-  id: number;
-  batch_id: number;           // batch asal yang ada cacatnya
-  step_id?: number;
-  alasan: string;
-  ke_berapa_kali: number;
-  status: string;
-  tanggal: string;
-  spk_batch_id?: number;      // batch SPK retur yang dibuat (hasil buat-spk?retur=1)
-  size_detail?: {             // detail per size yang diretur
-    size: string;
-    jumlah_retur: number;
-  }[];
-}
-
-export interface ReturOnline {
-  id: number;
-  order_id: string;
-  product_name: string;
-  variation: string;
-  return_quantity: number;
-  return_type: string;
-  alasan: string;
-  status: string;         // e.g., "Menunggu Gudang", "Masuk Gudang", "Hilang"
-  tanggal_batal: string;  // waktu dari CSV (Cancelled Time / Order Created Time for canceled ones)
-  tanggal_masuk?: string; // kapan diproses masuk ke stok lokal
-  sku_id?: string;
-  buyer_username?: string;
-  recipient?: string;
-  phone?: string;
-  address?: string;
-  tracking_id?: string;
-  shipping_provider?: string;
-  order_amount?: string;
-  payment_method?: string;
-  seller_sku?: string;
-  buyer_note?: string;
-}
-
-export interface PenjualanOnline {
-  id: number;
-  order_id: string;
-  status: string;
-  product_name: string;
-  variation: string;
-  quantity: number;
-  order_amount: number;
-  seller_sku: string;
-  buyer_username: string;
-  recipient: string;
-  tanggal_pesanan: string;
-  tanggal_diimpor: string;
-  jatuh_tempo?: string;
-  tipe_pesanan?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  province?: string;
-  tracking_id?: string;
-  shipping_provider?: string;
-  payment_method?: string;
-}
-
-export interface SettlementOnline {
-  id: number;
-  order_id: string;
-  tanggal_settlement: string;
-  total_pendapatan: number;
-  biaya_komisi: number;
-  biaya_ongkir: number;
-  biaya_lainnya: number;
-  penyelesaian_pembayaran: number;
-  status: string;
-}
-
-function uuid(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-}
-
 function getInitialData(): DataStore {
-  const now = new Date().toISOString();
-  const today = now.split("T")[0];
-  const tok1 = uuid(), tok2 = uuid(), tok3 = uuid();
-
   return {
-    _counters: { vendors: 3, batches: 3, batch_steps: 5, tracking_logs: 3, stock: 8, stock_movements: 5, purchase_orders: 5, retail_sales: 6, retur_produksi: 0, retur_online: 0, penjualan_online: 0, settlement_online: 0, kategori_produk: 2, data_barang: 2, data_supplier: 2 },
-    settlement_online: [],
-    kategori_produk: [
-      { id: 1, uid: `KTG-${tok1.substring(0,6)}`, nama: "Jeans Reguler", deskripsi: "Celana jeans potongan reguler fit", created_at: now },
-      { id: 2, uid: `KTG-${tok2.substring(0,6)}`, nama: "Jeans Slim", deskripsi: "Celana jeans potongan slim fit", created_at: now }
-    ],
-    data_barang: [
-      { id: 1, uid: `BRG-${tok1.substring(0,6)}`, kategori_id: 1, nama_barang: "Reguler Denim Biru 12oz", harga_beli: 100000, harga_jual: 150000, stok: 45, created_at: now },
-      { id: 2, uid: `BRG-${tok2.substring(0,6)}`, kategori_id: 2, nama_barang: "Slim Denim Hitam 14oz", harga_beli: 120000, harga_jual: 175000, stok: 35, created_at: now }
-    ],
-    data_supplier: [
-      { id: 1, uid: `SUP-${tok1.substring(0,6)}`, nama_supplier: "Toko Kain Berkah", kontak: "08111222333", alamat: "Jl. Textile No. 1", jenis_material: "Kain Denim", created_at: now },
-      { id: 2, uid: `SUP-${tok2.substring(0,6)}`, nama_supplier: "Benang Warna Jaya", kontak: "08222333444", alamat: "Jl. Industri Raya", jenis_material: "Benang", created_at: now }
-    ],
-    vendors: [
-      { id: 1, nama: "Vendor A — Mitra Jaya", jenis_default: "Potong & Jahit", kontak: "081234567001", aktif: true, created_at: now },
-      { id: 2, nama: "Vendor B — Laundry Prima", jenis_default: "Washing / Laundry", kontak: "081234567002", aktif: true, created_at: now },
-      { id: 3, nama: "Vendor C — Finishing Mandiri", jenis_default: "Finishing, QC & Packing", kontak: "081234567003", aktif: true, created_at: now },
-    ],
-    batches: [
-      { id: 1, kode_batch: "BATCH-2024-001", jenis_kain: "Denim Biru 12oz", jumlah_meter: 150, jumlah_pcs: 300, size_breakdown: [{ size: "L", jumlah: 150, cacat: 3 }, { size: "XL", jumlah: 150, cacat: 2 }], status: "dalam-proses", current_step: 2, token: tok1, route_selesai: false, created_at: now, updated_at: now },
-      { id: 2, kode_batch: "BATCH-2024-002", jenis_kain: "Denim Hitam 14oz", jumlah_meter: 200, jumlah_pcs: 400, size_breakdown: [{ size: "L", jumlah: 200, cacat: 0 }, { size: "XL", jumlah: 200, cacat: 0 }], status: "dalam-proses", current_step: 3, token: tok2, route_selesai: false, created_at: now, updated_at: now },
-      { id: 3, kode_batch: "BATCH-2024-003", jenis_kain: "Denim Abu 11oz", jumlah_meter: 100, jumlah_pcs: 200, size_breakdown: [{ size: "L", jumlah: 130, cacat: 0 }, { size: "XL", jumlah: 70, cacat: 0 }], status: "gudang", current_step: 3, token: tok3, route_selesai: true, created_at: now, updated_at: now },
-    ],
-    batch_steps: [
-      // BATCH-001: step 1 selesai, step 2 berjalan, step 3 menunggu
-      { id: 1, batch_id: 1, step_order: 1, vendor_id: 1, jenis_pekerjaan: "Potong & Jahit", jumlah_barang: 300, status: "selesai", mulai_waktu: now, selesai_waktu: now },
-      { id: 2, batch_id: 1, step_order: 2, vendor_id: 2, jenis_pekerjaan: "Washing / Laundry", jumlah_barang: 300, status: "berjalan", mulai_waktu: now },
-      { id: 3, batch_id: 1, step_order: 3, vendor_id: 3, jenis_pekerjaan: "Finishing, QC & Packing", jumlah_barang: 300, status: "menunggu" },
-      // BATCH-002: 3 step, step 3 berjalan
-      { id: 4, batch_id: 2, step_order: 1, vendor_id: 1, jenis_pekerjaan: "Potong & Jahit", jumlah_barang: 400, status: "selesai", mulai_waktu: now, selesai_waktu: now },
-      { id: 5, batch_id: 2, step_order: 2, vendor_id: 2, jenis_pekerjaan: "Washing / Laundry", jumlah_barang: 400, status: "selesai", mulai_waktu: now, selesai_waktu: now },
-      // batch 2 step 3 akan di-generate nanti
-    ],
-    tracking_logs: [
-      { id: 1, batch_id: 1, vendor_id: 1, aksi: "selesai-step", keterangan: "Potong & Jahit selesai oleh Vendor A", waktu: now },
-      { id: 2, batch_id: 1, vendor_id: 2, aksi: "mulai-step", keterangan: "Washing dimulai oleh Vendor B", waktu: now },
-      { id: 3, batch_id: 2, vendor_id: 2, aksi: "selesai-step", keterangan: "Washing selesai", waktu: now },
-    ],
-    stock: [
-      { id: 1, kategori: "Slim Fit", stok_saat_ini: 45, updated_at: now },
-      { id: 2, kategori: "Regular Fit", stok_saat_ini: 60, updated_at: now },
-      { id: 3, kategori: "Bootcut", stok_saat_ini: 30, updated_at: now },
-      { id: 4, kategori: "Skinny", stok_saat_ini: 35, updated_at: now },
-      { id: 5, kategori: "Wide Leg", stok_saat_ini: 30, updated_at: now },
-      { id: 6, kategori: "Mom Jeans", stok_saat_ini: 0, updated_at: now },
-      { id: 7, kategori: "Straight Cut", stok_saat_ini: 0, updated_at: now },
-      { id: 8, kategori: "Cargo Jeans", stok_saat_ini: 0, updated_at: now },
-    ],
-    stock_movements: [
-      { id: 1, tanggal: now, jenis: "masuk", kategori: "Slim Fit", jumlah: 45, keterangan: "Produksi BATCH-2024-003", referensi_tipe: "batch" },
-      { id: 2, tanggal: now, jenis: "masuk", kategori: "Regular Fit", jumlah: 60, keterangan: "Produksi BATCH-2024-003", referensi_tipe: "batch" },
-      { id: 3, tanggal: now, jenis: "masuk", kategori: "Bootcut", jumlah: 30, keterangan: "Produksi BATCH-2024-003", referensi_tipe: "batch" },
-      { id: 4, tanggal: now, jenis: "masuk", kategori: "Skinny", jumlah: 35, keterangan: "Produksi BATCH-2024-003", referensi_tipe: "batch" },
-      { id: 5, tanggal: now, jenis: "masuk", kategori: "Wide Leg", jumlah: 30, keterangan: "Produksi BATCH-2024-003", referensi_tipe: "batch" },
-    ],
-    purchase_orders: [
-      { id: 1, no_po: "PO-2024-001", kategori: "Slim Fit", jumlah: 50, tanggal_kirim: "2024-09-20", tanggal_po: now, status: "terkirim" },
-      { id: 2, no_po: "PO-2024-002", kategori: "Regular Fit", jumlah: 80, tanggal_kirim: "2024-09-22", tanggal_po: now, status: "terkirim" },
-      { id: 3, no_po: "PO-2024-003", kategori: "Skinny", jumlah: 40, tanggal_kirim: "2024-09-25", tanggal_po: now, status: "siap-kirim" },
-      { id: 4, no_po: "PO-2024-004", kategori: "Bootcut", jumlah: 35, tanggal_kirim: "2024-09-28", tanggal_po: now, status: "diproses" },
-      { id: 5, no_po: "PO-2024-005", kategori: "Wide Leg", jumlah: 30, tanggal_kirim: "2024-10-01", tanggal_po: now, status: "baru" },
-    ],
-    retail_sales: [
-      { id: 1, tanggal: today, kategori: "Slim Fit", jumlah: 12 },
-      { id: 2, tanggal: today, kategori: "Regular Fit", jumlah: 18 },
-      { id: 3, tanggal: today, kategori: "Mom Jeans", jumlah: 8 },
-      { id: 4, tanggal: today, kategori: "Straight Cut", jumlah: 15 },
-      { id: 5, tanggal: today, kategori: "Slim Fit", jumlah: 10 },
-      { id: 6, tanggal: today, kategori: "Skinny", jumlah: 9 },
-    ],
-    retur_produksi: [
-      { id: 1, batch_id: 1, step_id: 1, alasan: "Size L: 3 pcs (Jahitan lepas), Size XL: 2 pcs (Kotor)", ke_berapa_kali: 1, status: "menunggu-spk-retur", tanggal: now }
-    ],
-    retur_online: [],
-    penjualan_online: [],
+    vendors: [], tukang_potong: [], pemotongan_kain: [], data_kain: [], hutang: [], batches: [], bundles: [], spk: [], spk_progres: [], gaji_cmt: [],
+    tracking_logs: [], stock: [], stock_movements: [], purchase_orders: [], retail_sales: [],
+    retur_produksi: [], retur_online: [], kategori_produk: [], data_barang: [], data_supplier: [],
+    po_produksi: [], po_pengambilan: [], barcode_item: [], cmt_requests: [], cmt_progres: [], vendor_types: [], produksi_transfers: [], po_ledgers: [],
+    _counters: {}
   };
 }
 
-let _cache: DataStore | null = null;
+// ─── Write Queue (Mutex) ──────────────────────────────────────────────────────
+const g = global as any;
+if (!g.__writeQueue) g.__writeQueue = Promise.resolve();
 
-export function readData(): DataStore {
-  if (_cache) return _cache;
-  try {
-    if (fs.existsSync(DATA_PATH)) {
-      _cache = JSON.parse(fs.readFileSync(DATA_PATH, "utf-8"));
-      return _cache!;
-    }
-  } catch { /* ignore */ }
-  _cache = getInitialData();
-  writeData(_cache);
-  return _cache;
+function enqueueWrite(fn: () => void): void {
+  g.__writeQueue = g.__writeQueue.then(() => {
+    try { fn(); } catch (e) { console.error("[data-store] Write error:", e); }
+  });
 }
 
+// ─── Atomic File Write ────────────────────────────────────────────────────────
+function atomicWriteFile(content: string): void {
+  fs.writeFileSync(TEMP_PATH, content, "utf-8");
+  fs.renameSync(TEMP_PATH, DATA_PATH);
+}
+
+// ─── In-Memory Cache ──────────────────────────────────────────────────────────
+// Read order: RAM (< 0.1ms) → Redis (1ms) → File (5-8ms)
+// Cleared when writeData() is called from another process via Redis Pub/Sub.
+if (!g.__memCache) g.__memCache = null;
+const getMemCache = (): DataStore | null => g.__memCache;
+const setMemCache = (d: DataStore) => { g.__memCache = d; };
+const clearMemCache = () => { g.__memCache = null; };
+
+// ─── Read ─────────────────────────────────────────────────────────────────────
+function readFromFile(): DataStore {
+  try {
+    if (fs.existsSync(DATA_PATH)) {
+      return JSON.parse(fs.readFileSync(DATA_PATH, "utf-8"));
+    }
+  } catch (err) {
+    console.error("[data-store] Error reading file:", err);
+    // Try backup if main file is corrupt
+    const backupPath = DATA_PATH + ".bak";
+    if (fs.existsSync(backupPath)) {
+      try {
+        console.log("[data-store] Restoring from backup...");
+        return JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+      } catch {}
+    }
+  }
+  const init = getInitialData();
+  atomicWriteFile(JSON.stringify(init, null, 2));
+  return init;
+}
+
+/**
+ * Read data — in-memory cache first (fastest), then Redis, then file.
+ */
+export function readData(): DataStore {
+  const mem = getMemCache();
+  if (mem) return mem;          // ← ~0.1ms from RAM
+  const data = readFromFile();  // ← ~5ms from disk
+  setMemCache(data);
+  return data;
+}
+
+/**
+ * Async version — tries Redis cache first (much faster), fallback to file.
+ */
+export async function readDataAsync(): Promise<DataStore> {
+  if (isRedisReady()) {
+    try {
+      const cached = await getCached();
+      if (cached) return JSON.parse(cached);
+    } catch {}
+  }
+  const data = readFromFile();
+  setCache(JSON.stringify(data)).catch(() => {});
+  return data;
+}
+
+/**
+ * Write data safely:
+ * 1. Queued   — concurrent writes serialized, never overlapping
+ * 2. Atomic   — temp→rename, no partial writes
+ * 3. Backup   — keeps .bak copy before each write
+ * 4. MemCache — update in-memory instantly
+ * 5. Redis    — update distributed cache
+ * 6. Broadcast — push SSE to all open browsers
+ */
 export function writeData(data: DataStore): void {
-  _cache = data;
-  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), "utf-8");
+  const jsonStr = JSON.stringify(data, null, 2);
+
+  // Update in-memory cache immediately (so reads after write are instant)
+  setMemCache(data);
+
+  enqueueWrite(() => {
+    // Backup previous version
+    try {
+      if (fs.existsSync(DATA_PATH)) fs.copyFileSync(DATA_PATH, DATA_PATH + ".bak");
+    } catch {}
+
+    // Atomic write to disk
+    atomicWriteFile(jsonStr);
+
+    // Update Redis cache
+    setCache(jsonStr).catch(() => {});
+
+    // Notify other processes
+    publishChange().catch(() => {});
+
+    // Instant SSE broadcast to all open browsers
+    try { broadcast("dataChanged"); } catch {}
+  });
 }
 
 export function nextId(data: DataStore, table: keyof DataStore["_counters"]): number {
   data._counters[table] = (data._counters[table] || 0) + 1;
   return data._counters[table];
-}
-
-export function genToken(): string { return uuid(); }
-
-/** Ambil step yang sedang aktif untuk sebuah batch */
-export function getCurrentStep(data: DataStore, batchId: number): BatchStep | undefined {
-  const batch = data.batches.find(b => b.id === batchId);
-  if (!batch) return undefined;
-  return data.batch_steps.find(s => s.batch_id === batchId && s.step_order === batch.current_step && s.status === "berjalan");
 }

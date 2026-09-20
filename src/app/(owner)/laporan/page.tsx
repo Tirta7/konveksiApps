@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { BarChart2, TrendingUp, Store, ShoppingBag, UploadCloud, DollarSign, Wallet, FileX, CreditCard, ChevronRight, Calculator, PieChart } from "lucide-react";
 import Papa from "papaparse";
@@ -9,6 +9,7 @@ const COLORS = ["#3B82F6","#10B981","#F59E0B","#EF4444","#8B5CF6","#EC4899","#14
 
 export default function LaporanPage() {
   const [data, setData] = useState<any[]>([]);
+  const _bgRefresh = useRef(false);
   const [keuanganData, setKeuanganData] = useState<{sales: any[], retur: any[], settlement: any[]}>({sales: [], retur: [], settlement: []});
   const [periode, setPeriode] = useState<"minggu" | "bulan">("minggu");
   const [activeTab, setActiveTab] = useState<"produk" | "keuangan">("keuangan");
@@ -16,7 +17,7 @@ export default function LaporanPage() {
   const [uploading, setUploading] = useState(false);
 
   const fetchData = async () => {
-    setLoading(true);
+    if (!_bgRefresh.current) setLoading(true);
     try {
       const r1 = await fetch(`/api/laporan?periode=${periode}`);
       const d1 = await r1.json();
@@ -159,6 +160,11 @@ export default function LaporanPage() {
   const totalRetail = data.reduce((s, d) => s + (d.total_retail ?? 0), 0);
   const totalAll = totalPO + totalRetail;
 
+  // Real-time sync: refresh data when another admin makes changes
+  useEffect(() => {
+    window.addEventListener("konveksi-sync", fetchData);
+    return () => window.removeEventListener("konveksi-sync", fetchData);
+  }, [fetchData]);
   return (
     <>
       <style>{`
@@ -419,3 +425,4 @@ export default function LaporanPage() {
     </>
   );
 }
+

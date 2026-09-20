@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, MapPin, FilePlus, FileText, Warehouse,
   ShoppingCart, Store, RotateCcw, RefreshCw, BarChart2, Users,
-  ClipboardList, Package, Settings
+  ClipboardList, Package, Settings, ScanBarcode, Factory,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 
 const MENU = [
@@ -14,14 +15,20 @@ const MENU = [
   
   { divider: "DATA MASTER" },
   { label: "Kategori Produk",      href: "/kategori",         icon: ClipboardList },
+  { label: "Data Kain",            href: "/data-kain",        icon: Package },
   { label: "Data Barang",          href: "/barang",           icon: Package },
   { label: "Data Pelanggan",       href: "/pelanggan",        icon: Users },
   { label: "Data Supplier",        href: "/supplier",         icon: Store },
-  { label: "Atur Vendor",          href: "/atur-vendor",      icon: Users },
+  { label: "Atur Vendor CMT",      href: "/atur-vendor",      icon: Users },
+  { label: "Atur Tukang Potong",   href: "/atur-tukang-potong", icon: Users },
+  { label: "Dashboard CMT",        href: "/dashboard-cmt",    icon: Users },
   
-  { divider: "PRODUKSI (SPK)" },
-  { label: "Buat SPK",             href: "/buat-spk",         icon: FilePlus },
-  { label: "Daftar SPK",           href: "/daftar-spk",       icon: FileText },
+  { divider: "PRODUKSI (PO & SPK)" },
+  { label: "Pemotongan Kain",      href: "/pemotongan-kain",  icon: FilePlus },
+  { label: "Buat PO / SPK",        href: "/buat-spk",         icon: FilePlus },
+  { label: "Daftar PO / SPK",      href: "/daftar-spk",       icon: FileText },
+  { label: "Barcode Produksi",     href: "/barcode-produksi", icon: ScanBarcode },
+  { label: "Gudang Produksi",      href: "/gudang-produksi",  icon: Factory },
   { label: "Laporan SPK",          href: "/laporan-spk",      icon: ClipboardList },
   { label: "Daftar Bundle",        href: "/barang-jadi",      icon: Package },
   { label: "Retur Produksi",       href: "/retur-produksi",   icon: RotateCcw },
@@ -46,14 +53,27 @@ const MENU = [
 ] as const;
 
 
-export default function Sidebar() {
+export default function Sidebar({ 
+  isCollapsed = false, 
+  toggleSidebar 
+}: { 
+  isCollapsed?: boolean;
+  toggleSidebar?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
     <aside className="app-sidebar">
       <div className="sidebar-logo">
-        <div className="sidebar-logo-title">👖 KonveksiApps</div>
-        <div className="sidebar-logo-sub">Sistem Tracking Produksi Jeans</div>
+        <div>
+          <div className="sidebar-logo-title">👖 KonveksiApps</div>
+          <div className="sidebar-logo-sub">Sistem Tracking Produksi Jeans</div>
+        </div>
+        {toggleSidebar && (
+          <button onClick={toggleSidebar} className="toggle-btn" title="Toggle Sidebar">
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
+        )}
       </div>
 
       <nav className="sidebar-nav">
@@ -70,16 +90,17 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`sidebar-menu-item${isActive ? " active" : ""}`}
+              title={isCollapsed ? item.label : undefined}
             >
               <Icon size={18} />
-              {item.label}
+              <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
       <div className="sidebar-footer">
-        v1.0 · KonveksiApps
+        {isCollapsed ? "v1" : "v1.0 · KonveksiApps"}
       </div>
     </aside>
   );

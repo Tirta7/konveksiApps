@@ -208,6 +208,11 @@ export default function ReturOnlinePage() {
   const topProvinsi = Object.entries(provinsiMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
   const topKurir = Object.entries(kurirMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
+  // Real-time sync: refresh data when another admin makes changes
+  useEffect(() => {
+    window.addEventListener("konveksi-sync", fetchData);
+    return () => window.removeEventListener("konveksi-sync", fetchData);
+  }, [fetchData]);
   return (
     <>
       <style>{`

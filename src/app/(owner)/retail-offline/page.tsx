@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { Plus, X, Store, ShoppingCart, BarChart2 } from "lucide-react";
 
 const KATEGORI = ["Slim Fit","Regular Fit","Bootcut","Skinny","Wide Leg","Mom Jeans","Straight Cut","Cargo Jeans"];
 
 function formatTgl(str: string) {
+
   if (!str) return "-";
   return new Date(str).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
 }
@@ -16,7 +17,12 @@ export default function RetailOfflinePage() {
   const [form, setForm] = useState({ kategori: "", jumlah: "", tanggal: new Date().toISOString().split("T")[0], catatan: "" });
   const [saving, setSaving] = useState(false);
 
-  const load = () => { fetch("/api/retail").then(r => r.json()).then(d => { setData(d); setLoading(false); }); };
+  const load = () => { 
+    fetch("/api/retail")
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false)); 
+  };
   useEffect(() => { load(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,8 +37,15 @@ export default function RetailOfflinePage() {
   };
 
   const rekap: Record<string, number> = {};
-  data?.list.forEach(s => { rekap[s.kategori] = (rekap[s.kategori] ?? 0) + s.jumlah; });
+  data?.list?.forEach(s => { rekap[s.kategori] = (rekap[s.kategori] ?? 0) + s.jumlah; });
 
+  // Real-time sync: auto-refresh when another admin makes a change
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <>
       <style>{`
@@ -144,7 +157,7 @@ export default function RetailOfflinePage() {
             <div style={{ flex: 1, overflow: "auto" }}>
               {loading ? (
                 <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>⏳ Memuat data...</div>
-              ) : !data?.list.length ? (
+              ) : !data?.list?.length ? (
                 <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>🏪</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>Belum ada transaksi</div>
@@ -161,7 +174,7 @@ export default function RetailOfflinePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.list.map(s => (
+                    {data?.list?.map(s => (
                       <tr key={s.id} className="table-row-hover" style={{ borderBottom: "1px solid #F1F5F9" }}>
                         <td style={{ padding: "16px 24px", fontSize: 13, fontWeight: 700, color: "#334155" }}>{formatTgl(s.tanggal)}</td>
                         <td style={{ padding: "16px 24px", fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{s.kategori}</td>

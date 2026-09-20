@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Printer, Activity, Package, Scissors, CheckCircle, AlertTriangle } from "lucide-react";
 
 function fmtDT(str?: string) {
+
   if (!str) return "-";
   const d = new Date(str);
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) +
@@ -57,6 +58,13 @@ export default function LaporanSPKDetailPage() {
   const { batch, steps, rekap, logs } = data;
   const sizeBreakdown: any[] = batch.size_breakdown ?? [];
 
+  // Real-time sync: auto-refresh when another admin makes a change
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <>
       <style>{`

@@ -1,0 +1,220 @@
+{
+  "vendors": [
+    {
+      "id": 1,
+      "nama": "CMT Slamet",
+      "kodeVendor": "VND-CMTSLAMET",
+      "jenis_default": "Jahit",
+      "kontak": "8999967899",
+      "wajib_hitung_ulang": true,
+      "hargaPerPcs": 6875,
+      "aktif": true,
+      "tipe": "cmt",
+      "tarifPotongan": {
+        "PECAH POLA": 5680,
+        "GOMBRONG": 5200,
+        "TULANG": 6800
+      }
+    },
+    {
+      "id": 2,
+      "nama": "CMT Yadi",
+      "kodeVendor": "VND-CMTYADI",
+      "jenis_default": "Jahit",
+      "kontak": "08999989768",
+      "wajib_hitung_ulang": true,
+      "hargaPerPcs": 7875,
+      "aktif": true,
+      "tipe": "cmt"
+    },
+    {
+      "id": 3,
+      "nama": "PRABU LAUNDRY",
+      "kodeVendor": "VND-PRABULAUNDRY",
+      "jenis_default": "Washing",
+      "kontak": "8999927391",
+      "wajib_hitung_ulang": true,
+      "hargaPerPcs": 5000,
+      "aktif": true,
+      "tipe": "cmt"
+    },
+    {
+      "id": 4,
+      "nama": "WARNA PRIMA",
+      "kodeVendor": "VND-WARNAPRIMA",
+      "jenis_default": "Washing",
+      "kontak": "89999233458",
+      "wajib_hitung_ulang": true,
+      "hargaPerPcs": 5000,
+      "aktif": true,
+      "tipe": "cmt"
+    },
+    {
+      "id": 5,
+      "nama": "BB Raya",
+      "kodeVendor": "VND-BBRAYA",
+      "jenis_default": "Bersih benang",
+      "kontak": "8999978234",
+      "wajib_hitung_ulang": true,
+      "hargaPerPcs": 2500,
+      "aktif": true,
+      "tipe": "cmt"
+    },
+    {
+      "id": 6,
+      "nama": "BB Andika",
+      "kodeVendor": "VND-BBANDIKA",
+      "jenis_default": "Bersih benang",
+      "kontak": "8999987655",
+      "wajib_hitung_ulang": false,
+      "hargaPerPcs": 2800,
+      "aktif": true,
+      "tipe": "cmt"
+    }
+  ],
+  "tukang_potong": [
+    {
+      "id": 1,
+      "nama": "NGAMPON",
+      "kode": "GH",
+      "kontak": "0899994566"
+    },
+    {
+      "id": 2,
+      "nama": "DORO",
+      "kode": "SJ",
+      "kontak": "089999322877"
+    }
+  ],
+  "pemotongan_kain": [],
+  "data_kain": [
+    {
+      "id": 1,
+      "nama_kain": "MK 1299 SST",
+      "warna": "ABU",
+      "stok_meter": 0,
+      "harga_beli": 14280
+    }
+  ],
+  "hutang": [],
+  "batches": [],
+  "bundles": [],
+  "spk": [],
+  "spk_progres": [],
+  "gaji_cmt": [],
+  "tracking_logs": [],
+  "stock": [],
+  "stock_movements": [],
+  "purchase_orders": [],
+  "retail_sales": [],
+  "retur_produksi": [],
+  "retur_online": [],
+  "kategori_produk": [
+    {
+      "id": 1,
+      "uid": "KTG-D3CK54",
+      "nama": "TULANG",
+      "deskripsi": "",
+      "createdAt": "2026-09-19T15:37:52.833Z"
+    },
+    {
+      "id": 2,
+      "uid": "KTG-VNB6SG",
+      "nama": "GOMBRONG",
+      "deskripsi": "",
+      "createdAt": "2026-09-19T15:38:09.142Z"
+    },
+    {
+      "id": 3,
+      "uid": "KTG-HVOQG4",
+      "nama": "PECAH POLA",
+      "deskripsi": "",
+      "createdAt": "2026-09-19T15:38:25.612Z"
+    }
+  ],
+  "data_barang": [],
+  "data_supplier": [
+    {
+      "id": 1,
+      "uid": "SUP-001",
+      "nama_supplier": "AAN",
+      "kontak": "08999987609",
+      "alamat": "Jl. Kenari",
+      "jenis_material": "MK 1299 SST"
+    },
+    {
+      "id": 2,
+      "uid": "SUP-002",
+      "nama_supplier": "HSS",
+      "kontak": "08999954321",
+      "alamat": "Jl. Opak",
+      "jenis_material": "MK 1299 MTH"
+    }
+  ],
+  "po_produksi": [],
+  "po_pengambilan": [],
+  "barcode_item": [],
+  "cmt_requests": [],
+  "cmt_progres": [],
+  "vendor_types": [
+    {
+      "id": 1,
+      "nama": "CMT / Penjahit",
+      "slug": "cmt",
+      "emoji": "🧵",
+      "perlu_portal": true,
+      "portal_path": "/cmt",
+      "perlu_gaji": true,
+      "createdAt": "2026-09-19T15:36:37.585Z"
+    },
+    {
+      "id": 2,
+      "nama": "Washing / Laundry",
+      "slug": "washing",
+      "emoji": "🚿",
+      "perlu_portal": true,
+      "portal_path": "/washing",
+      "perlu_gaji": true,
+      "createdAt": "2026-09-19T15:36:37.585Z"
+    },
+    {
+      "id": 3,
+      "nama": "Bersih Benang",
+      "slug": "benang",
+      "emoji": "✂️",
+      "perlu_portal": true,
+      "portal_path": "/bersih-benang",
+      "perlu_gaji": true,
+      "createdAt": "2026-09-19T15:36:37.585Z"
+    },
+    {
+      "id": 4,
+      "nama": "QC / Finishing",
+      "slug": "finishing",
+      "emoji": "⭐",
+      "perlu_portal": true,
+      "portal_path": "/finishing",
+      "perlu_gaji": false,
+      "createdAt": "2026-09-19T15:36:37.585Z"
+    },
+    {
+      "id": 5,
+      "nama": "Lainnya",
+      "slug": "lainnya",
+      "emoji": "📦",
+      "perlu_portal": false,
+      "portal_path": "",
+      "perlu_gaji": false,
+      "createdAt": "2026-09-19T15:36:37.585Z"
+    }
+  ],
+  "produksi_transfers": [],
+  "po_ledgers": [],
+  "_counters": {
+    "kategori_produk": 3,
+    "data_supplier": 2,
+    "vendors": 6,
+    "tukang_potong": 2,
+    "data_kain": 1
+  }
+}

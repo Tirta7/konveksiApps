@@ -1,36 +1,61 @@
 @echo off
-title KonveksiApps — Start Server
+title KonveksiApps - Starting...
 color 0A
 cls
 
-echo ================================================
-echo   KONVEKSIAPPS — Sistem Tracking Produksi Jeans
-echo ================================================
+echo.
+echo  ============================================================
+echo    KONVEKSI APPS  ^|  Sistem Tracking Produksi Jeans
+echo  ============================================================
 echo.
 
-:: Deteksi IP otomatis (ambil IP lokal pertama yang bukan 127.0.0.1)
-for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /i "IPv4" ^| findstr /v "127.0.0"') do (
-    set RAW_IP=%%a
-    goto :found_ip
+:: === STEP 1: Stop existing node processes ===
+echo  [1/4] Menghentikan proses lama...
+taskkill /F /IM node.exe /T 2>nul
+ping -n 2 127.0.0.1 >nul
+echo        Done.
+
+:: === STEP 2: Start WSL ===
+echo  [2/4] Memulai WSL Ubuntu...
+wsl -d Ubuntu -u root -- bash -c "exit 0" >nul 2>&1
+ping -n 3 127.0.0.1 >nul
+echo        Done.
+
+:: === STEP 3: Start Redis inside WSL ===
+echo  [3/4] Memulai Redis Cache Server (WSL)...
+wsl -d Ubuntu -u root -- bash -c "pkill redis-server 2>/dev/null; sleep 1; redis-server --daemonize yes --bind 0.0.0.0 --protected-mode no --loglevel warning --save ''" >nul 2>&1
+ping -n 3 127.0.0.1 >nul
+
+:: Verify Redis is running
+wsl -d Ubuntu -u root -- bash -c "redis-cli ping 2>/dev/null" | findstr /i "PONG" >nul
+if %ERRORLEVEL% EQU 0 (
+    set REDIS_STATUS=AKTIF
+    set REDIS_URL=redis://127.0.0.1:6379
+    echo        Redis v8.0.5 berjalan di port 6379 [AKTIF]
+) else (
+    set REDIS_STATUS=NONAKTIF
+    set REDIS_URL=
+    echo        WARN: Redis tidak bisa dijalankan, mode fallback aktif
 )
-:found_ip
-:: Bersihkan spasi di depan
-for /f "tokens=* delims= " %%b in ("%RAW_IP%") do set LOCAL_IP=%%b
 
-echo [INFO] IP Address Terdeteksi : %LOCAL_IP%
-echo [INFO] URL Akses             : http://%LOCAL_IP%:3000
-echo [INFO] URL Lokal             : http://localhost:3000
+:: === STEP 4: Start Next.js ===
+echo  [4/4] Memulai Next.js Server...
 echo.
-echo ------------------------------------------------
-echo  Menjalankan server Next.js...
-echo  Tekan CTRL+C untuk menghentikan server
-echo ------------------------------------------------
+echo  ============================================================
+echo    Akses Aplikasi:
+echo    - Komputer ini  : http://localhost:3000
+echo    - Jaringan LAN  : http://192.168.1.19:3000
+if defined REDIS_URL (
+echo    - Redis Cache   : redis://127.0.0.1:6379 [%REDIS_STATUS%]
+)
+echo.
+echo    Tekan CTRL+C untuk menghentikan server
+echo  ============================================================
 echo.
 
-:: Pindah ke direktori project
-cd /d "%~dp0"
+:: Auto-open browser after 5 seconds
+start /b cmd /c "ping -n 6 127.0.0.1 >nul && start http://localhost:3000"
 
-:: Jalankan server dengan host 0.0.0.0 agar bisa diakses dari HP/device lain
-npm run dev -- --hostname 0.0.0.0
-
-pause
+:: Run the dev server with Redis URL
+set REDIS_URL=%REDIS_URL%
+npm run dev

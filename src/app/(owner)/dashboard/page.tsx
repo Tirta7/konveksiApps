@@ -1,19 +1,29 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { LayoutDashboard, Package, TrendingUp, ChevronRight, RefreshCw, Activity, ArrowRight } from "lucide-react";
+import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 function fmtWaktu(d: Date) {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
+function fmtDate(str?: string) {
+  if (!str) return "–";
+  return new Date(str).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
 
-const statusColor: Record<string, string> = {
-  "dalam-proses": "text-blue-700 bg-blue-100", "bahan-mentah": "text-amber-700 bg-amber-100",
-  "gudang": "text-emerald-700 bg-emerald-100", "reject": "text-red-700 bg-red-100",
+const STAGE_CFG: Record<string, { label: string; bg: string; color: string }> = {
+  "selesai":        { label: "Selesai",       bg: "#D1FAE5", color: "#065F46" },
+  "selesai-washing":{ label: "Selesai Washing",bg: "#CFFAFE", color: "#0E7490" },
+  "washing":        { label: "Washing",        bg: "#E0F2FE", color: "#0369A1" },
+  "siap-tarik":     { label: "Siap Tarik",     bg: "#DCFCE7", color: "#166534" },
+  "dijahit":        { label: "Dijahit",        bg: "#FEF3C7", color: "#92400E" },
+  "menunggu":       { label: "Menunggu",       bg: "#F1F5F9", color: "#64748B" },
 };
-const statusLabel: Record<string, string> = {
-  "dalam-proses": "Dalam Proses", "bahan-mentah": "Bahan Mentah",
-  "gudang": "Di Gudang", "reject": "Reject",
+const TIPE_CFG: Record<string, { bg: string; color: string }> = {
+  cmt:      { bg: "#EFF6FF", color: "#1D4ED8" },
+  washing:  { bg: "#ECFEFF", color: "#0E7490" },
+  benang:   { bg: "#F5F3FF", color: "#7C3AED" },
+  finishing:{ bg: "#ECFDF5", color: "#059669" },
 };
 
 export default function DashboardPage() {
@@ -21,52 +31,47 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pulse, setPulse] = useState(false);
-  const prevDataRef = useRef<string>("");
-  const POLL_MS = 5000;
+  const prevRef = useRef<string>("");
 
-  // Lock parent scroll
   useEffect(() => {
     const el = document.querySelector(".app-content") as HTMLElement;
-    if (el) {
-      el.style.overflow = "hidden";
-      el.style.padding = "0";
-      el.style.height = "100vh";
-    }
-    return () => {
-      if (el) { el.style.overflow = ""; el.style.padding = ""; el.style.height = ""; }
-    };
+    if (el) { el.style.overflow = "hidden"; el.style.padding = "0"; el.style.height = "100vh"; }
+    return () => { if (el) { el.style.overflow = ""; el.style.padding = ""; el.style.height = ""; } };
   }, []);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard", { cache: "no-store" });
       const d = await res.json();
-      const serialized = JSON.stringify(d);
-      if (serialized !== prevDataRef.current) {
-        setPulse(true);
-        setTimeout(() => setPulse(false), 800);
-        prevDataRef.current = serialized;
-      }
+      const ser = JSON.stringify(d);
+      if (ser !== prevRef.current) { setPulse(true); setTimeout(() => setPulse(false), 800); prevRef.current = ser; }
       setData(d);
       setLastUpdated(new Date());
       setLoading(false);
-    } catch { /* ignore */ }
+    } catch {}
   }, []);
 
+  useEffect(() => { load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, [load]);
+
+  // Real-time sync: instant refresh when another admin makes a change
   useEffect(() => {
-    load();
-    const id = setInterval(load, POLL_MS);
-    return () => clearInterval(id);
-  }, [load]);
+    const handler = () => load();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#F1F5F9" }}>
       <div style={{ textAlign: "center", color: "#94A3B8" }}>
-        <RefreshCw size={32} className="animate-spin mb-4 mx-auto" />
-        <p style={{ fontSize: 16, fontWeight: 600 }}>Memuat Dashboard...</p>
+        <RefreshCw size={32} style={{ animation: "spin 1s linear infinite", display: "block", margin: "0 auto 12px" }} />
+        <p style={{ fontSize: 15, fontWeight: 600 }}>Memuat Dashboard...</p>
       </div>
     </div>
   );
+
+  const poList: any[] = data?.poList || [];
+  const vendorList: any[] = data?.vendorList || [];
 
   return (
     <>
@@ -76,20 +81,20 @@ export default function DashboardPage() {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+        .dash-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08)!important; transform: translateY(-1px); }
       `}</style>
 
       <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#F1F5F9", overflow: "hidden" }}>
-        
+
         {/* Header */}
-        <div style={{ padding: "24px 32px", background: "white", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
+        <div style={{ padding: "20px 28px", background: "white", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", marginBottom: 4 }}>Dashboard Produksi</h1>
-            <p style={{ fontSize: 13, color: "#64748B" }}>Ringkasan aktivitas real-time konveksi hari ini</p>
+            <h1 style={{ fontSize: 22, fontWeight: 900, color: "#0F172A", marginBottom: 2 }}>Dashboard Produksi</h1>
+            <p style={{ fontSize: 12, color: "#64748B" }}>Ringkasan aktivitas real-time konveksi hari ini</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, background: "#DCFCE7", color: "#065F46", fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 99 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block", animation: "pulseSoft 2s infinite" }} />
-              LIVE
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block", animation: "pulseSoft 2s infinite" }} /> LIVE
             </span>
             <div style={{ fontSize: 11, color: "#94A3B8", display: "flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
               <RefreshCw size={11} style={{ animation: pulse ? "spin 0.5s linear" : "none" }} />
@@ -98,140 +103,152 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "24px 32px", gap: 24 }}>
-          
-          {/* Top Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, flexShrink: 0 }}>
-            <div style={{ background: "white", padding: 20, borderRadius: 16, border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Package size={20} />
+        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "20px 28px", gap: 20 }}>
+
+          {/* ── STATS ROW ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, flexShrink: 0 }}>
+            {[
+              { fiIcon: "fi-sr-document", bg: "#EFF6FF", color: "#1D4ED8", label: "PO Aktif", val: data?.poAktif ?? 0 },
+              { fiIcon: "fi-sr-badge-check", bg: "#ECFDF5", color: "#059669", label: "PO Selesai", val: data?.poSelesai ?? 0 },
+              { fiIcon: "fi-sr-needle", bg: "#FEF3C7", color: "#D97706", label: "Total PCS", val: data?.totalPCS ?? 0 },
+              { fiIcon: "fi-sr-box-open", bg: "#DCFCE7", color: "#16A34A", label: "Di Gudang", val: data?.totalDiGudang ?? 0 },
+              { fiIcon: "fi-sr-users", bg: "#F5F3FF", color: "#7C3AED", label: "Vendor Aktif", val: vendorList.length },
+            ].map((item, i) => (
+              <div key={i} className="dash-card" style={{ background: "white", padding: "16px 18px", borderRadius: 14, border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)", transition: "all 0.2s" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: item.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <i className={`fi ${item.fiIcon}`} style={{ fontSize: 16, color: item.color }} />
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>{item.label}</div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#64748B" }}>Batch Aktif</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: "#0F172A" }}>{item.val}</div>
               </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "#0F172A" }}>{data?.batchAktif ?? 0}</div>
-            </div>
-            
-            <div style={{ background: "white", padding: 20, borderRadius: 16, border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#ECFDF5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <LayoutDashboard size={20} />
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#64748B" }}>Stok di Gudang</div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "#0F172A" }}>{data?.totalStok ?? 0}</div>
-            </div>
-            
-            <div style={{ background: "white", padding: 20, borderRadius: 16, border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FFFBEB", color: "#D97706", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <TrendingUp size={20} />
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#64748B" }}>Terlaris (7 Hari)</div>
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "#0F172A", marginTop: 8 }}>{data?.terlaris ?? "–"}</div>
-            </div>
-            
-            {/* Quick Actions in a tight format */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <Link href="/buat-spk" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#3B82F6", color: "white", padding: "0 16px", borderRadius: 12, fontWeight: 700, fontSize: 13, textDecoration: "none", boxShadow: "0 4px 12px rgba(59,130,246,0.25)", transition: "all 0.2s" }}>
-                <span>+ Buat SPK Baru</span>
-                <ArrowRight size={16} />
-              </Link>
-              <Link href="/gudang" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", color: "#0F172A", padding: "0 16px", borderRadius: 12, border: "1px solid #E2E8F0", fontWeight: 700, fontSize: 13, textDecoration: "none", transition: "all 0.2s" }}>
-                <span>Cek Stok Gudang</span>
-                <ArrowRight size={16} color="#94A3B8" />
-              </Link>
-            </div>
+            ))}
           </div>
 
-          {/* Main Content Area (Two Columns, Scrollable) */}
-          <div style={{ display: "flex", gap: 24, flex: 1, overflow: "hidden" }}>
-            
-            {/* Left Col: Batches */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "white", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {/* ── MAIN TWO-COLUMN ── */}
+          <div style={{ display: "flex", gap: 20, flex: 1, overflow: "hidden" }}>
+
+            {/* LEFT: PO Progress */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "white", borderRadius: 18, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.03)" }}>
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #F1F5F9", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ background: "#EFF6FF", color: "#3B82F6", padding: 6, borderRadius: 8 }}>
-                    <Activity size={18} />
+                  <div style={{ background: "#EFF6FF", padding: "6px 8px", borderRadius: 8, display: "flex" }}>
+                    <i className="fi fi-sr-route" style={{ fontSize: 16, color: "#3B82F6" }} />
                   </div>
-                  <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>Progress Batch Kain</h2>
+                  <h2 style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", margin: 0 }}>Progress PO Produksi</h2>
                 </div>
                 <Link href="/peta-perjalanan" style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                  Lihat Peta <ChevronRight size={14} />
+                  Lihat Peta <ArrowRight size={13} />
                 </Link>
               </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
-                {data?.batches?.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "#94A3B8", fontSize: 13 }}>Belum ada batch aktif</div>
-                ) : (
-                  data?.batches?.map((b: any) => (
-                    <div key={b.id} style={{ padding: 16, border: "1px solid #E2E8F0", borderRadius: 12, background: b.status === "dalam-proses" ? "#FAFAFA" : "white" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {poList.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 40, color: "#94A3B8", fontSize: 13 }}>
+                    <i className="fi fi-rr-document" style={{ fontSize: 32, display: "block", marginBottom: 8 }} />
+                    Belum ada PO produksi
+                  </div>
+                ) : poList.map((po: any) => {
+                  const stage = STAGE_CFG[po.stage] || STAGE_CFG["menunggu"];
+                  return (
+                    <div key={po.id} className="dash-card" style={{ padding: "14px 16px", border: "1px solid #E2E8F0", borderRadius: 12, background: "#FAFAFA", transition: "all 0.2s", cursor: "pointer" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                         <div>
-                          <div style={{ fontWeight: 900, fontSize: 15, color: "#0F172A", marginBottom: 2 }}>{b.kode_batch}</div>
-                          <div style={{ fontSize: 12, color: "#64748B" }}>{b.jenis_kain} &bull; {b.jumlah_pcs ?? b.jumlah_meter} {b.jumlah_pcs ? "pcs" : "m"}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                            <span style={{ fontWeight: 900, fontSize: 14, color: "#0F172A", fontFamily: "monospace" }}>{po.noPo}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: stage.bg, color: stage.color }}>{stage.label}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#64748B" }}>{po.model} · {po.vendor_nama} · {fmtDate(po.tanggalTerbit)}</div>
                         </div>
-                        <div style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 800, background: b.status === "dalam-proses" ? "#DBEAFE" : "#D1FAE5", color: b.status === "dalam-proses" ? "#1E40AF" : "#065F46" }}>
-                          {statusLabel[b.status] ?? b.status}
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: "#0F172A" }}>{po.jumlahTerbit} <span style={{ fontSize: 11, color: "#94A3B8" }}>pcs</span></div>
+                          <div style={{ fontSize: 10, color: "#94A3B8" }}>{po.totalDiGudang} di gudang</div>
                         </div>
                       </div>
-                      
-                      {b.steps?.length > 0 && (
-                        <div>
-                          <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
-                            {b.steps.map((s: any, i: number) => (
-                              <div key={i} style={{ flex: 1, height: 4, borderRadius: 99, background: s.status === "selesai" ? "#10B981" : s.status === "berjalan" ? "#3B82F6" : "#E2E8F0" }} />
-                            ))}
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
-                            <span style={{ color: "#64748B", fontWeight: 600 }}>{b.steps.filter((s: any) => s.status === "selesai").length}/{b.steps.length} step</span>
-                            {b.jenis_pekerjaan_aktif && (
-                              <span style={{ color: "#3B82F6", fontWeight: 700 }}>⚙️ {b.jenis_pekerjaan_aktif}</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
+
+                      {/* Progress bars */}
+                      <div style={{ width: "100%", background: "#E2E8F0", height: 6, borderRadius: 3, overflow: "hidden", position: "relative" }}>
+                        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(po.pctGudang, 100)}%`, background: "#10B981", borderRadius: 3 }} />
+                        <div style={{ position: "absolute", left: `${po.pctGudang}%`, top: 0, height: "100%", width: `${Math.min(po.pctDisetujui - po.pctGudang, 100)}%`, background: "#3B82F6", borderRadius: 3 }} />
+                        <div style={{ position: "absolute", left: `${po.pctDisetujui}%`, top: 0, height: "100%", width: `${Math.min(po.pctCMT - po.pctDisetujui, 100)}%`, background: "#F59E0B", borderRadius: 3 }} />
+                      </div>
+                      <div style={{ display: "flex", gap: 10, marginTop: 5, fontSize: 10, color: "#94A3B8" }}>
+                        {po.totalDiGudang > 0 && <span style={{ color: "#10B981", fontWeight: 700 }}>✓ {po.totalDiGudang} gudang</span>}
+                        {po.totalDisetujui > 0 && <span style={{ color: "#3B82F6", fontWeight: 700 }}>✓ {po.totalDisetujui} ACC</span>}
+                        {po.totalDilaporkan > 0 && <span style={{ color: "#F59E0B", fontWeight: 700 }}>⏳ {po.totalDilaporkan} laporan</span>}
+                        {po.totalWashing > 0 && <span style={{ color: "#06B6D4", fontWeight: 700 }}>🫧 {po.totalWashingDone}/{po.totalWashing} washing</span>}
+                        <span style={{ marginLeft: "auto" }}>{po.pctGudang}% selesai</span>
+                      </div>
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
             </div>
 
-            {/* Right Col: SPK Aktif */}
-            <div style={{ width: "35%", minWidth: 320, display: "flex", flexDirection: "column", background: "white", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ background: "#FEF3C7", color: "#D97706", padding: 6, borderRadius: 8 }}>
-                    <LayoutDashboard size={18} />
-                  </div>
-                  <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>Vendor Aktif</h2>
-                </div>
-                <Link href="/daftar-spk" style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6", textDecoration: "none" }}>Semua</Link>
-              </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
-                {data?.spkList?.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "#94A3B8", fontSize: 13 }}>Tidak ada SPK aktif</div>
-                ) : (
-                  data?.spkList?.map((s: any) => (
-                    <div key={s.id} style={{ padding: 14, border: "1px solid #E2E8F0", borderRadius: 12, background: "white", position: "relative", overflow: "hidden" }}>
-                      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: "#3B82F6" }} />
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{s.kode_batch}</div>
-                        <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700 }}>{s.jenis_pekerjaan}</span>
+            {/* RIGHT: Vendor Aktif + Quick Actions */}
+            <div style={{ width: "32%", minWidth: 280, display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* Quick Actions */}
+              <div style={{ background: "white", borderRadius: 14, border: "1px solid #E2E8F0", padding: "14px 16px", flexShrink: 0, boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase", marginBottom: 10 }}>Aksi Cepat</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { href: "/buat-spk", label: "Buat PO / SPK Baru", bg: "#3B82F6", color: "white", icon: "fi-sr-document-signed" },
+                    { href: "/dashboard-cmt", label: "Dashboard Vendor", bg: "#F8FAFC", color: "#0F172A", icon: "fi-sr-chart-line-up" },
+                    { href: "/pemotongan-kain", label: "Pemotongan Kain", bg: "#F8FAFC", color: "#0F172A", icon: "fi-sr-scissors" },
+                    { href: "/barcode-produksi", label: "Barcode Produksi", bg: "#F8FAFC", color: "#0F172A", icon: "fi-sr-qr-scan" },
+                  ].map((item, i) => (
+                    <Link key={i} href={item.href} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: item.bg, color: item.color, padding: "10px 14px", borderRadius: 10, fontWeight: 700, fontSize: 13, textDecoration: "none", border: item.bg === "#F8FAFC" ? "1px solid #E2E8F0" : "none", transition: "all 0.15s" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <i className={`fi ${item.icon}`} style={{ fontSize: 14 }} />
+                        {item.label}
                       </div>
-                      <div style={{ fontSize: 11, color: "#64748B", marginBottom: 8 }}>{s.jenis_kain}</div>
-                      {s.vendor_nama && (
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 8px", background: "#F1F5F9", borderRadius: 6, fontSize: 11, fontWeight: 600, color: "#334155" }}>
-                          📍 {s.vendor_nama}
-                        </div>
-                      )}
+                      <ArrowRight size={14} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vendor Aktif */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "white", borderRadius: 18, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.03)" }}>
+                <div style={{ padding: "14px 16px", borderBottom: "1px solid #F1F5F9", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ background: "#FEF3C7", padding: "6px 8px", borderRadius: 8, display: "flex" }}>
+                      <i className="fi fi-sr-users" style={{ fontSize: 15, color: "#D97706" }} />
                     </div>
-                  ))
-                )}
+                    <h2 style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", margin: 0 }}>Vendor Aktif</h2>
+                  </div>
+                  <Link href="/dashboard-cmt" style={{ fontSize: 11, fontWeight: 700, color: "#3B82F6", textDecoration: "none" }}>Semua</Link>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {vendorList.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 30, color: "#94A3B8", fontSize: 13 }}>
+                      <i className="fi fi-rr-users" style={{ fontSize: 28, display: "block", marginBottom: 8 }} />
+                      Tidak ada vendor aktif
+                    </div>
+                  ) : vendorList.map((v: any) => {
+                    const tc = TIPE_CFG[v.tipe] || { bg: "#F1F5F9", color: "#64748B" };
+                    return (
+                      <div key={v.id} className="dash-card" style={{ padding: "10px 12px", border: "1px solid #E2E8F0", borderRadius: 10, background: "white", transition: "all 0.2s" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", marginBottom: 2 }}>{v.nama}</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, background: tc.bg, color: tc.color }}>{v.tipe}</span>
+                              <span style={{ fontSize: 11, color: "#94A3B8" }}>{v.jenis_pekerjaan || "–"}</span>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: "#0F172A" }}>{v.jumlahPO}</div>
+                            <div style={{ fontSize: 10, color: "#94A3B8" }}>PO aktif</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            
           </div>
         </div>
       </div>

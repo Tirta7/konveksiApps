@@ -169,6 +169,11 @@ export default function PenjualanOnlinePage() {
     return `${pad(dateObj.getDate())}/${pad(dateObj.getMonth() + 1)}/${dateObj.getFullYear()} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
   };
 
+  // Real-time sync: refresh data when another admin makes changes
+  useEffect(() => {
+    window.addEventListener("konveksi-sync", fetchData);
+    return () => window.removeEventListener("konveksi-sync", fetchData);
+  }, [fetchData]);
   return (
     <>
       <style>{`

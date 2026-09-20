@@ -43,7 +43,7 @@ export default function SupplierPage() {
     try {
       const isEdit = editingId !== null;
       const url = "/api/supplier";
-      const method = isEdit ? "PUT" : "POST";
+      const method = "POST"; // API handles both create and edit via POST (using `id` field)
       const body = JSON.stringify({ ...formData, id: editingId });
 
       const res = await fetch(url, {
@@ -97,6 +97,11 @@ export default function SupplierPage() {
     setShowModal(true);
   };
 
+  // Real-time sync: refresh data when another admin makes changes
+  useEffect(() => {
+    window.addEventListener("konveksi-sync", fetchData);
+    return () => window.removeEventListener("konveksi-sync", fetchData);
+  }, [fetchData]);
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", overflow: "hidden" }}>
       <div style={{ padding: "24px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -122,14 +127,15 @@ export default function SupplierPage() {
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 13, color: "#64748B", fontWeight: 600 }}>KONTAK</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 13, color: "#64748B", fontWeight: 600 }}>JENIS MATERIAL</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 13, color: "#64748B", fontWeight: 600 }}>ALAMAT</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 13, color: "#64748B", fontWeight: 600 }}>TOTAL HUTANG</th>
                 <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 13, color: "#64748B", fontWeight: 600, width: "100px" }}>AKSI</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "#64748B" }}>Memuat data...</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#64748B" }}>Memuat data...</td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "#64748B" }}>Belum ada data supplier</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#64748B" }}>Belum ada data supplier</td></tr>
               ) : (
                 data.map((item, idx) => (
                   <tr key={item.id} style={{ borderBottom: idx === data.length - 1 ? "none" : "1px solid #E2E8F0" }}>
@@ -142,6 +148,9 @@ export default function SupplierPage() {
                       </span>
                     </td>
                     <td style={{ padding: "16px", fontSize: 14, color: "#64748B" }}>{item.alamat}</td>
+                    <td style={{ padding: "16px", textAlign: "right", fontSize: 14, fontWeight: 700, color: (item.total_hutang > 0) ? "#EF4444" : "#059669" }}>
+                      Rp {(item.total_hutang || 0).toLocaleString("id-ID")}
+                    </td>
                     <td style={{ padding: "16px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                         <button onClick={() => openEdit(item)} style={{ padding: 6, background: "#F1F5F9", color: "#3B82F6", borderRadius: 6, border: "none", cursor: "pointer" }}><Edit2 size={16} /></button>

@@ -1,99 +1,73 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
-function generateUID(prefix: string): string {
-  const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `${prefix}-${randomStr}`;
-}
-
 export async function GET() {
-  const data = readData();
-  const barang = data.data_barang || [];
-  
-  // Join dengan kategori
-  const result = barang.map(b => {
-    const kategori = data.kategori_produk?.find(k => k.id === b.kategori_id);
-    return {
-      ...b,
-      kategori_nama: kategori ? kategori.nama : "Tanpa Kategori"
+  try {
+    const data = readData();
+    return NextResponse.json(data.data_barang || []);
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const data = readData();
+    if (!data.data_barang) data.data_barang = [];
+    const body = await req.json();
+    const { nama_barang, kategori_id, harga_beli, harga_jual, stok } = body;
+    if (!nama_barang) return NextResponse.json({ error: "Nama barang wajib diisi" }, { status: 400 });
+    const id = nextId(data, "data_barang" as any);
+    const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const newItem = {
+      id, uid: `BRG-${randomStr}`,
+      nama_barang, kategori_id: Number(kategori_id) || 0,
+      harga_beli: Number(harga_beli) || 0,
+      harga_jual: Number(harga_jual) || 0,
+      stok: Number(stok) || 0,
+      createdAt: new Date().toISOString()
     };
-  });
-
-  return NextResponse.json(result.reverse());
+    data.data_barang.push(newItem);
+    writeData(data);
+    return NextResponse.json(newItem);
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
 }
 
-export async function POST(req: NextRequest) {
-  const data = readData();
-  const body = await req.json();
-  const { kategori_id, nama_barang, harga_beli, harga_jual, stok } = body;
-
-  if (!kategori_id || !nama_barang || harga_beli === undefined || harga_jual === undefined || stok === undefined) {
-    return NextResponse.json({ error: "Semua field wajib diisi" }, { status: 400 });
+export async function PUT(req: Request) {
+  try {
+    const data = readData();
+    if (!data.data_barang) data.data_barang = [];
+    const body = await req.json();
+    const { id, nama_barang, kategori_id, harga_beli, harga_jual, stok } = body;
+    if (!id) return NextResponse.json({ error: "ID dibutuhkan" }, { status: 400 });
+    const idx = data.data_barang.findIndex((b: any) => b.id === id);
+    if (idx === -1) return NextResponse.json({ error: "Barang tidak ditemukan" }, { status: 404 });
+    data.data_barang[idx] = {
+      ...data.data_barang[idx],
+      nama_barang, kategori_id: Number(kategori_id) || 0,
+      harga_beli: Number(harga_beli) || 0,
+      harga_jual: Number(harga_jual) || 0,
+      stok: Number(stok) || 0
+    };
+    writeData(data);
+    return NextResponse.json(data.data_barang[idx]);
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
-
-  const newId = nextId(data, "data_barang");
-  const newBarang = {
-    id: newId,
-    uid: generateUID('BRG'),
-    kategori_id: Number(kategori_id),
-    nama_barang,
-    harga_beli: Number(harga_beli),
-    harga_jual: Number(harga_jual),
-    stok: Number(stok),
-    created_at: new Date().toISOString(),
-  };
-
-  if (!data.data_barang) data.data_barang = [];
-  data.data_barang.push(newBarang);
-  writeData(data);
-
-  return NextResponse.json(newBarang, { status: 201 });
 }
 
-export async function PUT(req: NextRequest) {
-  const data = readData();
-  const body = await req.json();
-  const { id, kategori_id, nama_barang, harga_beli, harga_jual, stok } = body;
-
-  if (!id || !kategori_id || !nama_barang) {
-    return NextResponse.json({ error: "ID, Kategori, dan Nama wajib diisi" }, { status: 400 });
+export async function DELETE(req: Request) {
+  try {
+    const data = readData();
+    const { searchParams } = new URL(req.url);
+    const id = Number(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "ID dibutuhkan" }, { status: 400 });
+    data.data_barang = (data.data_barang || []).filter((b: any) => b.id !== id);
+    writeData(data);
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
-
-  const index = data.data_barang.findIndex(b => b.id === id);
-  if (index === -1) {
-    return NextResponse.json({ error: "Data barang tidak ditemukan" }, { status: 404 });
-  }
-
-  data.data_barang[index] = {
-    ...data.data_barang[index],
-    kategori_id: Number(kategori_id),
-    nama_barang,
-    harga_beli: harga_beli !== undefined ? Number(harga_beli) : data.data_barang[index].harga_beli,
-    harga_jual: harga_jual !== undefined ? Number(harga_jual) : data.data_barang[index].harga_jual,
-    stok: stok !== undefined ? Number(stok) : data.data_barang[index].stok,
-  };
-
-  writeData(data);
-  return NextResponse.json(data.data_barang[index]);
-}
-
-export async function DELETE(req: NextRequest) {
-  const data = readData();
-  const url = new URL(req.url);
-  const id = url.searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json({ error: "ID wajib disertakan" }, { status: 400 });
-  }
-
-  const numId = Number(id);
-  const index = data.data_barang.findIndex(b => b.id === numId);
-  if (index === -1) {
-    return NextResponse.json({ error: "Data barang tidak ditemukan" }, { status: 404 });
-  }
-
-  data.data_barang.splice(index, 1);
-  writeData(data);
-
-  return NextResponse.json({ success: true });
 }

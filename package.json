@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:redis": "set REDIS_URL=redis://127.0.0.1:6379 && next dev",
+    "redis:start": "wsl -d Ubuntu bash -c \"redis-server --daemonize yes --bind 0.0.0.0 --protected-mode no\"",
+    "redis:stop": "wsl -d Ubuntu bash -c \"redis-cli shutdown nosave\" || true",
+    "redis:ping": "wsl -d Ubuntu bash -c \"redis-cli ping\"",
     "build": "next build",
     "start": "next start"
   },
@@ -12,11 +16,14 @@
     "@types/papaparse": "^5.5.2",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",
+    "ioredis": "^6.0.0",
     "lucide-react": "^1.46.0",
     "next": "16.3.5",
     "papaparse": "^5.7.0",
+    "pg": "^8.23.0",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
+    "react-barcode": "^1.6.1",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
     "sonner": "^2.0.8",
@@ -24,10 +31,12 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5"
   }
 }

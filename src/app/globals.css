@@ -88,6 +88,7 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   flex-direction: column;
   z-index: 100;
   overflow-y: auto;
+  transition: width 0.3s ease;
 }
 
 .app-content {
@@ -98,12 +99,46 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: margin-left 0.3s ease;
+}
+
+/* ─── Sidebar Collapsed State ────────────────────────────────────────── */
+.app-layout.sidebar-collapsed .app-sidebar {
+  width: 80px;
+}
+.app-layout.sidebar-collapsed .app-content {
+  margin-left: 80px;
+}
+.app-layout.sidebar-collapsed .sidebar-logo-title,
+.app-layout.sidebar-collapsed .sidebar-logo-sub,
+.app-layout.sidebar-collapsed .sidebar-footer {
+  display: none;
+}
+.app-layout.sidebar-collapsed .sidebar-nav > div {
+  display: none; /* Hide dividers */
+}
+.app-layout.sidebar-collapsed .sidebar-menu-item span {
+  display: none;
+}
+.app-layout.sidebar-collapsed .sidebar-menu-item {
+  justify-content: center;
+  padding: 11px 0;
+}
+.app-layout.sidebar-collapsed .sidebar-logo {
+  justify-content: center;
+  padding: 24px 0 20px;
+}
+.app-layout.sidebar-collapsed .sidebar-logo .toggle-btn {
+  margin: 0 auto;
 }
 
 /* ─── Sidebar ────────────────────────────────────────────────────────── */
 .sidebar-logo {
   padding: 24px 20px 20px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sidebar-logo-title {
@@ -111,12 +146,31 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   font-weight: 800;
   color: #FFFFFF;
   letter-spacing: -0.3px;
+  white-space: nowrap;
 }
 
 .sidebar-logo-sub {
   font-size: var(--font-size-xs);
   color: var(--text-sidebar);
   margin-top: 2px;
+  white-space: nowrap;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-sidebar);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+.toggle-btn:hover {
+  background: var(--bg-sidebar-hover);
+  color: #FFFFFF;
 }
 
 .sidebar-nav {
@@ -139,6 +193,7 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   background: none;
   width: 100%;
   text-align: left;
+  white-space: nowrap;
 }
 
 .sidebar-menu-item:hover {
@@ -597,14 +652,115 @@ tbody tr:hover { background: #F8FAFC; }
 .timeline-connector.done { background: var(--color-success); }
 
 /* ─── Responsive ─────────────────────────────────────────────────────── */
+.mobile-header { display: none; }
+.sidebar-overlay { display: none; }
+
 @media (max-width: 768px) {
-  .app-sidebar { display: none; }
-  .app-content { margin-left: 0; padding: 16px; }
+  .app-sidebar {
+    transform: translateX(-100%);
+    display: flex;
+    position: fixed;
+    z-index: 200;
+    width: 260px;
+  }
+  .app-layout.mobile-sidebar-open .app-sidebar {
+    transform: translateX(0);
+  }
+  .sidebar-overlay.active {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 150;
+    backdrop-filter: blur(2px);
+  }
+  .app-content { 
+    margin-left: 0; 
+    padding: 0; 
+  }
+  .mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .mobile-header-logo {
+    font-weight: 800;
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+  }
+  .mobile-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Override inline paddings for page wrappers */
+  .app-content > div:not(.mobile-header) {
+    padding: 16px !important;
+  }
+  
+  /* Fix page header squishing */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .page-header > div:last-child {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  
+  .page-header > div > button {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .page-title {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .form-row { grid-template-columns: 1fr; }
+  
+  /* Make all tables horizontally scrollable on mobile */
+  div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 700px;
+  }
+  
+  /* Peta Perjalanan Specific */
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .pp-left-panel {
+    width: 100% !important;
+    border-right: none !important;
+  }
+  .pp-right-panel {
+    width: 100% !important;
+  }
+  .pp-back-btn {
+    display: flex !important;
+  }
 }
 
 /* ─── Utility ────────────────────────────────────────────────────────── */
+.pp-back-btn {
+  display: none;
+}
 .flex { display: flex; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .flex-center  { display: flex; align-items: center; justify-content: center; }

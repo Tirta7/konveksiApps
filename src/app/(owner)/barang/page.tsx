@@ -105,6 +105,11 @@ export default function BarangPage() {
     setShowModal(true);
   };
 
+  // Real-time sync: refresh data when another admin makes changes
+  useEffect(() => {
+    window.addEventListener("konveksi-sync", fetchData);
+    return () => window.removeEventListener("konveksi-sync", fetchData);
+  }, [fetchData]);
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", overflow: "hidden" }}>
       <div style={{ padding: "24px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>

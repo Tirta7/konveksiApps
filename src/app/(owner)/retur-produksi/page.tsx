@@ -4,6 +4,7 @@ import { AlertTriangle, Undo2, Ban, CheckCircle, Factory } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 function formatTgl(str: string) {
+
   if (!str) return "-";
   return new Date(str).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -20,6 +21,13 @@ export default function ReturProduksiPage() {
     router.push(`/buat-spk?batchId=${batchId}&retur=1`);
   };
 
+  // Real-time sync: auto-refresh when another admin makes a change
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <>
       <style>{`

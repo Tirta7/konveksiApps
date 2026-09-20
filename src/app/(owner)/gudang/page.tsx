@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Package, Layers, Activity } from "lucide-react";
 
@@ -13,13 +13,26 @@ export default function GudangPage() {
   const [data, setData] = useState<{ stock: any[]; movements: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchData = () => {
+    fetch("/api/stock")
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  // Real-time sync: auto-refresh when another admin makes a change
   useEffect(() => {
-    fetch("/api/stock").then(r => r.json()).then(d => { setData(d); setLoading(false); });
+    const handler = () => fetchData();
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const totalStok = data?.stock.reduce((s, r) => s + r.stok_saat_ini, 0) ?? 0;
-  const masukMingguIni = data?.movements.filter(m => m.jenis === "masuk" && new Date(m.tanggal) >= new Date(Date.now() - 7 * 86400000)).reduce((s, m) => s + m.jumlah, 0) ?? 0;
-  const keluarMingguIni = data?.movements.filter(m => m.jenis === "keluar" && new Date(m.tanggal) >= new Date(Date.now() - 7 * 86400000)).reduce((s, m) => s + m.jumlah, 0) ?? 0;
+  const totalStok = data?.stock?.reduce((s, r) => s + r.stok_saat_ini, 0) ?? 0;
+  const masukMingguIni = data?.movements?.filter(m => m.jenis === "masuk" && new Date(m.tanggal) >= new Date(Date.now() - 7 * 86400000))?.reduce((s, m) => s + m.jumlah, 0) ?? 0;
+  const keluarMingguIni = data?.movements?.filter(m => m.jenis === "keluar" && new Date(m.tanggal) >= new Date(Date.now() - 7 * 86400000))?.reduce((s, m) => s + m.jumlah, 0) ?? 0;
 
   return (
     <>
@@ -85,7 +98,7 @@ export default function GudangPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.stock.map(s => {
+                    {data?.stock?.map(s => {
                       const isDanger = s.stok_saat_ini === 0;
                       const isWarning = s.stok_saat_ini > 0 && s.stok_saat_ini < 20;
                       const statusColor = isDanger ? "#EF4444" : isWarning ? "#F59E0B" : "#10B981";
@@ -129,7 +142,7 @@ export default function GudangPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.movements.map(m => {
+                    {data?.movements?.map(m => {
                       const isMasuk = m.jenis === "masuk";
                       return (
                         <tr key={m.id} className="table-row-hover" style={{ borderBottom: "1px solid #F1F5F9" }}>
