@@ -53,13 +53,14 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
         pct,
         sizeProgress,
         pendingSizeProgress,
-        progres: (data.spk_progres || []).filter((p: any) => p.po_id === po.id)
+        progres: (data.spk_progres || []).filter((p: any) => p.po_id === po.id),
+        transfer_status: po.status
       };
     });
   } else {
     // Vendor downstream (Washing, Finishing, dll) mencari active job di produksi_transfers
     activePO = (data.produksi_transfers || [])
-      .filter((t: any) => t.vendor_id === vendorId && t.status === "Proses")
+      .filter((t: any) => t.vendor_id === vendorId && (t.status === "Proses" || t.status === "Dikerjakan"))
       .map((t: any) => {
         const po = (data.po_produksi || []).find((p: any) => p.id === t.po_id);
         
@@ -86,7 +87,8 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
           }
         }
 
-        const totalSelesai = Object.values(sizeProgress).reduce((sum, val) => sum + val, 0);
+        const totalSelesai = Object.values(sizeProgress).reduce((sum: number, val) => sum + (val as number), 0);
+        const totalPending = Object.values(pendingSizeProgress).reduce((sum: number, val) => sum + (val as number), 0);
         const pct = t.jumlah_kirim > 0 ? Math.round((totalSelesai / t.jumlah_kirim) * 100) : 0;
 
         return {
@@ -95,12 +97,19 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
           is_transfer: true,
           no_po: po ? po.noPo : "Unknown",
           model: po ? po.model : "Unknown",
-          jumlah_terbit: t.jumlah_kirim, // The amount they were assigned
-          totalDiambil: t.jumlah_kirim, // For downstream, it's immediately assigned
+          jumlah_terbit: t.jumlah_kirim, // Total yang ditugaskan ke vendor ini
+          totalDiambil: totalSelesai,    // Hanya yang sudah Diterima/ACC admin
+          totalPending,
           pct,
+          sizeBreakdown: (t.sizeBreakdown || []).map((s: any) => ({
+            size: s.size,
+            jumlah: Number(s.jumlah || s.max || 0),
+            sisa: Number(s.jumlah || s.max || 0), // alias for display
+          })),
           sizeProgress,
           pendingSizeProgress,
-          progres: [] // For downstream maybe not tracked in spk_progres
+          progres: [],
+          transfer_status: t.status
         };
       });
   }

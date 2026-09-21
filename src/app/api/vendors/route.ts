@@ -1,4 +1,5 @@
-﻿import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
 
 export async function GET() {
@@ -59,12 +60,22 @@ export async function GET() {
 export async function POST(req: Request) {
   const data = readData();
   const body = await req.json();
+  const newId = data.vendors.length > 0 ? Math.max(...data.vendors.map((v: any) => v.id)) + 1 : 1;
+  const prefix = (body.tipe || "VND").substring(0, 3).toUpperCase();
+  const kodeVendor = `${prefix}-${String(newId).padStart(3, "0")}`;
+
   const newVendor = {
-    id: data.vendors.length > 0 ? Math.max(...data.vendors.map((v: any) => v.id)) + 1 : 1,
+    id: newId,
+    kodeVendor,
     nama: body.nama,
     tipe: body.tipe,
-    no_hp: body.no_hp || "",
-    alamat: body.alamat || "",
+    jenis_default: body.jenis_default || "",
+    kontak: body.kontak || "",
+    wajib_hitung_ulang: body.wajib_hitung_ulang || false,
+    hargaPerPcs: body.hargaPerPcs || 0,
+    tarifPotongan: body.tarifPotongan || {},
+    min_progress_pct: body.min_progress_pct ?? 70,
+    aktif: true,
     createdAt: new Date().toISOString()
   };
   data.vendors.push(newVendor);

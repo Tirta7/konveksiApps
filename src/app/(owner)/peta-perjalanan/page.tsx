@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 
 function fmtDate(str?: string) {
@@ -53,18 +53,29 @@ export default function PetaPerjalananPage() {
     finally { setLastUpdated(new Date()); setLoading(false); }
   }, []);
 
-  const loadDetail = useCallback(async (poId: string) => {
-    setDetailLoading(true);
+  const loadDetail = useCallback(async (poId: string, isBackground = false) => {
+    if (!isBackground) setDetailLoading(true);
     try {
       const res = await fetch(`/api/po-detail?poId=${poId}&_t=` + Date.now());
       const data = await res.json();
       setDetail(data);
     } catch {}
-    finally { setDetailLoading(false); }
+    finally { if (!isBackground) setDetailLoading(false); }
   }, []);
 
-  useEffect(() => { loadList(); const t = setInterval(loadList, 10000); return () => clearInterval(t); }, [loadList]);
-  useEffect(() => { if (selectedPoId) loadDetail(selectedPoId); }, [selectedPoId, loadDetail]);
+  useEffect(() => { 
+    loadList(); 
+    const t = setInterval(loadList, 5000); 
+    return () => clearInterval(t); 
+  }, [loadList]);
+
+  useEffect(() => { 
+    if (selectedPoId) {
+      loadDetail(selectedPoId); 
+      const t = setInterval(() => loadDetail(selectedPoId, true), 5000);
+      return () => clearInterval(t);
+    }
+  }, [selectedPoId, loadDetail]);
   useEffect(() => {
     const el = document.querySelector(".app-content") as HTMLElement;
     if (el) { el.style.overflow = "hidden"; el.style.padding = "0"; el.style.height = "100vh"; }
@@ -98,11 +109,14 @@ export default function PetaPerjalananPage() {
 
   // Real-time sync: auto-refresh when another admin makes a change
   useEffect(() => {
-    const handler = () => loadList();
+    const handler = () => {
+      loadList();
+      if (selectedPoId) loadDetail(selectedPoId, true);
+    };
     window.addEventListener("konveksi-sync", handler);
     return () => window.removeEventListener("konveksi-sync", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedPoId]);
   return (
     <>
       <style>{`
@@ -341,6 +355,17 @@ export default function PetaPerjalananPage() {
                     sizes={detail.sizeBreakdown}
                   />
 
+                  {/* Event: CMT Mulai Mengerjakan */}
+                  {detail.status === "Dikerjakan" && (
+                    <TLCard
+                      fiIcon="play" iconBg="#FEF3C7" iconColor="#D97706" iconBorder="#D97706"
+                      badge="Jahit (CMT)  Sedang Berjalan" badgeBg="#FEF3C7" badgeColor="#D97706"
+                      time={""}
+                      title={`Vendor ${detail.vendorCMT?.nama || ""} Sedang Mengerjakan Jahitan`}
+                      subtitle={`Jumlah target: ${detail.jumlahTerbit} pcs`}
+                    />
+                  )}
+
                   {/* CMT Records */}
                   {(detail.cmtRecords || []).map((rec: any) => {
                     const isACC = rec.status === "Diverifikasi" || rec.status === "Diterima";
@@ -379,18 +404,53 @@ export default function PetaPerjalananPage() {
                     );
                   })}
 
+                  {/* Downstream Requests */}
+                  {(detail.downstreamRequests || []).map((r: any) => {
+                    const cfg = STAGE_CONFIG[r.tipe_vendor] || { label: r.tipe_vendor?.toUpperCase(), color: "#F59E0B", bg: "#FEF3C7", fiIcon: "inbox" };
+                    if (r.status !== "Pending") return null;
+                    return (
+                      <TLCard
+                        key={`req-${r.id}`}
+                        fiIcon="inbox" iconBg="#FEF3C7" iconColor="#D97706" iconBorder="#D97706"
+                        badge={`${cfg.label}  Request`}
+                        badgeBg="#FEF3C7" badgeColor="#D97706"
+                        time={fmtDT(r.createdAt)}
+                        title={`${r.vendor_nama} Request ke Admin ke: ${r.tipe_vendor} (${cfg.label})`}
+                        subtitle={`Request sejumlah ${r.total_request} pcs`}
+                        extra={r.catatan}
+                        pcs={r.total_request}
+                      />
+                    );
+                  })}
+
                   {/* Produksi Transfers */}
                   {(detail.transfers || []).map((t: any) => {
                     const cfg = STAGE_CONFIG[t.ke] || { label: t.ke.toUpperCase(), color: "#3B82F6", bg: "#EFF6FF", fiIcon: "box-open" };
                     const isDone = t.status === "Diverifikasi";
+                    
+                    let titleStr = t.vendor_ke_nama ? `Dikirim ke: ${t.vendor_ke_nama} (${cfg.label})` : `Siap melakukan ${cfg.label}`;
+                    if (t.status === "Standby") {
+                      titleStr = `Siap Diambil ke: ${t.ke} (${cfg.label})`;
+                    } else if (t.status === "Dikerjakan") {
+                      titleStr = `Mulai Dikerjakan oleh: ${t.vendor_ke_nama || t.ke} (${cfg.label})`;
+                    } else if (t.status === "Proses" || t.status === "Kirim" || t.status === "Diverifikasi") {
+                      titleStr = `Dikirim ke: ${t.vendor_ke_nama || t.ke} (${cfg.label})`;
+                    }
+
+                    const isDikerjakan = t.status === "Dikerjakan";
+
                     return (
                       <TLCard
                         key={`tr-${t.id}`}
-                        fiIcon={cfg.fiIcon} iconBg={isDone ? "#DCFCE7" : cfg.bg} iconColor={isDone ? "#10B981" : cfg.color} iconBorder={isDone ? "#10B981" : cfg.color}
-                        badge={`${cfg.label}${isDone ? "  Selesai" : "  Dalam Proses"}`}
-                        badgeBg={isDone ? "#D1FAE5" : cfg.bg} badgeColor={isDone ? "#065F46" : cfg.color}
+                        fiIcon={isDikerjakan ? "play" : cfg.fiIcon} 
+                        iconBg={isDone ? "#DCFCE7" : isDikerjakan ? "#FEF3C7" : cfg.bg} 
+                        iconColor={isDone ? "#10B981" : isDikerjakan ? "#D97706" : cfg.color} 
+                        iconBorder={isDone ? "#10B981" : isDikerjakan ? "#D97706" : cfg.color}
+                        badge={`${cfg.label}${isDone ? "  Selesai" : isDikerjakan ? "  Sedang Berjalan" : "  Dalam Proses"}`}
+                        badgeBg={isDone ? "#D1FAE5" : isDikerjakan ? "#FEF3C7" : cfg.bg} 
+                        badgeColor={isDone ? "#065F46" : isDikerjakan ? "#D97706" : cfg.color}
                         time={fmtDT(t.tanggal_kirim)}
-                        title={t.vendor_ke_nama ? `Dikirim ke: ${t.vendor_ke_nama} (${cfg.label})` : `Siap melakukan ${cfg.label}`}
+                        title={titleStr}
                         subtitle={isDone ? `Selesai & Diverifikasi · Diterima: ${t.jumlah_diterima || t.jumlah_kirim} pcs` : `Dalam proses · ${t.jumlah_kirim} pcs`}
                         extra={t.catatan}
                         sizes={t.sizeBreakdown}

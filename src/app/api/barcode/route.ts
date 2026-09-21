@@ -1,4 +1,5 @@
-﻿import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export async function GET() {
@@ -40,7 +41,10 @@ export async function GET() {
       // First `approved` barcodes  gudang (or better if already advanced)
       for (; i < sorted.length && i < approved; i++) {
         const stored = sorted[i].status;
-        if (["siap_jual","washing","benang","finishing"].includes(stored)) {
+        if (
+          ["siap_jual", "washing", "benang", "finishing"].includes(stored) ||
+          stored.endsWith("_dikerjakan")
+        ) {
           effectiveStatus[sorted[i].id] = stored; // keep more advanced status
         } else {
           effectiveStatus[sorted[i].id] = "gudang";
@@ -49,7 +53,10 @@ export async function GET() {
       // Next `pending` barcodes  cmt
       for (; i < sorted.length && i < approved + pending; i++) {
         const stored = sorted[i].status;
-        if (["siap_jual","washing","benang","finishing","gudang"].includes(stored)) {
+        if (
+          ["siap_jual", "washing", "benang", "finishing", "gudang"].includes(stored) ||
+          stored.endsWith("_dikerjakan")
+        ) {
           effectiveStatus[sorted[i].id] = stored;
         } else {
           effectiveStatus[sorted[i].id] = "cmt";

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useState } from "react";
 import { Plus, Scissors, Save, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -149,7 +149,7 @@ export default function PemotonganKainPage() {
 
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
-          <div style={{ background: "white", width: "100%", maxWidth: 900, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+          <div style={{ background: "white", width: "90vw", maxWidth: 1200, borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#EFF6FF" }}>
               <h2 className="card-title" style={{ color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
                 <Scissors size={18} /> Form Input Hasil Potongan

@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 import React, { use, useEffect, useState, useRef } from "react";
-import { Briefcase, CheckCircle2, Clock, DollarSign, Package, PlusCircle, RefreshCw, X, AlertCircle, TrendingUp } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, DollarSign, Package, PlusCircle, RefreshCw, X, AlertCircle, TrendingUp, PlayCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 //  Radial Progress Bar 
@@ -139,6 +139,8 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // For downstream (transfer-based) POs, send the transfer id as po_id
+          // The API will resolve the real po_id from the transfer
           po_id: showProgresModal.id,
           vendor_id: id,
           items: items.map(i => ({ size: i.size, jumlah: Number(i.jumlah) })),
@@ -157,6 +159,27 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
       toast.error(err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleMulaiKerja = async (po: any, action: "mulai" | "batal") => {
+    try {
+      const res = await fetch("/api/portal-vendor/mulai-kerja", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: po.id,
+          po_id: po.po_id || po.id,
+          is_transfer: !!po.is_transfer,
+          action,
+          vendor_tipe: data.vendor?.tipe || "washing"
+        })
+      });
+      if (!res.ok) throw new Error("Gagal mengubah status");
+      toast.success(action === "mulai" ? "Berhasil mulai mengerjakan!" : "Berhasil membatalkan status!");
+      fetchData();
+    } catch (e: any) {
+      toast.error(e.message);
     }
   };
 
@@ -431,30 +454,49 @@ export default function CMTPortalPage({ params }: { params: Promise<{ id: string
                   </div>
                 )}
                 
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-                  <button 
-                    onClick={() => {
-                      setShowProgresModal(po);
-                      const items = po.sizeBreakdown.map((s: any) => {
-                        const approved = po.sizeProgress?.[s.size] || 0;
-                        const pending = po.pendingSizeProgress?.[s.size] || 0;
-                        const sisa = Math.max(s.jumlah - approved - pending, 0);
-                        return {
-                          size: s.size,
-                          jumlah: "",
-                          maxSisa: sisa,           // sisa yang belum dilaporkan
-                          totalTarget: s.jumlah,   // total awal PO
-                          done: approved,          // sudah disetujui
-                          pending: pending,        // pending verifikasi
-                        };
-                      });
-                      setProgresForm(items);
-                      setProgresCatatan("");
-                    }}
-                    style={{ background: pct >= 100 ? "#064E3B" : "linear-gradient(135deg,#3B82F6,#6366F1)", color: pct >= 100 ? "#10B981" : "white", padding: "10px 20px", borderRadius: 10, fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: pct >= 100 ? "none" : "0 4px 12px rgba(59,130,246,0.35)" }}
-                  >
-                    {pct >= 100 ? <><CheckCircle2 size={16} /> Sudah 100%  Lapor Lagi?</> : <><TrendingUp size={16} /> Lapor Progres Selesai</>}
-                  </button>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, gap: 8 }}>
+                  {po.transfer_status !== "Dikerjakan" ? (
+                    <button 
+                      onClick={() => handleMulaiKerja(po, "mulai")}
+                      style={{ background: "linear-gradient(135deg,#F59E0B,#D97706)", color: "white", padding: "10px 20px", borderRadius: 10, fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 12px rgba(245,158,11,0.35)" }}
+                    >
+                      <PlayCircle size={16} /> Mulai Mengerjakan
+                    </button>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => handleMulaiKerja(po, "batal")}
+                        style={{ background: "transparent", color: "#EF4444", border: "1px solid #EF4444", padding: "10px 16px", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+                      >
+                        <XCircle size={16} /> Batal Mulai
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setShowProgresModal(po);
+                          const breakdown = po.sizeBreakdown || [];
+                          const items = breakdown.map((s: any) => {
+                            const approved = po.sizeProgress?.[s.size] || 0;
+                            const pending = po.pendingSizeProgress?.[s.size] || 0;
+                            const totalSize = Number(s.jumlah || s.sisa || 0);
+                            const sisa = Math.max(totalSize - approved - pending, 0);
+                            return {
+                              size: s.size,
+                              jumlah: "",
+                              maxSisa: sisa,           // sisa yang belum dilaporkan
+                              totalTarget: totalSize,  // total awal PO
+                              done: approved,          // sudah disetujui
+                              pending: pending,        // pending verifikasi
+                            };
+                          });
+                          setProgresForm(items);
+                          setProgresCatatan("");
+                        }}
+                        style={{ background: pct >= 100 ? "#064E3B" : "linear-gradient(135deg,#3B82F6,#6366F1)", color: pct >= 100 ? "#10B981" : "white", padding: "10px 20px", borderRadius: 10, fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: pct >= 100 ? "none" : "0 4px 12px rgba(59,130,246,0.35)" }}
+                      >
+                        {pct >= 100 ? <><CheckCircle2 size={16} /> Sudah 100%  Lapor Lagi?</> : <><TrendingUp size={16} /> Lapor Progres Selesai</>}
+                      </button>
+                    </>
+                  )}
                 </div>
                 </div>
               </div>

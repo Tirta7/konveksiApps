@@ -61,6 +61,12 @@ export default function BuatPOProduksi() {
     return () => clearInterval(interval);
   }, []);
 
+  // Real-time sync: refresh data when another admin makes changes
+  useEffect(() => {
+    window.addEventListener("konveksi-sync", fetchAll);
+    return () => window.removeEventListener("konveksi-sync", fetchAll);
+  }, [fetchAll]);
+
   const selectedPemotongan = pemotonganList.find(p => String(p.id) === form.pemotonganId);
 
   // Helper: distribute qty evenly across available sizes
@@ -251,11 +257,7 @@ export default function BuatPOProduksi() {
     );
   }
 
-  // Real-time sync: refresh data when another admin makes changes
-  useEffect(() => {
-    window.addEventListener("konveksi-sync", fetchAll);
-    return () => window.removeEventListener("konveksi-sync", fetchAll);
-  }, [fetchAll]);
+
   return (
     <div style={{ height: "100%", overflowY: "auto", overflowX: "hidden" }}>
       <div style={{ padding: "32px", animation: "fadeIn 0.4s ease-out" }}>
@@ -356,7 +358,8 @@ export default function BuatPOProduksi() {
           {(() => {
             const filtered = cmtRequests.filter((r: any) => {
               if (requestFilter === "Semua") return true;
-              if (requestFilter === "Selesai/Dilayani") return r.status === "Selesai" || r.status === "Terpenuhi Sebagian";
+              if (requestFilter === "Selesai/Dilayani") return r.status === "Selesai" || r.status === "Terpenuhi Sebagian" || r.status === "Sebagian";
+              if (requestFilter === "Pending") return r.status === "Pending" || r.status === "Sebagian";
               return r.status === requestFilter;
             });
 
@@ -384,6 +387,7 @@ export default function BuatPOProduksi() {
 
             const STATUS_CFG: Record<string, { badge: string; badgeText: string; borderL: string }> = {
               "Pending":            { badge: "#DBEAFE", badgeText: "#1D4ED8", borderL: "#3B82F6" },
+              "Sebagian":           { badge: "#FEF3C7", badgeText: "#B45309", borderL: "#F59E0B" },
               "Terpenuhi Sebagian": { badge: "#FEF3C7", badgeText: "#B45309", borderL: "#F59E0B" },
               "Selesai":            { badge: "#D1FAE5", badgeText: "#065F46", borderL: "#10B981" },
               "Ditolak":            { badge: "#FEE2E2", badgeText: "#991B1B", borderL: "#EF4444" },
@@ -392,7 +396,7 @@ export default function BuatPOProduksi() {
             return ["cmt", "washing", "benang", "finishing", "lainnya"].map(tipe => {
               const g = GROUPS[tipe];
               if (g.items.length === 0) return null;
-              const pendingCount = g.items.filter(r => r.status === "Pending").length;
+              const pendingCount = g.items.filter(r => r.status === "Pending" || r.status === "Sebagian").length;
 
               return (
                 <div key={tipe}>
@@ -415,7 +419,7 @@ export default function BuatPOProduksi() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
                     {g.items.map((r: any) => {
                       const sc = STATUS_CFG[r.status] || STATUS_CFG["Pending"];
-                      const isPending = r.status === "Pending" || r.status === "Terpenuhi Sebagian";
+                      const isPending = r.status === "Pending" || r.status === "Sebagian" || r.status === "Terpenuhi Sebagian";
                       const isDitolak = r.status === "Ditolak";
                       const pct = r.total_request > 0 ? Math.round(((r.total_dipenuhi || 0) / r.total_request) * 100) : 0;
                       const sisaKurang = Math.max(0, r.total_request - (r.total_dipenuhi || 0));
@@ -532,11 +536,34 @@ export default function BuatPOProduksi() {
                                     if (r.pemotongan?.is_transfer) {
                                       setDownstreamModal(r);
                                       const breakdown = r.pemotongan.sizeBreakdown || [];
-                                      setDownstreamForm(breakdown.map((s:any) => ({
-                                        size: s.size,
-                                        max: Number(s.sisa || s.jumlah || 0),
-                                        jumlah: ""
-                                      })));
+                                      // Use remaining unfulfilled qty, not total request
+                                      const alreadyDipenuhi = Number(r.total_dipenuhi || 0);
+                                      const targetQty = Math.max(0, Number(r.total_request) - alreadyDipenuhi);
+                                      
+                                      const availableSizes = breakdown.filter((s:any) => Number(s.sisa || s.jumlah || 0) > 0);
+                                      const numSizes = availableSizes.length;
+                                      
+                                      let perSize = 0;
+                                      let remainder = 0;
+                                      if (numSizes > 0 && targetQty > 0) {
+                                        perSize = Math.floor(targetQty / numSizes);
+                                        remainder = targetQty - (perSize * numSizes);
+                                      }
+
+                                      setDownstreamForm(breakdown.map((s:any) => {
+                                        const max = Number(s.sisa || s.jumlah || 0);
+                                        if (max <= 0) return { size: s.size, max, jumlah: "" };
+                                        
+                                        const extra = remainder > 0 ? 1 : 0;
+                                        if (remainder > 0) remainder--;
+                                        
+                                        const qty = Math.min(perSize + extra, max);
+                                        return {
+                                          size: s.size,
+                                          max,
+                                          jumlah: qty > 0 ? qty : ""
+                                        };
+                                      }));
                                       return;
                                     }
                                     const targetQty = Number(r.total_request);
@@ -671,9 +698,20 @@ export default function BuatPOProduksi() {
                           <div style={{ fontWeight: 900, fontSize: 14, color: "#0F172A" }}>{lp.noPo}</div>
                           <div style={{ fontSize: 11, color: "#64748B" }}>{lp.model}</div>
                         </div>
-                        <div style={{ background: "#F0FDF4", borderRadius: 10, padding: "8px 12px" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase" }}>Total Selesai</div>
-                          <div style={{ fontWeight: 900, fontSize: 22, color: "#10B981", lineHeight: 1.2 }}>{lp.totalJumlah}<span style={{ fontSize: 10, color: "#94A3B8" }}> pcs</span></div>
+                        <div style={{ background: "#F0FDF4", borderRadius: 10, padding: "8px 12px", border: "1px solid #DCFCE7", display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: "#16A34A", textTransform: "uppercase" }}>Target PO</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#15803D" }}>{lp.targetJumlah} pcs</div>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: "#16A34A", textTransform: "uppercase" }}>Total Selesai</div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#10B981" }}>{lp.totalJumlah} pcs</div>
+                          </div>
+                          <div style={{ height: 1, background: "#BBF7D0", margin: "2px 0" }} />
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: "#B45309", textTransform: "uppercase" }}>Sisa Belum Lapor</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: "#D97706" }}>{Math.max(0, (lp.targetJumlah || 0) - (lp.totalJumlah || 0))} pcs</div>
+                          </div>
                         </div>
                       </div>
                       {/* Size breakdown */}

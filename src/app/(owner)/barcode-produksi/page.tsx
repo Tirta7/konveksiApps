@@ -12,17 +12,25 @@ export default function BarcodeProduksiPage() {
   const [selectedBarcode, setSelectedBarcode] = useState<any | null>(null);
 
   // Status display config
-    // Status display config (Dynamic)
   const getStatusInfo = (status: string) => {
     if (status === "siap_jual") return { label: "SIAP CETAK / SELESAI", color: "#22C55E", border: "#22C55E", opacity: 1, clickable: true };
     if (status === "gudang") return { label: "GUDANG", color: "#3B82F6", border: "#3B82F6", opacity: 1, clickable: false };
     if (status === "potong" || status === "cmt") return { label: "SEDANG DIJAHIT", color: "#8B5CF6", border: "#8B5CF6", opacity: 1, clickable: false };
+    if (status === "washing") return { label: "DIKIRIM KE: WASHING (WASHING / LAUNDRY)", color: "#F59E0B", border: "#F59E0B", opacity: 1, clickable: false };
+    
+    if (status.endsWith("_dikerjakan")) {
+      const baseStatus = status.replace("_dikerjakan", "");
+      if (baseStatus === "cmt" || baseStatus === "potong") return { label: "SEDANG DIKERJAKAN: JAHIT (CMT)", color: "#9333EA", border: "#9333EA", opacity: 1, clickable: false };
+      if (baseStatus === "washing") return { label: "SEDANG DIKERJAKAN: WASHING (WASHING / LAUNDRY)", color: "#D97706", border: "#D97706", opacity: 1, clickable: false };
+      
+      const stage = pipelineStages.find(s => s.slug === baseStatus);
+      if (stage) return { label: `SEDANG DIKERJAKAN: ${stage.nama.toUpperCase()}`, color: stage.warna || "#06B6D4", border: stage.warna || "#06B6D4", opacity: 1, clickable: false };
+    }
     
     // Dynamic stages
     const stage = pipelineStages.find(s => s.slug === status);
-    if (stage) return { label: `MENUNGGU ${stage.nama.toUpperCase()}`, color: stage.warna || "#06B6D4", border: stage.warna || "#06B6D4", opacity: 1, clickable: false };
+    if (stage) return { label: `DIKIRIM KE: ${stage.nama.toUpperCase()}`, color: stage.warna || "#06B6D4", border: stage.warna || "#06B6D4", opacity: 1, clickable: false };
     
-    // Check if it's "selesai_xxx" or something? Actually barcode status is just the "ke" (destination slug)
     return { label: `${status.toUpperCase()}`, color: "#94A3B8", border: "#CBD5E1", opacity: 0.8, clickable: false };
   };
 
@@ -46,7 +54,10 @@ export default function BarcodeProduksiPage() {
       });
       const list = Array.from(poMap.values());
       setPoList(list);
-      if (list.length > 0 && !selectedPoId) setSelectedPoId(list[0].id);
+      setSelectedPoId(prev => {
+        if (!prev && list.length > 0) return list[0].id;
+        return prev;
+      });
     } catch (e) {
       // ignore
     } finally {

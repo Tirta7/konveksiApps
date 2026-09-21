@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export async function GET(req: NextRequest) {
@@ -134,6 +134,14 @@ export async function GET(req: NextRequest) {
 
       // Transfer (Washing, Benang, Finishing, Gudang)
       transfers,
+
+      // Requests dari downstream vendor (Washing dll)
+      downstreamRequests: (data.cmt_requests || [])
+        .filter((r: any) => r.transfer_id && transfers.some((t: any) => String(t.id) === String(r.transfer_id)))
+        .map((r: any) => {
+          const v = vendors.find((v: any) => String(v.id) === String(r.vendor_id));
+          return { ...r, vendor_nama: v ? v.nama : "Unknown", tipe_vendor: v ? v.tipe : "unknown" };
+        }),
 
       // Ledger (Pengambilan per vendor)
       ledgers,

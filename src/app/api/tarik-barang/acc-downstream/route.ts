@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function POST(req: NextRequest) {
@@ -77,10 +77,23 @@ export async function POST(req: NextRequest) {
       catatan: `ACC Request Lanjutan PO #${t.po_id}`
     });
 
-    // Update Request status
-    data.cmt_requests[reqIndex].status = "Selesai";
-    data.cmt_requests[reqIndex].total_dipenuhi = requestedTotal;
-    data.cmt_requests[reqIndex].catatan = "Di-ACC otomatis dari Standby Pool";
+    // Update Request status - handle partial fulfillment
+    const cmtReq = data.cmt_requests[reqIndex];
+    const prevDipenuhi = Number(cmtReq.total_dipenuhi || 0);
+    const newDipenuhi = prevDipenuhi + requestedTotal;
+    const totalRequest = Number(cmtReq.total_request || 0);
+
+    cmtReq.total_dipenuhi = newDipenuhi;
+
+    if (newDipenuhi >= totalRequest) {
+      // Fully fulfilled
+      cmtReq.status = "Selesai";
+      cmtReq.catatan = "Di-ACC otomatis dari Standby Pool";
+    } else {
+      // Partially fulfilled - keep Pending so remaining can be fulfilled later
+      cmtReq.status = "Sebagian";
+      cmtReq.catatan = `Di-ACC sebagian: ${newDipenuhi}/${totalRequest} pcs. Sisa ${totalRequest - newDipenuhi} pcs menunggu stok.`;
+    }
 
     writeData(data);
     return NextResponse.json({ success: true, message: "Pekerjaan berhasil ditugaskan ke vendor." });
