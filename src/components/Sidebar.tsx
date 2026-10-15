@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, MapPin, FilePlus, FileText, Warehouse,
   ShoppingCart, Store, RotateCcw, RefreshCw, BarChart2, Users,
   ClipboardList, Package, Settings, ScanBarcode, Factory,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Smartphone, X, CheckCircle2, Download
 } from "lucide-react";
 
 const MENU = [
@@ -65,47 +66,198 @@ export default function Sidebar({
   toggleSidebar?: () => void;
 }) {
   const pathname = usePathname();
+  const [namaUsaha, setNamaUsaha] = useState("KonveksiApps");
+  const [subTagline, setSubTagline] = useState("Sistem Tracking Produksi Jeans");
+  const [logoUrl, setLogoUrl] = useState("/icons/icon-192.png");
+  const [showPwaModal, setShowPwaModal] = useState(false);
+
+  const fetchBrandData = () => {
+    fetch("/api/pengaturan")
+      .then(r => r.json())
+      .then(d => {
+        if (d?.nama_usaha) {
+          const mainPart = d.nama_usaha.split("|")[0].trim();
+          setNamaUsaha(mainPart || d.nama_usaha);
+        }
+        if (d?.tagline) setSubTagline(d.tagline);
+        if (d?.logo_url) setLogoUrl(d.logo_url);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchBrandData();
+    window.addEventListener("pengaturan-changed", fetchBrandData);
+    window.addEventListener("konveksi-sync", fetchBrandData);
+    return () => {
+      window.removeEventListener("pengaturan-changed", fetchBrandData);
+      window.removeEventListener("konveksi-sync", fetchBrandData);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    const promptEvent = (window as any).__deferredPwaPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      const choiceResult = await promptEvent.userChoice;
+      if (choiceResult.outcome === "accepted") {
+        (window as any).__deferredPwaPrompt = null;
+      }
+    } else {
+      setShowPwaModal(true);
+    }
+  };
 
   return (
-    <aside className="app-sidebar">
-      <div className="sidebar-logo">
-        <div>
-          <div className="sidebar-logo-title"> KonveksiApps</div>
-          <div className="sidebar-logo-sub">Sistem Tracking Produksi Jeans</div>
+    <>
+      <aside className="app-sidebar">
+        <div className="sidebar-logo">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, overflow: "hidden", flex: 1 }}>
+            <img 
+              src={logoUrl} 
+              alt="Logo" 
+              style={{ 
+                width: 36, 
+                height: 36, 
+                borderRadius: 9, 
+                objectFit: "cover",
+                background: "#1E293B",
+                border: "1.5px solid rgba(255,255,255,0.2)",
+                flexShrink: 0,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.25)"
+              }} 
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/icons/icon-192.png";
+              }}
+            />
+            {!isCollapsed && (
+              <div style={{ overflow: "hidden", flex: 1 }}>
+                <div className="sidebar-logo-title" style={{ fontSize: namaUsaha.length > 15 ? 14 : 17, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                  {namaUsaha}
+                </div>
+                <div className="sidebar-logo-sub" style={{ whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                  {subTagline}
+                </div>
+              </div>
+            )}
+          </div>
+          {toggleSidebar && (
+            <button onClick={toggleSidebar} className="toggle-btn" title="Toggle Sidebar">
+              {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </button>
+          )}
         </div>
-        {toggleSidebar && (
-          <button onClick={toggleSidebar} className="toggle-btn" title="Toggle Sidebar">
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+
+        <nav className="sidebar-nav">
+          {MENU.map((item: any, idx: number) => {
+            if (item.divider) return (
+              <div key={idx} style={{ padding: "8px 12px 4px", fontSize: 10, fontWeight: 800, color: "#64748B", letterSpacing: 1, textTransform: "uppercase", marginTop: 8 }}>
+                {item.divider}
+              </div>
+            );
+            const Icon = item.icon;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`sidebar-menu-item${isActive ? " active" : ""}`}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* PWA INSTALL BUTTON & FOOTER */}
+        <div className="sidebar-footer" style={{ display: "flex", flexDirection: "column", gap: 8, padding: isCollapsed ? "12px 8px" : "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <button
+            type="button"
+            onClick={handleInstallPWA}
+            style={{
+              width: "100%",
+              padding: isCollapsed ? "8px 4px" : "8px 12px",
+              background: "linear-gradient(135deg, #1E40AF, #2563EB)",
+              color: "white",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              boxShadow: "0 2px 8px rgba(37,99,235,0.3)"
+            }}
+            title="Install aplikasi ke Layar Utama / Homescreen"
+          >
+            <Smartphone size={14} />
+            {!isCollapsed && <span>Install ke Homescreen</span>}
           </button>
-        )}
-      </div>
+          <div style={{ fontSize: 10, color: "#94A3B8", textAlign: "center" }}>
+            {isCollapsed ? "PWA" : `v1.2 · ${namaUsaha} (PWA Ready)`}
+          </div>
+        </div>
+      </aside>
 
-      <nav className="sidebar-nav">
-        {MENU.map((item: any, idx: number) => {
-          if (item.divider) return (
-            <div key={idx} style={{ padding: "8px 12px 4px", fontSize: 10, fontWeight: 800, color: "#64748B", letterSpacing: 1, textTransform: "uppercase", marginTop: 8 }}>
-              {item.divider}
-            </div>
-          );
-          const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar-menu-item${isActive ? " active" : ""}`}
-              title={isCollapsed ? item.label : undefined}
+      {/* MODAL PANDUAN INSTALL PWA */}
+      {showPwaModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.75)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: 16 }}>
+          <div style={{ background: "white", borderRadius: 20, maxWidth: 520, width: "100%", padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative" }}>
+            <button
+              onClick={() => setShowPwaModal(false)}
+              style={{ position: "absolute", top: 18, right: 18, background: "#F1F5F9", border: "none", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+              <X size={16} />
+            </button>
 
-      <div className="sidebar-footer">
-        {isCollapsed ? "v1" : "v1.0 · KonveksiApps"}
-      </div>
-    </aside>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+              <img src={logoUrl} alt="Logo" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", border: "1px solid #E2E8F0" }} />
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 900, color: "#0F172A", margin: 0 }}>Install {namaUsaha}</h3>
+                <p style={{ fontSize: 12, color: "#64748B", margin: "2px 0 0 0" }}>Jadikan aplikasi mandiri di Layar Utama / Desktop tanpa browser bar</p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12.5, color: "#334155", background: "#F8FAFC", padding: 16, borderRadius: 12, border: "1px solid #E2E8F0", lineHeight: 1.5 }}>
+              <div>
+                <strong>💻 Di Google Chrome / Edge (Laptop & PC):</strong>
+                <div style={{ color: "#64748B", marginTop: 2 }}>
+                  Klik ikon <strong>Install App ⤓</strong> di sisi kanan address bar browser (di samping ikon bintang bookmark), lalu klik <em>"Install"</em>.
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 8 }}>
+                <strong>📱 Di Android (Chrome):</strong>
+                <div style={{ color: "#64748B", marginTop: 2 }}>
+                  Ketuk menu titik tiga (⋮) di pojok kanan atas browser $\rightarrow$ pilih <strong>"Tambahkan ke Layar Utama"</strong> atau <strong>"Install Aplikasi"</strong>.
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 8 }}>
+                <strong>🍏 Di iPhone / iPad (Safari iOS):</strong>
+                <div style={{ color: "#64748B", marginTop: 2 }}>
+                  Ketuk tombol <strong>Share 📤</strong> di bagian bawah $\rightarrow$ geser ke bawah dan pilih <strong>"Tambah ke Layar Utama (Add to Home Screen)"</strong>.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setShowPwaModal(false)}
+                className="btn btn-primary"
+                style={{ padding: "9px 20px", fontSize: 13, fontWeight: 700 }}
+              >
+                Saya Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

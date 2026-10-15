@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
 
 export async function POST() {
@@ -45,16 +45,19 @@ export async function POST() {
     const stages = activeStages.map((s: any) => {
       let status = "Menunggu";
       let selesai_tgl = null;
+      const slugLower = (s.slug || "").toLowerCase();
 
-      if (s.slug === "potong_kain") {
+      if (slugLower.includes("potong")) {
         status = "Selesai";
         selesai_tgl = po.tanggalTerbit ? po.tanggalTerbit.split("T")[0] : null;
-      } else if (s.slug === "jahit_kain" || s.slug === "jahit") {
+      } else if (slugLower.includes("jahit") || slugLower.includes("cmt")) {
         status = jahitSelesai ? "Selesai" : jahitProses ? "Proses" : "Menunggu";
         if (jahitSelesai) selesai_tgl = new Date().toISOString().split("T")[0];
-      } else if (s.slug === "wahing_pakaian" || s.slug === "washing") {
+      } else if (slugLower.includes("wash") || slugLower.includes("cuci")) {
         status = washingLookup[po.id] ? "Selesai" : "Menunggu";
       }
+
+      const isJahit = slugLower.includes("jahit") || slugLower.includes("cmt");
 
       return {
         stage_id: s.id,
@@ -63,8 +66,8 @@ export async function POST() {
         warna: s.warna,
         opsional: s.opsional,
         aktif: true,
-        vendor_id: (s.slug === "jahit_kain" || s.slug === "jahit") ? (po.vendorId || null) : null,
-        target_selesai: (s.slug === "jahit_kain" || s.slug === "jahit") ? (po.target_selesai || null) : null,
+        vendor_id: isJahit ? (po.vendorId || null) : null,
+        target_selesai: isJahit ? (po.target_selesai || null) : null,
         status,
         selesai_tgl,
         catatan: "",

@@ -1,40 +1,123 @@
-﻿"use client";
-import React, { useEffect, useState } from "react";
-import { Package, AlertCircle, CheckCircle2, Clock, ArrowRight, ExternalLink, Banknote, Layers } from "lucide-react";
+"use client";
+import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
+import {
+  Users,
+  Package,
+  Zap,
+  Droplets,
+  Scissors,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  ExternalLink,
+  Search,
+  RefreshCw,
+  Layers,
+  MessageSquare,
+  Building2,
+  AlertCircle,
+  Truck,
+  Check,
+  Sparkles,
+  DollarSign
+} from "lucide-react";
 
 function formatRp(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
 }
 
-const GROUP_META: Record<string, { label: string; emoji: string; color: string; accent: string; bg: string; border: string; gradFrom: string; gradTo: string }> = {
-  cmt:       { label: "Vendor CMT / Penjahit",      emoji: "", color: "#1D4ED8", accent: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE", gradFrom: "#1E3A5F", gradTo: "#2563EB" },
-  washing:   { label: "Vendor Washing / Laundry",   emoji: "", color: "#0E7490", accent: "#06B6D4", bg: "#ECFEFF", border: "#A5F3FC", gradFrom: "#0C3A47", gradTo: "#0891B2" },
-  benang:    { label: "Vendor Bersih Benang",        emoji: "", color: "#7C3AED", accent: "#8B5CF6", bg: "#F5F3FF", border: "#DDD6FE", gradFrom: "#2D1B69", gradTo: "#6D28D9" },
-  finishing: { label: "Vendor Finishing / QC",      emoji: "", color: "#059669", accent: "#10B981", bg: "#ECFDF5", border: "#6EE7B7", gradFrom: "#064E3B", gradTo: "#059669" },
-  lainnya:   { label: "Vendor Lainnya",              emoji: "", color: "#475569", accent: "#64748B", bg: "#F8FAFC", border: "#E2E8F0", gradFrom: "#1E293B", gradTo: "#475569" },
+const CATEGORY_THEME: Record<string, {
+  label: string;
+  icon: any;
+  color: string;
+  gradFrom: string;
+  gradTo: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+}> = {
+  cmt: {
+    label: "Vendor CMT / Penjahit",
+    icon: Zap,
+    color: "#2563EB",
+    gradFrom: "#1E3A8A",
+    gradTo: "#2563EB",
+    badgeBg: "#EFF6FF",
+    badgeText: "#1D4ED8",
+    badgeBorder: "#BFDBFE"
+  },
+  washing: {
+    label: "Vendor Washing / Laundry",
+    icon: Droplets,
+    color: "#0284C7",
+    gradFrom: "#0C4A6E",
+    gradTo: "#0284C7",
+    badgeBg: "#F0F9FF",
+    badgeText: "#0369A1",
+    badgeBorder: "#BAE6FD"
+  },
+  benang: {
+    label: "Vendor Bersih Benang",
+    icon: Scissors,
+    color: "#7C3AED",
+    gradFrom: "#4C1D95",
+    gradTo: "#7C3AED",
+    badgeBg: "#FAF5FF",
+    badgeText: "#6D28D9",
+    badgeBorder: "#E9D5FF"
+  },
+  finishing: {
+    label: "Vendor Finishing / QC",
+    icon: CheckCircle2,
+    color: "#059669",
+    gradFrom: "#064E3B",
+    gradTo: "#059669",
+    badgeBg: "#ECFDF5",
+    badgeText: "#047857",
+    badgeBorder: "#A7F3D0"
+  },
+  lainnya: {
+    label: "Vendor Lainnya",
+    icon: Building2,
+    color: "#475569",
+    gradFrom: "#1E293B",
+    gradTo: "#475569",
+    badgeBg: "#F8FAFC",
+    badgeText: "#334155",
+    badgeBorder: "#E2E8F0"
+  }
 };
 
 export default function DashboardCMTPage() {
   const [vendorLedgers, setVendorLedgers] = useState<any[]>([]);
   const [allVendors, setAllVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pulse, setPulse] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [activePo, setActivePo] = useState<any>(null);
   const [tarikForm, setTarikForm] = useState({ ke_vendor_id: "", catatan: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = async () => {
     try {
-      const res = await fetch("/api/dashboard-ledger");
+      const res = await fetch("/api/dashboard-ledger?_t=" + Date.now());
       const data = await res.json();
       setVendorLedgers(data.vendorLedgers || []);
       setAllVendors(data.allVendors || []);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+      setPulse(true);
+      setTimeout(() => setPulse(false), 500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 3000);
+    const interval = setInterval(loadData, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -42,205 +125,396 @@ export default function DashboardCMTPage() {
     const handler = () => loadData();
     window.addEventListener("konveksi-sync", handler);
     return () => window.removeEventListener("konveksi-sync", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTarikBarang = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePo || !tarikForm.ke_vendor_id) return;
     const jumlahTarik = activePo.po.totalDisetujui || 0;
-    if (jumlahTarik === 0) { alert("Belum ada laporan yang di-ACC admin."); return; }
+    if (jumlahTarik === 0) {
+      alert("Belum ada laporan jahitan yang di-ACC mandor.");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/tarik-barang", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poId: activePo.po.id, dari_vendor_id: activePo.dari_vendor_id, ke_vendor_id: tarikForm.ke_vendor_id, jumlah: jumlahTarik, sizeBreakdown: activePo.po.sizeProgress, catatan: tarikForm.catatan })
+        body: JSON.stringify({
+          poId: activePo.po.id,
+          dari_vendor_id: activePo.dari_vendor_id,
+          ke_vendor_id: tarikForm.ke_vendor_id,
+          jumlah: jumlahTarik,
+          sizeBreakdown: activePo.po.sizeProgress,
+          catatan: tarikForm.catatan
+        })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       alert(`Berhasil menarik ${jumlahTarik} pcs dari PO ${activePo.po.noPo}`);
-      setActivePo(null); setTarikForm({ ke_vendor_id: "", catatan: "" }); loadData();
-    } catch (err: any) { alert(err.message); }
-    finally { setIsSubmitting(false); }
+      setActivePo(null);
+      setTarikForm({ ke_vendor_id: "", catatan: "" });
+      loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal melakukan penarikan barang.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (loading && vendorLedgers.length === 0) return <div style={{ padding: 40, textAlign: "center", color: "#64748B" }}> Memuat Ledger...</div>;
+  // Grouping and filtering
+  const filteredVendors = useMemo(() => {
+    return vendorLedgers.filter((v) => {
+      // Category filter
+      if (selectedCategory !== "all") {
+        const tipe = v.tipe || "lainnya";
+        if (selectedCategory === "cmt" && tipe !== "cmt") return false;
+        if (selectedCategory === "washing" && tipe !== "washing") return false;
+        if (selectedCategory === "benang" && tipe !== "benang") return false;
+        if (selectedCategory === "finishing" && tipe !== "finishing") return false;
+        if (selectedCategory === "lainnya" && (tipe === "cmt" || tipe === "washing" || tipe === "benang" || tipe === "finishing")) return false;
+      }
 
-  const groups: Record<string, { meta: typeof GROUP_META["cmt"]; vendors: any[] }> = {};
-  for (const key of ["cmt", "washing", "benang", "finishing", "lainnya"]) {
-    groups[key] = { meta: GROUP_META[key], vendors: [] };
-  }
-  for (const v of vendorLedgers) {
-    const tipe = v.tipe || "lainnya";
-    const key = groups[tipe] ? tipe : "lainnya";
-    groups[key].vendors.push(v);
-  }
+      // Search query
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      const matchName = (v.nama || "").toLowerCase().includes(q);
+      const matchCode = (v.kodeVendor || "").toLowerCase().includes(q);
+      const matchPo = (v.poList || []).some((p: any) =>
+        (p.noPo || "").toLowerCase().includes(q) || (p.model || "").toLowerCase().includes(q)
+      );
+
+      return matchName || matchCode || matchPo;
+    });
+  }, [vendorLedgers, selectedCategory, searchQuery]);
+
+  // Global KPIs
+  const globalStats = useMemo(() => {
+    let totalFisik = 0;
+    let totalPoAktif = 0;
+    let totalSiapTarik = 0;
+    let totalPending = 0;
+
+    vendorLedgers.forEach((v) => {
+      totalFisik += v.totalSisa || 0;
+      (v.poList || []).forEach((p: any) => {
+        totalPoAktif += 1;
+        totalSiapTarik += p.totalDisetujui || 0;
+        totalPending += p.totalPending || 0;
+      });
+    });
+
+    return { totalFisik, totalPoAktif, totalSiapTarik, totalPending };
+  }, [vendorLedgers]);
+
+  // Group vendors by type
+  const groupedVendors = useMemo(() => {
+    const map: Record<string, any[]> = {
+      cmt: [],
+      washing: [],
+      benang: [],
+      finishing: [],
+      lainnya: []
+    };
+
+    filteredVendors.forEach((v) => {
+      const t = v.tipe && map[v.tipe] ? v.tipe : "lainnya";
+      map[t].push(v);
+    });
+
+    return map;
+  }, [filteredVendors]);
 
   return (
-    <>
+    <div style={{ padding: "26px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        .dcmt-wrap { padding: 28px 32px; background: #F1F5F9; height: 100%; overflow-y: auto; }
-        .dcmt-section { margin-bottom: 40px; }
-        .dcmt-section-hdr { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
-        .dcmt-section-pill { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 12px; }
-        .dcmt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
-
-        /* Vendor Card */
-        .vc { border-radius: 18px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #E2E8F0; background: white; }
-        .vc:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-
-        /* Card top banner */
-        .vc-banner { padding: 18px 20px 14px; position: relative; overflow: hidden; }
-        .vc-banner::before { content: ''; position: absolute; top: -40%; right: -15%; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.08); }
-        .vc-banner::after { content: ''; position: absolute; bottom: -50%; left: -5%; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,0.05); }
-        .vc-banner-row { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
-        .vc-name { font-size: 17px; font-weight: 900; color: white; }
-        .vc-sub { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; font-weight: 600; }
-        .vc-pcs-box { text-align: right; }
-        .vc-pcs-label { font-size: 9px; color: rgba(255,255,255,0.55); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .vc-pcs-val { font-size: 26px; font-weight: 900; color: white; line-height: 1; }
-        .vc-pcs-unit { font-size: 11px; color: rgba(255,255,255,0.55); margin-left: 2px; }
-        .vc-stats-row { display: flex; gap: 0; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.12); position: relative; z-index: 1; }
-        .vc-stat { flex: 1; }
-        .vc-stat + .vc-stat { padding-left: 14px; border-left: 1px solid rgba(255,255,255,0.12); }
-        .vc-stat-label { font-size: 9px; color: rgba(255,255,255,0.5); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .vc-stat-val { font-size: 14px; font-weight: 800; color: white; margin-top: 2px; }
-
-        /* Card body */
-        .vc-body { padding: 16px 20px 18px; }
-        .vc-body-title { font-size: 10px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-
-        /* PO Item */
-        .po-item { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; transition: border-color 0.15s; }
-        .po-item:last-child { margin-bottom: 0; }
-        .po-item.has-saldo { border-color: #BFDBFE; background: #F0F7FF; }
-        .po-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        .po-item-left {}
-        .po-item-no { display: inline-flex; align-items: center; gap: 4px; background: #E2E8F0; color: #334155; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 5px; font-family: monospace; margin-bottom: 4px; }
-        .po-item-model { font-size: 13px; font-weight: 700; color: #0F172A; }
-        .po-item-target { font-size: 11px; color: #64748B; margin-top: 2px; }
-        .po-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-        .po-saldo-badge { background: #2563EB; color: white; font-size: 11px; font-weight: 800; padding: "3px 8px"; border-radius: 6px; white-space: nowrap; padding: 3px 9px; }
-        .po-saldo-badge.zero { background: #F0FDF4; color: #16A34A; border: 1px solid #86EFAC; }
-
-        /* Progress bar */
-        .po-bar-wrap { margin: 8px 0; }
-        .po-bar-track { height: 6px; border-radius: 3px; background: #E2E8F0; position: relative; overflow: hidden; }
-        .po-bar-ok { position: absolute; left: 0; top: 0; height: 100%; background: #10B981; border-radius: 3px; transition: width 0.4s; }
-        .po-bar-pend { position: absolute; top: 0; height: 100%; background: #F59E0B; border-radius: 3px; transition: width 0.4s; }
-        .po-bar-labels { display: flex; gap: 10px; margin-top: 5px; font-size: 10px; }
-
-        /* Size chips */
-        .po-sizes { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
-        .po-size-chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; border: 1px solid; }
-
-        /* Action row */
-        .po-actions { display: flex; gap: 8px; margin-top: 10px; }
-
-        /* Portal link */
-        .vc-portal { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; color: #475569; transition: all 0.15s; }
-        .vc-portal:hover { background: #EFF6FF; color: #2563EB; border-color: #BFDBFE; }
-
-        /* Empty state for PO */
-        .vc-empty { text-align: center; padding: 20px 0 8px; color: #94A3B8; font-size: 13px; }
-
-        @media (max-width: 900px) { .dcmt-grid { grid-template-columns: 1fr; } .dcmt-wrap { padding: 16px; } }
-        @media (max-width: 600px) { .vc-stats-row { flex-direction: column; gap: 10px; } .vc-stat + .vc-stat { padding-left: 0; border-left: none; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 8px; } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse2 { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.92); } }
+        .vendor-card-hover { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .vendor-card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.08) !important; }
+        .tab-btn-pill { transition: all 0.15s ease; }
+        .tab-btn-pill:hover { background: #E2E8F0 !important; color: #0F172A !important; }
       `}</style>
 
-      {/* Tarik Modal */}
-      {activePo && (() => {
-        const sp = activePo.po.sizeProgress || {};
-        const sizeKeys = Object.keys(sp).filter(k => sp[k] > 0);
-        const jumlahTarik = activePo.po.totalDisetujui || 0;
-        return (
-          <div className="modal-overlay" onClick={() => setActivePo(null)}>
-            <div className="modal-box" onClick={e => e.stopPropagation()}>
-              <h2 className="modal-title" style={{ marginBottom: 4 }}>Tarik Barang: {activePo.po.noPo}</h2>
-              <p style={{ color: "var(--text-secondary)", fontSize: "var(--font-size-sm)", marginBottom: 16 }}>
-                Dari Vendor: <strong>{activePo.vendor_nama}</strong> &nbsp;·&nbsp; Model: <strong>{activePo.po.model}</strong>
-              </p>
-              <div style={{ background: "#F0FDF4", border: "1px solid #10B981", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#065F46", marginBottom: 8 }}> Hasil ACC Admin  Siap Ditarik</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                  {sizeKeys.length > 0 ? sizeKeys.map(size => (
-                    <span key={size} style={{ background: "#DCFCE7", color: "#065F46", fontSize: 12, fontWeight: 800, padding: "4px 12px", borderRadius: 8, border: "1px solid #10B981" }}>
-                      {size}: {sp[size]} pcs
-                    </span>
-                  )) : <span style={{ color: "#94A3B8", fontSize: 12 }}>Belum ada laporan yang di-ACC</span>}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "#065F46" }}>Total: {jumlahTarik} pcs</div>
+      {/* HEADER & QUICK KPI STRIP */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14, marginBottom: 18 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <div style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(37,99,235,0.25)"
+              }}>
+                <Users size={20} color="#FFFFFF" />
               </div>
-              {jumlahTarik === 0 ? (
-                <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 16 }}>
-                   Belum ada laporan yang di-ACC admin untuk PO ini.
-                </div>
-              ) : (
-                <form onSubmit={handleTarikBarang}>
-                  <div className="form-group">
-                    <label className="form-label">Tujuan (Vendor Lanjutan / Gudang)</label>
-                    <select required className="form-control" value={tarikForm.ke_vendor_id} onChange={e => setTarikForm({ ...tarikForm, ke_vendor_id: e.target.value })}>
-                      <option value="">-- Pilih Tujuan --</option>
-                      <option value="GUDANG" style={{ fontWeight: "bold" }}> MASUK GUDANG PRODUKSI (SELESAI)</option>
-                      <option value="STANDBY" style={{ fontWeight: "bold", color: "#2563EB" }}> LEMPAR KE STANDBY POOL (BISA DITARIK VENDOR LANJUTAN)</option>
-                      {allVendors.filter(v => String(v.id) !== String(activePo.dari_vendor_id)).map((v: any) => (
-                        <option key={v.id} value={v.id}>{v.nama} ({v.jenis_pekerjaan || "Lainnya"})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Catatan</label>
-                    <input type="text" className="form-control" placeholder="Opsional" value={tarikForm.catatan} onChange={e => setTarikForm({ ...tarikForm, catatan: e.target.value })} />
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" onClick={() => setActivePo(null)} className="btn btn-secondary">Batal</button>
-                    <button type="submit" disabled={isSubmitting} className="btn btn-primary">
-                      {isSubmitting ? "Menyimpan..." : `Tarik ${jumlahTarik} pcs`}
-                    </button>
-                  </div>
-                </form>
-              )}
-              {jumlahTarik === 0 && (
-                <div className="modal-footer" style={{ marginTop: 0 }}>
-                  <button type="button" onClick={() => setActivePo(null)} className="btn btn-secondary">Tutup</button>
-                </div>
-              )}
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.02em" }}>
+                Dashboard CMT & Mitra Produksi
+              </h1>
             </div>
+            <p style={{ margin: 0, fontSize: 13, color: "#64748B" }}>
+              Pantau saldo fisik potongan di tangan vendor, progress pengerjaan, dan mutasi antar pos produksi secara real-time.
+            </p>
           </div>
-        );
-      })()}
 
-      <div className="dcmt-wrap">
-        <div className="page-header">
-          <h1 className="page-title">Dashboard Ledger Produksi</h1>
-          <p className="page-subtitle">Pantau saldo barang, progres CMT, dan alur produksi real-time di setiap vendor.</p>
+          {/* Sync status */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#ECFDF5",
+              color: "#059669",
+              fontSize: 11,
+              fontWeight: 800,
+              padding: "4px 10px",
+              borderRadius: 20,
+              border: "1px solid #A7F3D0"
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981", animation: "pulse2 1.8s infinite" }} />
+              LIVE LEDGER
+            </span>
+            <button
+              onClick={loadData}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: 10,
+                border: "1.5px solid #CBD5E1",
+                background: "#FFFFFF",
+                color: "#475569",
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: "pointer"
+              }}
+            >
+              <RefreshCw size={13} style={{ animation: pulse ? "spin 0.6s linear" : "none" }} />
+              <span>Sinkron Ulang</span>
+            </button>
+          </div>
         </div>
 
-        {["cmt", "washing", "benang", "finishing", "lainnya"].map(key => {
-          const { meta, vendors } = groups[key];
-          if (vendors.length === 0) return null;
-          const totalPcsGroup = vendors.reduce((s, v) => s + (v.totalSisa || 0), 0);
-          const totalPoGroup = vendors.reduce((s, v) => s + v.poList.length, 0);
+        {/* 4 HIGHLIGHT KPI CARDS */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+          {/* Card 1: Total Fisik */}
+          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>Fisik di Luar (Semua Vendor)</span>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Package size={15} color="#2563EB" />
+              </div>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.02em" }}>
+              {globalStats.totalFisik.toLocaleString("id-ID")} <span style={{ fontSize: 13, fontWeight: 600, color: "#64748B" }}>pcs</span>
+            </div>
+            <div style={{ fontSize: 11, color: "#2563EB", fontWeight: 700, marginTop: 4 }}>
+              Tersebar di {vendorLedgers.filter(v => v.totalSisa > 0).length} mitra aktif
+            </div>
+          </div>
+
+          {/* Card 2: PO Aktif Berjalan */}
+          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>PO Dalam Pengerjaan</span>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#FFFBEB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Zap size={15} color="#D97706" />
+              </div>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#B45309", letterSpacing: "-0.02em" }}>
+              {globalStats.totalPoAktif} <span style={{ fontSize: 13, fontWeight: 600, color: "#64748B" }}>PO</span>
+            </div>
+            <div style={{ fontSize: 11, color: "#D97706", fontWeight: 700, marginTop: 4 }}>
+              Proses penjahitan & washing
+            </div>
+          </div>
+
+          {/* Card 3: Siap Ditarik / Di-ACC */}
+          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>Sudah Di-ACC (Siap Tarik)</span>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CheckCircle2 size={15} color="#16A34A" />
+              </div>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#15803D", letterSpacing: "-0.02em" }}>
+              {globalStats.totalSiapTarik.toLocaleString("id-ID")} <span style={{ fontSize: 13, fontWeight: 600, color: "#64748B" }}>pcs</span>
+            </div>
+            <div style={{ fontSize: 11, color: "#16A34A", fontWeight: 700, marginTop: 4 }}>
+              Siap dipindahkan ke washing / gudang
+            </div>
+          </div>
+
+          {/* Card 4: Menunggu Verifikasi */}
+          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>Menunggu Verifikasi Mandor</span>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#FAF5FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Clock size={15} color="#7C3AED" />
+              </div>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#6D28D9", letterSpacing: "-0.02em" }}>
+              {globalStats.totalPending.toLocaleString("id-ID")} <span style={{ fontSize: 13, fontWeight: 600, color: "#64748B" }}>pcs</span>
+            </div>
+            <div style={{ fontSize: 11, color: "#7C3AED", fontWeight: 700, marginTop: 4 }}>
+              Laporan pengerjaan baru masuk
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FILTER & SEARCH CONTROLS */}
+      <div style={{
+        background: "#FFFFFF",
+        borderRadius: 14,
+        padding: "12px 18px",
+        border: "1px solid #E2E8F0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 12,
+        marginBottom: 24
+      }}>
+        {/* Category Pill Tabs */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {[
+            { id: "all", label: "Semua Mitra", count: vendorLedgers.length },
+            { id: "cmt", label: "CMT / Jahit", count: vendorLedgers.filter(v => v.tipe === "cmt").length },
+            { id: "washing", label: "Washing / Laundry", count: vendorLedgers.filter(v => v.tipe === "washing").length },
+            { id: "benang", label: "Bersih Benang", count: vendorLedgers.filter(v => v.tipe === "benang").length },
+            { id: "finishing", label: "QC & Finishing", count: vendorLedgers.filter(v => v.tipe === "finishing").length }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedCategory(tab.id)}
+              className="tab-btn-pill"
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: selectedCategory === tab.id ? 800 : 600,
+                border: "none",
+                cursor: "pointer",
+                background: selectedCategory === tab.id ? "#1E40AF" : "#F1F5F9",
+                color: selectedCategory === tab.id ? "#FFFFFF" : "#475569"
+              }}
+            >
+              {tab.label} <span style={{ opacity: 0.7, fontSize: 11 }}>({tab.count})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div style={{ position: "relative", minWidth: 260, flex: "0 1 300px" }}>
+          <Search size={14} color="#94A3B8" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+          <input
+            type="text"
+            placeholder="Cari nama vendor, kode, atau PO..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "7px 10px 7px 32px",
+              borderRadius: 8,
+              border: "1px solid #CBD5E1",
+              background: "#F8FAFC",
+              fontSize: 12,
+              color: "#0F172A",
+              outline: "none",
+              boxSizing: "border-box"
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              style={{
+                position: "absolute",
+                right: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                fontSize: 11,
+                color: "#94A3B8",
+                cursor: "pointer"
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* VENDOR CARDS GRID BY CATEGORY */}
+      {loading && vendorLedgers.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px", color: "#64748B" }}>
+          <RefreshCw size={24} color="#2563EB" style={{ animation: "spin 1s linear infinite", marginBottom: 10 }} />
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Memuat data ledger vendor...</div>
+        </div>
+      ) : filteredVendors.length === 0 ? (
+        <div style={{
+          textAlign: "center",
+          padding: "60px 20px",
+          background: "#FFFFFF",
+          borderRadius: 16,
+          border: "1.5px dashed #CBD5E1",
+          color: "#64748B"
+        }}>
+          <AlertCircle size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>Tidak ada mitra yang cocok</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Coba sesuaikan kata kunci pencarian atau tab kategori vendor.</div>
+        </div>
+      ) : (
+        ["cmt", "washing", "benang", "finishing", "lainnya"].map((catKey) => {
+          const vendorsInGroup = groupedVendors[catKey] || [];
+          if (vendorsInGroup.length === 0) return null;
+          const theme = CATEGORY_THEME[catKey] || CATEGORY_THEME.lainnya;
+          const CategoryIcon = theme.icon;
+          const totalPcsCat = vendorsInGroup.reduce((s, v) => s + (v.totalSisa || 0), 0);
 
           return (
-            <div key={key} className="dcmt-section">
-              <div className="dcmt-section-hdr">
-                <div className="dcmt-section-pill" style={{ background: meta.bg, border: `1.5px solid ${meta.border}` }}>
-                  <span style={{ fontSize: 22 }}>{meta.emoji}</span>
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: 15, color: meta.color }}>{meta.label}</div>
-                    <div style={{ fontSize: 11, color: "#64748B" }}>
-                      {vendors.length} vendor · {totalPcsGroup} pcs di tangan · {totalPoGroup} PO aktif
-                    </div>
-                  </div>
+            <div key={catKey} style={{ marginBottom: 36 }}>
+              {/* Category Section Header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 14px",
+                  borderRadius: 10,
+                  background: theme.badgeBg,
+                  border: `1.5px solid ${theme.badgeBorder}`,
+                  color: theme.badgeText
+                }}>
+                  <CategoryIcon size={16} />
+                  <span style={{ fontWeight: 900, fontSize: 13 }}>{theme.label}</span>
+                  <span style={{
+                    background: "rgba(255,255,255,0.7)",
+                    padding: "1px 6px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 800
+                  }}>
+                    {vendorsInGroup.length} Vendor • {totalPcsCat} pcs di tangan
+                  </span>
                 </div>
-                <div style={{ flex: 1, height: 1.5, background: `linear-gradient(to right, ${meta.border}, transparent)` }} />
+                <div style={{ flex: 1, height: 1, background: "#CBD5E1" }} />
               </div>
 
-              <div className="dcmt-grid">
-                {vendors.map((v: any) => {
-                  const gradient = `linear-gradient(135deg, ${meta.gradFrom} 0%, ${meta.gradTo} 100%)`;
+              {/* Grid of Cards */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+                gap: 20
+              }}>
+                {vendorsInGroup.map((v: any) => {
                   const totalPO = v.poList.length;
                   const totalDisetujuiAll = v.poList.reduce((s: number, p: any) => s + (p.totalDisetujui || 0), 0);
                   const totalPendingAll = v.poList.reduce((s: number, p: any) => s + (p.totalPending || 0), 0);
@@ -249,153 +523,314 @@ export default function DashboardCMTPage() {
                   const portalHref = v.tipe === "cmt" ? `/cmt/${v.id}` : v.tipe === "washing" ? `/washing/${v.id}` : v.tipe === "benang" ? `/bersih-benang/${v.id}` : v.tipe === "finishing" ? `/finishing/${v.id}` : null;
 
                   return (
-                    <div key={v.id} className="vc">
-                      {/* Banner Gradient */}
-                      <div className="vc-banner" style={{ background: gradient }}>
-                        <div className="vc-banner-row">
-                          <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                            <div className="vc-name">{v.nama}</div>
-                            <div className="vc-sub">{v.jenis_default || v.tipe || "Vendor"} · {v.kodeVendor}</div>
+                    <div
+                      key={v.id}
+                      className="vendor-card-hover"
+                      style={{
+                        background: "#FFFFFF",
+                        borderRadius: 16,
+                        border: "1px solid #E2E8F0",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column"
+                      }}
+                    >
+                      {/* Card Gradient Banner */}
+                      <div style={{
+                        background: `linear-gradient(135deg, ${theme.gradFrom} 0%, ${theme.gradTo} 100%)`,
+                        padding: "18px 20px 16px",
+                        color: "#FFFFFF"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                          <div>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+                              {v.nama}
+                            </div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 600, marginTop: 2 }}>
+                              {v.jenis_default || v.tipe?.toUpperCase() || "MITRA"} • Kode: {v.kodeVendor || `VND-${v.id}`}
+                            </div>
                           </div>
-                          <div className="vc-pcs-box">
-                            <div className="vc-pcs-label">Fisik di Tangan</div>
-                            <div className="vc-pcs-val">
-                              {v.totalSisa}<span className="vc-pcs-unit">pcs</span>
+
+                          {/* Large Saldo Fisik */}
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                              Fisik di Tangan
+                            </div>
+                            <div style={{ fontSize: 26, fontWeight: 900, color: "#FFFFFF", lineHeight: 1 }}>
+                              {v.totalSisa} <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>pcs</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Stats Row */}
-                        <div className="vc-stats-row">
-                          <div className="vc-stat">
-                            <div className="vc-stat-label">PO Aktif</div>
-                            <div className="vc-stat-val">{totalPO} PO</div>
+                        {/* 4 Metrics Strip */}
+                        <div style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(4, 1fr)",
+                          gap: 6,
+                          background: "rgba(0,0,0,0.18)",
+                          borderRadius: 10,
+                          padding: "8px 10px",
+                          backdropFilter: "blur(4px)"
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase" }}>PO Aktif</div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#FFFFFF" }}>{totalPO} PO</div>
                           </div>
-                          <div className="vc-stat">
-                            <div className="vc-stat-label"> Di-ACC</div>
-                            <div className="vc-stat-val">{totalDisetujuiAll} pcs</div>
+                          <div>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase" }}>Di-ACC</div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#A7F3D0" }}>{totalDisetujuiAll}</div>
                           </div>
-                          <div className="vc-stat">
-                            <div className="vc-stat-label"> Pending</div>
-                            <div className="vc-stat-val">{totalPendingAll} pcs</div>
+                          <div>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase" }}>Pending</div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#FDE68A" }}>{totalPendingAll}</div>
                           </div>
-                          {gajiInfo && (
-                            <div className="vc-stat">
-                              <div className="vc-stat-label">Tarif</div>
-                              <div className="vc-stat-val" style={{ fontSize: 12 }}>{gajiInfo}</div>
+                          <div>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase" }}>Tarif</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: "#FFFFFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {gajiInfo || "—"}
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Badges info */}
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "10px 16px", borderBottom: "1px solid #F1F5F9" }}>
-                        <span style={{ background: v.wajib_hitung_ulang ? "#FEF2F2" : "#F0FDF4", color: v.wajib_hitung_ulang ? "#DC2626" : "#16A34A", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: `1px solid ${v.wajib_hitung_ulang ? "#FECACA" : "#BBF7D0"}` }}>
-                          {v.wajib_hitung_ulang ? "Wajib Hitung" : "Cepat Bypass"}
+                      {/* Action & Metadata Toolbar */}
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        padding: "10px 16px",
+                        background: "#F8FAFC",
+                        borderBottom: "1px solid #E2E8F0"
+                      }}>
+                        <span style={{
+                          background: v.wajib_hitung_ulang ? "#FEF2F2" : "#ECFDF5",
+                          color: v.wajib_hitung_ulang ? "#DC2626" : "#059669",
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 800,
+                          border: `1px solid ${v.wajib_hitung_ulang ? "#FECACA" : "#A7F3D0"}`
+                        }}>
+                          {v.wajib_hitung_ulang ? "Wajib Hitung Ulang" : "Bypass Cepat"}
                         </span>
+
                         {tarifKhusus > 0 && (
-                          <span style={{ background: "#FFF7ED", color: "#C2410C", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #FDBA74" }}>
+                          <span style={{
+                            background: "#FFF7ED",
+                            color: "#C2410C",
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            border: "1px solid #FDBA74"
+                          }}>
                             +{tarifKhusus} Tarif Khusus
                           </span>
                         )}
+
                         {v.kontak && (
-                          <a href={`https://wa.me/62${v.kontak.replace(/^0/, "")}`} target="_blank" rel="noreferrer"
-                            style={{ background: "#F0FDF4", color: "#16A34A", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #86EFAC", textDecoration: "none" }}>
-                             WA
+                          <a
+                            href={`https://wa.me/62${v.kontak.replace(/^0/, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              marginLeft: "auto",
+                              background: "#F0FDF4",
+                              color: "#16A34A",
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              border: "1px solid #86EFAC",
+                              textDecoration: "none",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4
+                            }}
+                          >
+                            <MessageSquare size={11} /> WA
                           </a>
                         )}
+
                         {portalHref && (
-                          <a href={portalHref} target="_blank" rel="noreferrer"
-                            style={{ background: "#EFF6FF", color: "#2563EB", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "1px solid #93C5FD", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                            <ExternalLink size={10} /> Portal
+                          <a
+                            href={portalHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              background: "#EFF6FF",
+                              color: "#2563EB",
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              border: "1px solid #BFDBFE",
+                              textDecoration: "none",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4
+                            }}
+                          >
+                            <ExternalLink size={10} /> Portal Mitra
                           </a>
                         )}
                       </div>
 
-                      {/* PO List */}
-                      <div className="vc-body">
-                        <div className="vc-body-title">
+                      {/* PO List Inside Vendor */}
+                      <div style={{ padding: "14px 16px", flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
                           <Layers size={12} color="#94A3B8" /> Rincian PO Aktif
-                          {totalPO === 0 && <span style={{ color: "#CBD5E1" }}> tidak ada</span>}
                         </div>
 
                         {v.poList.length === 0 ? (
-                          <div className="vc-empty">
-                            <Package size={28} color="#E2E8F0" style={{ margin: "0 auto 6px" }} />
-                            <div>Tidak ada PO aktif di vendor ini</div>
+                          <div style={{ textAlign: "center", padding: "24px 10px", color: "#94A3B8" }}>
+                            <Package size={24} color="#CBD5E1" style={{ marginBottom: 6 }} />
+                            <div style={{ fontSize: 12, fontWeight: 600 }}>Tidak ada saldo PO aktif di vendor ini</div>
                           </div>
                         ) : (
                           v.poList.map((po: any) => {
                             const pctOk = po.pctDisetujui || 0;
                             const pctPend = Math.max(0, Math.min((po.pctDilaporkan || 0) - pctOk, 100 - pctOk));
                             const sisaJahit = Math.max(0, po.jumlahTerbit - (po.totalDisetujui || 0));
+                            const readyToPull = (po.totalDisetujui || 0) > 0;
 
                             return (
-                              <div key={po.id} className={`po-item${po.saldo_di_vendor > 0 ? " has-saldo" : ""}`}>
+                              <div
+                                key={po.id}
+                                style={{
+                                  background: po.saldo_di_vendor > 0 ? "#F8FAFC" : "#FFFFFF",
+                                  border: "1px solid #E2E8F0",
+                                  borderRadius: 12,
+                                  padding: "12px 14px",
+                                  marginBottom: 10
+                                }}
+                              >
                                 {/* PO Header */}
-                                <div className="po-item-top">
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                                   <div>
-                                    <div className="po-item-no">
-                                      <Package size={9} /> {po.noPo}
+                                    <div style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                      background: "#EFF6FF",
+                                      color: "#1D4ED8",
+                                      fontSize: 11,
+                                      fontWeight: 900,
+                                      padding: "2px 7px",
+                                      borderRadius: 6,
+                                      fontFamily: "monospace"
+                                    }}>
+                                      {po.noPo}
                                     </div>
-                                    <div className="po-item-model">{po.model}</div>
-                                    <div className="po-item-target">
-                                      Target {po.jumlahTerbit} pcs · Sisa {sisaJahit} pcs · Fisik {po.saldo_di_vendor} pcs
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A", marginTop: 2 }}>
+                                      {po.model}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>
+                                      Target {po.jumlahTerbit} pcs • Sisa {sisaJahit} pcs
                                     </div>
                                   </div>
-                                  <div className="po-item-right">
-                                    <div className={`po-saldo-badge${po.saldo_di_vendor === 0 ? " zero" : ""}`}>
-                                      {po.saldo_di_vendor === 0 ? " Kosong" : `${po.saldo_di_vendor} pcs`}
-                                    </div>
+
+                                  <div style={{ textAlign: "right" }}>
+                                    <span style={{
+                                      background: po.saldo_di_vendor > 0 ? "#2563EB" : "#ECFDF5",
+                                      color: po.saldo_di_vendor > 0 ? "#FFFFFF" : "#059669",
+                                      fontSize: 11,
+                                      fontWeight: 800,
+                                      padding: "3px 9px",
+                                      borderRadius: 8,
+                                      border: po.saldo_di_vendor > 0 ? "none" : "1px solid #A7F3D0"
+                                    }}>
+                                      {po.saldo_di_vendor > 0 ? `Fisik: ${po.saldo_di_vendor} pcs` : "Nol Saldo"}
+                                    </span>
                                   </div>
                                 </div>
 
-                                {/* Progress bar */}
+                                {/* Progress Bar */}
                                 {(pctOk > 0 || pctPend > 0) && (
-                                  <div className="po-bar-wrap">
-                                    <div className="po-bar-track">
-                                      <div className="po-bar-ok" style={{ width: `${Math.min(pctOk, 100)}%` }} />
-                                      <div className="po-bar-pend" style={{ left: `${pctOk}%`, width: `${pctPend}%` }} />
+                                  <div style={{ margin: "8px 0" }}>
+                                    <div style={{ height: 6, borderRadius: 3, background: "#E2E8F0", position: "relative", overflow: "hidden" }}>
+                                      <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(pctOk, 100)}%`, background: "#10B981", borderRadius: 3 }} />
+                                      <div style={{ position: "absolute", left: `${pctOk}%`, top: 0, height: "100%", width: `${pctPend}%`, background: "#F59E0B", borderRadius: 3 }} />
                                     </div>
-                                    <div className="po-bar-labels">
-                                      {(po.totalDisetujui || 0) > 0 && <span style={{ color: "#10B981", fontWeight: 700 }}><CheckCircle2 size={9} style={{ display: "inline", marginRight: 2 }} />{po.totalDisetujui} ACC</span>}
-                                      {(po.totalPending || 0) > 0 && <span style={{ color: "#F59E0B", fontWeight: 700 }}><Clock size={9} style={{ display: "inline", marginRight: 2 }} />{po.totalPending} pending</span>}
-                                      {sisaJahit > 0 && <span style={{ color: "#94A3B8" }}>{sisaJahit} belum</span>}
-                                      <span style={{ color: "#CBD5E1", marginLeft: "auto" }}>{pctOk}% selesai</span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginTop: 4, color: "#64748B" }}>
+                                      <span style={{ color: "#15803D", fontWeight: 700 }}>{po.totalDisetujui} ACC</span>
+                                      {po.totalPending > 0 && <span style={{ color: "#B45309", fontWeight: 700 }}>{po.totalPending} pending</span>}
+                                      <span style={{ color: "#2563EB", fontWeight: 800 }}>{pctOk}% selesai</span>
                                     </div>
                                   </div>
                                 )}
 
-                                {/* Size chips */}
+                                {/* Size Breakdown chips */}
                                 {po.sizeBreakdown?.length > 0 && (
-                                  <div className="po-sizes">
+                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
                                     {po.sizeBreakdown.map((s: any) => {
                                       const done = po.sizeProgress?.[s.size] || 0;
-                                      const pend = po.sizePending?.[s.size] || 0;
                                       const isDone = done >= s.jumlah;
-                                      const hasProgress = done > 0;
                                       return (
-                                        <span key={s.size} className="po-size-chip" style={{
-                                          background: isDone ? "#DCFCE7" : hasProgress ? "#EFF6FF" : "#F1F5F9",
-                                          color: isDone ? "#065F46" : hasProgress ? "#1D4ED8" : "#94A3B8",
-                                          borderColor: isDone ? "#86EFAC" : hasProgress ? "#93C5FD" : "#E2E8F0"
-                                        }}>
-                                          {s.size}: {done}{pend > 0 ? <span style={{ color: "#F59E0B" }}>+{pend}</span> : ""}/{s.jumlah}
+                                        <span
+                                          key={s.size}
+                                          style={{
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            padding: "2px 7px",
+                                            borderRadius: 6,
+                                            background: isDone ? "#ECFDF5" : done > 0 ? "#EFF6FF" : "#F1F5F9",
+                                            color: isDone ? "#065F46" : done > 0 ? "#1D4ED8" : "#64748B",
+                                            border: `1px solid ${isDone ? "#A7F3D0" : done > 0 ? "#BFDBFE" : "#E2E8F0"}`
+                                          }}
+                                        >
+                                          {s.size}: {done}/{s.jumlah}
                                         </span>
                                       );
                                     })}
                                   </div>
                                 )}
 
-                                {/* Action: Tarik */}
+                                {/* Action: Tarik Barang */}
                                 {po.saldo_di_vendor > 0 && (
-                                  <div className="po-actions">
-                                    <button
-                                      onClick={() => setActivePo({ po, dari_vendor_id: v.id, vendor_nama: v.nama })}
-                                      style={{ flex: 1, padding: "8px 12px", background: "#2563EB", color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                                    >
-                                      <ArrowRight size={13} /> Tarik {po.totalDisetujui > 0 ? po.totalDisetujui : "Barang"} pcs
-                                    </button>
+                                  <div style={{ marginTop: 10 }}>
+                                    {readyToPull ? (
+                                      <button
+                                        onClick={() => setActivePo({ po, dari_vendor_id: v.id, vendor_nama: v.nama })}
+                                        style={{
+                                          width: "100%",
+                                          padding: "8px 12px",
+                                          background: "linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)",
+                                          color: "#FFFFFF",
+                                          border: "none",
+                                          borderRadius: 8,
+                                          fontSize: 12,
+                                          fontWeight: 800,
+                                          cursor: "pointer",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: 6,
+                                          boxShadow: "0 2px 6px rgba(37,99,235,0.2)"
+                                        }}
+                                      >
+                                        <ArrowRight size={14} /> Tarik {po.totalDisetujui} pcs (Siap Pindah)
+                                      </button>
+                                    ) : (
+                                      <div style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 6,
+                                        padding: "7px 12px",
+                                        borderRadius: 8,
+                                        background: "#F1F5F9",
+                                        color: "#64748B",
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        border: "1px dashed #CBD5E1"
+                                      }}>
+                                        <Clock size={12} color="#94A3B8" />
+                                        <span>Menunggu Laporan Jahitan Di-ACC ({po.totalPending > 0 ? `${po.totalPending} pending ACC` : "0 pcs"})</span>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -409,8 +844,192 @@ export default function DashboardCMTPage() {
               </div>
             </div>
           );
-        })}
-      </div>
-    </>
+        })
+      )}
+
+      {/* MODERN MODAL TARIK BARANG */}
+      {activePo && (() => {
+        const sp = activePo.po.sizeProgress || {};
+        const sizeKeys = Object.keys(sp).filter((k) => sp[k] > 0);
+        const jumlahTarik = activePo.po.totalDisetujui || 0;
+
+        return (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,42,0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16
+          }} onClick={() => setActivePo(null)}>
+            <div style={{
+              background: "#FFFFFF",
+              borderRadius: 18,
+              maxWidth: 540,
+              width: "100%",
+              padding: "24px 26px",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+              border: "1px solid #E2E8F0"
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#0F172A" }}>
+                    Tarik Barang Antar Pos: {activePo.po.noPo}
+                  </h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748B" }}>
+                    Dari Vendor: <strong style={{ color: "#0F172A" }}>{activePo.vendor_nama}</strong> • Model: {activePo.po.model}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActivePo(null)}
+                  style={{ background: "#F1F5F9", border: "none", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", color: "#64748B", fontWeight: 800 }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Verified Pcs Box */}
+              <div style={{
+                background: "#ECFDF5",
+                border: "1.5px solid #A7F3D0",
+                borderRadius: 12,
+                padding: "14px 16px",
+                marginBottom: 18
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#065F46" }}>
+                    Hasil Verifikasi Mandor (Siap Tarik)
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 900, color: "#047857" }}>
+                    {jumlahTarik} pcs
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {sizeKeys.map((s) => (
+                    <span
+                      key={s}
+                      style={{
+                        background: "#FFFFFF",
+                        color: "#065F46",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        padding: "3px 9px",
+                        borderRadius: 6,
+                        border: "1px solid #6EE7B7"
+                      }}
+                    >
+                      {s}: {sp[s]} pcs
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={handleTarikBarang}>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                    Pilih Tujuan Pemindahan (Gudang / Vendor Lanjutan)
+                  </label>
+                  <select
+                    required
+                    value={tarikForm.ke_vendor_id}
+                    onChange={(e) => setTarikForm({ ...tarikForm, ke_vendor_id: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1.5px solid #CBD5E1",
+                      fontSize: 13,
+                      color: "#0F172A",
+                      background: "#FFFFFF",
+                      outline: "none"
+                    }}
+                  >
+                    <option value="">-- Pilih Pos / Vendor Tujuan --</option>
+                    <option value="GUDANG" style={{ fontWeight: "bold", color: "#059669" }}>
+                      🏢 MASUK GUDANG PRODUKSI (SELESAI JADI)
+                    </option>
+                    <option value="STANDBY" style={{ fontWeight: "bold", color: "#2563EB" }}>
+                      📦 LEMPAR KE STANDBY POOL (ANTREAN VENDOR)
+                    </option>
+                    <optgroup label="Vendor Eksternal Lanjutan">
+                      {allVendors
+                        .filter((v) => String(v.id) !== String(activePo.dari_vendor_id))
+                        .map((v: any) => (
+                          <option key={v.id} value={v.id}>
+                            {v.nama} — ({v.jenis_pekerjaan || v.tipe?.toUpperCase() || "Vendor"})
+                          </option>
+                        ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                    Catatan / No. Surat Jalan (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Dibawa supir motor batch 1"
+                    value={tarikForm.catatan}
+                    onChange={(e) => setTarikForm({ ...tarikForm, catatan: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 10,
+                      border: "1.5px solid #CBD5E1",
+                      fontSize: 13,
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setActivePo(null)}
+                    style={{
+                      padding: "9px 16px",
+                      borderRadius: 10,
+                      border: "1px solid #CBD5E1",
+                      background: "#FFFFFF",
+                      color: "#475569",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    style={{
+                      padding: "9px 20px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)",
+                      color: "#FFFFFF",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    <Truck size={14} />
+                    <span>{isSubmitting ? "Memproses..." : `Tarik ${jumlahTarik} pcs`}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
   );
 }

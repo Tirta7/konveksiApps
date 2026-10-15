@@ -1,0 +1,31 @@
+{
+  "name": "KonveksiApps — Sistem Tracking Produksi Jeans",
+  "short_name": "KonveksiApps",
+  "description": "Sistem ERP dan Tracking Produksi Jeans & Konveksi Terintegrasi",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#1E3A8A",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,13 +1,17 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 "use client";
 import React, { useEffect, useState } from "react";
 import { CheckCircle, Play, Package, User, Calendar, Scissors, Zap, Droplets, Filter, Star, ChevronRight, RefreshCw, TrendingUp, AlertTriangle, Clock } from "lucide-react";
 
 const STAGE_ICON = {
-  potong_kain: Scissors, jahit_kain: Zap, jahit: Zap, bersih_benang: Filter,
-  wahing_pakaian: Droplets, washing: Droplets, finishing: Star, finishing_bahan: Star, gudang: Package,
+  potong_kain: Scissors, potong_bahan: Scissors, potong: Scissors,
+  jahit_kain: Zap, penjahit_kain: Zap, jahit: Zap, cmt: Zap,
+  bersih_benang: Filter,
+  wahing_pakaian: Droplets, washing_pakaian: Droplets, washing: Droplets, cuci: Droplets,
+  finishing: Star, finishing_bahan: Star, packing: Package,
+  qc_gudang: CheckCircle, qc_bahan: CheckCircle, qc: CheckCircle, gudang: Package,
 };
-const getIcon = (slug) => STAGE_ICON[slug] || Package;
+const getIcon = (slug) => STAGE_ICON[slug] || (slug?.includes("jahit") ? Zap : slug?.includes("wash") ? Droplets : slug?.includes("qc") ? CheckCircle : Package);
 
 const STATUS_STYLE = {
   Menunggu:  { bg: "#F1F5F9", border: "#CBD5E1", dot: "#94A3B8", text: "#64748B", label: "Menunggu" },
@@ -63,7 +67,9 @@ export default function AlurProduksiPage() {
   // Get active distributions for a specific stage & po
   const getActiveDistributions = (poId, stageSlug) => {
     // CMT / Jahit tracking depends on cmtProgres + initial vendorId
-    if (stageSlug === "jahit" || stageSlug === "jahit_kain") {
+    const sLower = (stageSlug || "").toLowerCase();
+    const isJahitStage = sLower.includes("jahit") || sLower.includes("cmt");
+    if (isJahitStage) {
       const po = getPO(poId);
       if (!po) return [];
       const records = cmtProgres.filter(p => p.po_id === poId);
@@ -101,7 +107,9 @@ export default function AlurProduksiPage() {
     const po = getPO(poId);
     if (!po) return 0;
     
-    if (stageObj.slug === "jahit" || stageObj.slug === "jahit_kain") {
+    const sLower = (stageObj.slug || "").toLowerCase();
+    const isJahitStage = sLower.includes("jahit") || sLower.includes("cmt");
+    if (isJahitStage) {
        // Tertandon di potong kain (yg belum dijahit)
        return 0; // Potong kain langsung 100% jadi.
     }

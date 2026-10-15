@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:redis": "set REDIS_URL=redis://127.0.0.1:6379 && next dev",
-    "redis:start": "wsl -d Ubuntu bash -c \"redis-server --daemonize yes --bind 0.0.0.0 --protected-mode no\"",
-    "redis:stop": "wsl -d Ubuntu bash -c \"redis-cli shutdown nosave\" || true",
-    "redis:ping": "wsl -d Ubuntu bash -c \"redis-cli ping\"",
+    "dev": "next dev -p 3001",
+    "dev:redis": "REDIS_URL=redis://127.0.0.1:6379 next dev -p 3001",
+    "redis:start": "redis-server --daemonize yes 2>/dev/null || brew services start redis",
+    "redis:stop": "redis-cli shutdown nosave 2>/dev/null || brew services stop redis || true",
+    "redis:ping": "redis-cli ping",
+    "migrate": "node migrate.js",
     "build": "next build",
-    "start": "next start"
+    "start": "next start -p 3001"
   },
   "dependencies": {
     "@types/better-sqlite3": "^9.6.0",

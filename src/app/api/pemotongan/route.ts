@@ -61,6 +61,12 @@ export async function POST(req: Request) {
     sizeBreakdown, // e.g. [{ size: 'M', jumlah: 100, sisa: 100 }]
     status: finalStatus,
     selectedRolls: body.selectedRolls || [],
+    jenis_jahitan: body.jenis_jahitan || "",
+    tipe_benang: body.tipe_benang || "",
+    tipe_resleting: body.tipe_resleting || "",
+    catatan_jahitan: body.catatan_jahitan || "",
+    item_pendukung_used: body.item_pendukung_used || [], // [{ item_id, nama_item, kategori, qty, satuan }]
+    isi_per_bundle: Number(body.isi_per_bundle) || 20,
     createdAt: new Date().toISOString()
   };
   
@@ -89,6 +95,17 @@ export async function POST(req: Request) {
           }
         }
         data.data_kain[kainIndex].rolls = currentRolls;
+      }
+    }
+  }
+
+  // Kurangi stok item pendukung (benang, resleting, kancing, dll) jika bukan Draft
+  if (finalStatus !== "Draft" && data.item_pendukung && Array.isArray(body.item_pendukung_used)) {
+    for (const itemUsed of body.item_pendukung_used) {
+      const itIdx = data.item_pendukung.findIndex((ip: any) => ip.id === Number(itemUsed.item_id));
+      if (itIdx !== -1) {
+        const qtyUsed = Number(itemUsed.qty) || 0;
+        data.item_pendukung[itIdx].stok = Math.max(0, (Number(data.item_pendukung[itIdx].stok) || 0) - qtyUsed);
       }
     }
   }

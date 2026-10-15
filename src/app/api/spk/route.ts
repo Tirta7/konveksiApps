@@ -28,12 +28,14 @@ export async function POST(req: NextRequest) {
   };
   data.batches.push(newBatch);
 
+  const origin = req.headers.get("origin") || (req.headers.get("host") ? `http://${req.headers.get("host")}` : "http://localhost:3001");
+
   const numBundles = Math.ceil((jumlah_pcs || 50) / 50);
   for (let i = 0; i < numBundles; i++) {
     const bId = nextId(data, "bundles");
     data.bundles.push({
       id: bId, kodeBundel: `${kodeBatch}-BDL-${i+1}`, batchId, jumlahPcs: i === numBundles - 1 ? (jumlah_pcs % 50 || 50) : 50,
-      status: "menunggu", returCount: 0, qrCode: `http://localhost:3000/bundle/${bId}`
+      status: "menunggu", returCount: 0, qrCode: `${origin}/bundle/${bId}`
     });
   }
 
@@ -48,6 +50,5 @@ export async function POST(req: NextRequest) {
   });
 
   writeData(data);
-  const origin = req.headers.get("origin") || "http://localhost:3000";
   return NextResponse.json({ batchId, kodeBatch, token: batchToken, link: `${origin}/spk/${batchToken}` });
 }

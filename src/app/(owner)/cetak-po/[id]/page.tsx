@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Printer, ArrowLeft } from "lucide-react";
@@ -37,10 +37,23 @@ export default function CetakPOPage() {
   return (
     <div style={{ background: "#E2E8F0", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px" }}>
       <style>{`
+        @page {
+          size: auto;
+          margin: 5mm 8mm;
+        }
         @media print {
+          html, body { background: #fff !important; }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          .print-area { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100% !important; 
+            padding: 10px 15px !important;
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+          }
           .no-print { display: none !important; }
         }
       `}</style>

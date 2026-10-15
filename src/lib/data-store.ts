@@ -1,4 +1,4 @@
-﻿import fs from "fs";
+import fs from "fs";
 import path from "path";
 import { broadcast } from "./sse";
 import { getCached, setCache, publishChange, isRedisReady } from "./redis";
@@ -27,6 +27,7 @@ export interface DataStore {
   kategori_produk: any[];
   data_barang: any[];
   data_supplier: any[];
+  data_pelanggan?: any[];
   po_produksi: any[];
   po_pengambilan: any[];
   barcode_item: any[];
@@ -37,6 +38,8 @@ export interface DataStore {
   po_ledgers: any[];
   pipeline_stages: any[];
   po_pipeline: any[];
+  item_pendukung: any[];
+  pengaturan_sistem?: any;
   _counters: Record<string, number>;
 }
 
@@ -45,8 +48,21 @@ function getInitialData(): DataStore {
     vendors: [], tukang_potong: [], pemotongan_kain: [], data_kain: [], hutang: [], batches: [], bundles: [], spk: [], spk_progres: [], gaji_cmt: [],
     tracking_logs: [], stock: [], stock_movements: [], purchase_orders: [], retail_sales: [],
     retur_produksi: [], retur_online: [], kategori_produk: [], data_barang: [], data_supplier: [],
+    data_pelanggan: [],
     po_produksi: [], po_pengambilan: [], barcode_item: [], cmt_requests: [], cmt_progres: [], vendor_types: [], produksi_transfers: [], po_ledgers: [],
-    pipeline_stages: [], po_pipeline: [],
+    pipeline_stages: [], po_pipeline: [], item_pendukung: [],
+    pengaturan_sistem: {
+      nama_usaha: "KONVEKSI APPS | JEANS PRODUCTION",
+      tagline: "Sistem Tracking Produksi Jeans",
+      alamat: "Jl. Industri Konveksi No. 88",
+      telepon: "(022) 555-8899",
+      email: "info@konveksiapps.com",
+      divisi: "Divisi Cutting & Bahan",
+      catatan_surat_jalan: "Barang/kain & bahan pendukung di atas telah diperiksa dan diserahkan dalam kondisi lengkap dan tepat jumlah.",
+      jabatan_penyerah: "Bagian Gudang & Bahan",
+      jabatan_penerima: "Tukang Potong / Cutting",
+      jabatan_penyetuju: "Admin Produksi / Supervisor"
+    },
     _counters: {}
   };
 }

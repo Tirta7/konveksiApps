@@ -363,6 +363,110 @@
         }
       ],
       "createdAt": "2026-09-21T03:18:01.949Z"
+    },
+    {
+      "id": 3,
+      "tanggal": "2026-10-14",
+      "target_selesai": "2026-10-28",
+      "nama_barang": "MK 1299 SST",
+      "meter_kain": 1008,
+      "pemakaian_cm": 120,
+      "tukang_potong_id": 1,
+      "model": "PECAH POLA",
+      "total_pcs": 840,
+      "sizeBreakdown": [
+        {
+          "size": "S",
+          "jumlah": "82",
+          "sisa": 82
+        },
+        {
+          "size": "M",
+          "jumlah": "152",
+          "sisa": 152
+        },
+        {
+          "size": "L",
+          "jumlah": "152",
+          "sisa": 152
+        },
+        {
+          "size": "XL",
+          "jumlah": "182",
+          "sisa": 182
+        },
+        {
+          "size": "XXL",
+          "jumlah": "272",
+          "sisa": 272
+        }
+      ],
+      "status": "Draft",
+      "selectedRolls": [
+        {
+          "id": "R-1789959421924-7023",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-3963",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-1472",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-1380",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-7160",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-4186",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-8349",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        }
+      ],
+      "jenis_jahitan": "Rantai (Chainstitch), Obras 5 Benang, Make-up Jeans, Double Stitch, Bartack",
+      "tipe_benang": "Benang Astra Jeans 20/2 (Gold Jeans (Kuning Emas))",
+      "tipe_resleting": "Resleting YKK Metal Brass No. 5 (Gigi Kuningan 5\")",
+      "catatan_jahitan": "Kebutuhan PO harap diselesaikan terlebih dahulu",
+      "item_pendukung_used": [
+        {
+          "item_id": 2,
+          "nama_item": "Benang Astra Jeans 20/3",
+          "kategori": "Benang",
+          "qty": "4",
+          "satuan": "Cones"
+        },
+        {
+          "item_id": 4,
+          "nama_item": "Resleting YKK Nylon Coil No. 4",
+          "kategori": "Resleting",
+          "qty": "100",
+          "satuan": "Pcs"
+        }
+      ],
+      "createdAt": "2026-10-14T21:16:42.020Z"
     }
   ],
   "data_kain": [
@@ -642,6 +746,13 @@
       "nama": "PECAH POLA",
       "deskripsi": "",
       "createdAt": "2026-09-21T02:48:15.760Z"
+    },
+    {
+      "id": 4,
+      "uid": "KTG-YIRDHU",
+      "nama": "TEST POLA REVISED",
+      "deskripsi": "Updated testing deskripsi",
+      "createdAt": "2026-10-15T18:24:08.061Z"
     }
   ],
   "data_barang": [],
@@ -6902,7 +7013,7 @@
       "kodeBarcode": "SJ-01-XL-081",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKnSURBVO3BQW7sWAwEwSxC979yjpdcPUCQusfmZ0T8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUuiTcoXJHEr5J5YlijVKsUYo1ysXLVN6UhDtUTpLQqdyh8qYkvKlYoxRrlGKNcvFhSbhD5YkkdConSehU7kjCHSqfVKxRijVKsUa5+ONUuiR0SfiXFGuUYo1SrFEu/rgkdConSZisWKMUa5RijXLxYSqfpNIl4UTlTSq/SbFGKdYoxRrl4mVJ+KYkdCpdEk6S0KmcJOE3K9YoxRqlWKPEHwyShE7lX1KsUYo1SrFGuXgoCZ3KSRL+T0noVLokdConSehUuiTcofJEsUYp1ijFGuXiIZWTJNyhcpKEE5U7kvCESpeETqVLQqfypmKNUqxRijXKxUNJ6FQ6lS4JncpJEp5IwhNJOFH5TYo1SrFGKdYo8QcPJOFEpUvCHSp3JKFTOUlCp3KShBOVLgl3qDxRrFGKNUqxRok/eCAJT6h0SThReSIJd6icJOFE5ZuKNUqxRinWKPEHf1gSOpU7kvAmlZMknKg8UaxRijVKsUa5eCgJ36RykoROpUtCp9IloVPpkvCEyicVa5RijVKsUS5epvKmJLxJ5USlS8KJykkSOpVPKtYoxRqlWKNcfFgS7lB5QqVLQqfyhMoTSThReaJYoxRrlGKNcjFMEu5Iwh1JOFE5UfmkYo1SrFGKNcrFH6dykoQuCXeodEl4IgknKk8Ua5RijVKsUS4+TOX/pNIl4UTlTSpdEjqVNxVrlGKNUqxRLl6WhG9KwolKp9IloUtCp9Kp/GbFGqVYoxRrlPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFH+A9M9/+QOMF+DAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6911,7 +7022,7 @@
       "kodeBarcode": "SJ-01-XL-082",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKqSURBVO3BQW7kQAwEwSxC//9yro88NSBIY3i4jIg/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4qEk/CaVLgmdykkSTlS6JPwmlSeKNUqxRinWKBcvU3lTEp5IQqfyhMqbkvCmYo1SrFGKNcrFhyXhDpUnktCpdEnoVJ5Iwh0qn1SsUYo1SrFGufhyKidJ6FQmK9YoxRqlWKNcfLkknKh0SThR+WbFGqVYoxRrlIsPU/kklS4JJypvUvlLijVKsUYp1igXL0vCb0pCp9IloVPpktCpnCThLyvWKMUapVijxB8MkoRO5X9SrFGKNUqxRrl4KAmdykkSPknlJAmdSpeETuUkCZ1Kl4Q7VJ4o1ijFGqVYo1w8pNIloVN5QqVLQqdykoSTJDyh0iWhU+mS0Km8qVijFGuUYo1y8WFJeCIJnUqXhBOVLgl3JOFE5S8p1ijFGqVYo8QfvCgJncpJEk5UuiQ8odIl4USlS8KJSpeEO1SeKNYoxRqlWKPEHzyQhE6lS8KJSpeEE5U7kvAmlS4JJyq/qVijFGuUYo0Sf/DFknCHSpeEN6mcJOFE5YlijVKsUYo1ysVDSfhNKneodEnoVLokdCpdEp5Q+aRijVKsUYo1ysXLVN6UhDtUTlROVLoknKicJKFT+aRijVKsUYo1ysWHJeEOlTcloVN5QuWJJJyoPFGsUYo1SrFGuRgmCXck4Y4knKicqHxSsUYp1ijFGuXiy6mcJKFLwh0qXRKeSMKJyhPFGqVYoxRrlIsPU/kmKm9S6ZLQqbypWKMUa5RijXLxsiT8piTcodIloUtCp9Kp/GXFGqVYoxRrlPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFH+AfZcCOrdHE2PAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6920,7 +7031,7 @@
       "kodeBarcode": "SJ-01-XL-083",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKVSURBVO3BQW7kQAwEwSxC//9yro88NSBIM2sTjIg/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4qEkfJNKl4QTlZMkdCpdEr5J5YlijVKsUYo1ysXLVN6UhCeS8CaVNyXhTcUapVijFGuUiw9Lwh0qT6h0SehU3pSEO1Q+qVijFGuUYo1y8cepdEnoVLokdCqTFGuUYo1SrFEu/rgkdCpdEk6S0Kn8ZcUapVijFGuUiw9T+SSVE5VPUvlNijVKsUYp1igXL0vCNyWhU+mS0Kl0SehUTpLwmxVrlGKNUqxR4g/WGMUapVijFGuUi4eS0KmcJOGTVE6S0Kl0SehUTpLQqXRJuEPliWKNUqxRijXKxUMqb1I5ScKbkvCESpeETqVLQqfypmKNUqxRijXKxUNJuEPlJAknKl0SPikJJyq/SbFGKdYoxRol/uCLknCickcSOpU7knCi0iXhRKVLwh0qTxRrlGKNUqxR4g/+oyR0Kl0SOpWTJLxJ5SQJJyrfVKxRijVKsUaJP/jDknCicpKEN6mcJOFE5YlijVKsUYo1ysVDSfgmlROVLgknKl0SOpUuCU+ofFKxRinWKMUa5eJlKm9Kwh1J6FTuUOmScKJykoRO5ZOKNUqxRinWKBcfloQ7VH4zlSeScKLyRLFGKdYoxRrlYrgkdCpdEu5IwonKiconFWuUYo1SrFEu/jiVkyR0SbhDpUvCE0k4UXmiWKMUa5RijXLxYSrflIQnVN6k0iWhU3lTsUYp1ijFGuXiZUn4piScqJwkoUtCp9Kp/GbFGqVYoxRrlPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFH+ATc99t7TlTAbAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6929,7 +7040,7 @@
       "kodeBarcode": "SJ-01-XL-084",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKWSURBVO3BQY6sCAwFwXwW979yTi29QkJATZe/I+IHa4xijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMc3JSEb1LpknCFyhVJ+CaVO4o1SrFGKdYoBw9TeVIS/hKVJyXhScUapVijFGuUg5cl4QqVO1S6JLwpCVeovKlYoxRrlGKNcvDjVLokdCpdEs6o/LJijVKsUYo1ysGPS0Kn0iXhX1KsUYo1SrFGOXiZyptUuiR0Km9S+UuKNUqxRinWKAcPS8I3JaFT6ZLQqXRJ6FTOJOEvK9YoxRqlWKPEDwZJQqfyLynWKMUapVijHNyUhE7lTBLepNIl4YxKl4RO5UwSOpUuCVeo3FGsUYo1SrFGiR/ckIQzKlckoVPpktCpdEl4ksoVSehUuiR0Kk8q1ijFGqVYoxw8TKVLQqdyRqVLwv8pCWdU/pJijVKsUYo1SvzgQUnoVJ6UhE6lS0KnciYJnUqXhCtUuiRcoXJHsUYp1ijFGiV+8EVJeJJKl4Q3qXRJOKPyTcUapVijFGuU+MEPS8IZlTNJeJLKmSScUbmjWKMUa5RijXJwUxK+SeWMypkkdCpdEjqVLgl3qLypWKMUa5RijXLwMJUnJeGKJHQqncoZlS4JZ1TOJKFTeVOxRinWKMUa5eBlSbhC5UlJ6FTuULkjCWdU7ijWKMUapVijHPzjknBFEs6onFF5U7FGKdYoxRrl4MepdEk4k4QrVLok3JGEMyp3FGuUYo1SrFEOXqbyS1SepNIloVN5UrFGKdYoxRrl4GFJ+KYkXKHSJaFLQqfSqfxlxRqlWKMUa5T4wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYo/wGRUf3RIt2yawAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6938,7 +7049,7 @@
       "kodeBarcode": "SJ-01-XL-085",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKiSURBVO3BQW7kQAwEwUxC//9yrY88NSBI4/UQjDA/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4iGV35SETuUkCU+o/KYkPFGsUYo1SrFGuXhZEt6kcpKEE5U7knCShDepvKlYoxRrlGKNcvFhKnck4QmVLgknKk+o3JGETyrWKMUapVijXHw5lROVkyRMUqxRijVKsUa5GCYJd6h0SfhmxRqlWKMUa5SLD0vC/6RykoQnkvCXFGuUYo1SrFEuXqbylyWhU+mScKLylxVrlGKNUqxRzA++mMqbkvDNijVKsUYp1igXD6l0SbhDpUtCp/JEEjqVLgmdypuScKLSJeGJYo1SrFGKNcrFy1S6JDyRhBOVE5UTlS4Jd6g8kYQ3FWuUYo1SrFEuXpaEE5UuCScqdyThRKVLQqfSJaFTuUPljiQ8UaxRijVKsUa5+GVJOFHpknCHykkSTpLQqXRJ6FS6JJyofFKxRinWKMUa5eLDVJ5QOUnCSRJOVE6S0Kl0SbgjCZ9UrFGKNUqxRjE/+GIqdyShU3lTEk5UTpLwRLFGKdYoxRrl4iGV35SET0rCicqJyh1JeFOxRinWKMUa5eJlSXiTykkSOpUuCZ3KE0k4UemScKLSJeGJYo1SrFGKNcrFh6nckYQ7VJ5IQqdyRxJOVLokfFKxRinWKMUa5eLLJaFTuUOlS8KJyhMqn1SsUYo1SrFGuRhO5SQJJyonKl0S/qdijVKsUYo1ysWHJeF/SsIdKidJOFE5SUKn0iXhiWKNUqxRijXKxctUfpNKl4ROpUtCp3KHykkSTlQ+qVijFGuUYo1ifrDGKNYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1yj8lo+7+NQCspgAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6947,7 +7058,7 @@
       "kodeBarcode": "SJ-01-XL-086",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAK6SURBVO3BQY7cQAwEwUxC//9yeY48NSBIs/bSjDAfrDGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1y8ZDKT0pCp3KShBOVLgmdyk9KwhPFGqVYoxRrlIuXJeFNKidJeCIJdyThTSpvKtYoxRqlWKNcfJnKHUm4Q+UkCScqXRLuULkjCd9UrFGKNUqxRrn45ZLQqZyoTFasUYo1SrFGuRgmCZ3K/6RYoxRrlGKNcvFlSfgmlS4JXRI6lTcl4V9SrFGKNUqxRrl4mcq/RKVLQqdyh8q/rFijFGuUYo1iPviPqXRJ+M2KNUqxRinWKBcPqXRJ6FS6JNyhcpKETuUkCV0S7lDpknCi0iWhU+mS8ESxRinWKMUaxXzwIpUuCScqJ0noVO5IQqfSJaFTOUlCp/KmJDxRrFGKNUqxRjEfPKDSJeFE5U1J6FSeSEKn8kQSflKxRinWKMUaxXzwF6l0SThROUlCp3KShE7ljiR0Kl0SOpWTJDxRrFGKNUqxRjEfPKByRxLuUDlJwh0qTyShUzlJwk8q1ijFGqVYo5gPfjGVLgnfpHKShE6lS8I3FWuUYo1SrFEuHlL5SUk4UTlJwonKEypdEk5UuiQ8UaxRijVKsUa5eFkS3qRykoRO5Q6VLgknKidJ+JuKNUqxRinWKBdfpnJHEp5IQqdykoRO5SQJncqJSpeEbyrWKMUapVijXAyj0iWhU+mScIdKl4ROpUvCSRLeVKxRijVKsUa5+OVUTlROVE6S0Kl0Kl0SOpU7kvBEsUYp1ijFGuXiy5LwTUm4Q6VLQqfSqbwpCZ3Km4o1SrFGKdYoFy9T+UkqT6jckYQTlS4Jnco3FWuUYo1SrFHMB2uMYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVij/AHibQr9XXroMgAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6956,7 +7067,7 @@
       "kodeBarcode": "SJ-01-XL-087",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKuSURBVO3BQY7YSAwEwSxC//9yro88NSBImh3TjIh/sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKxUNJ+EkqdyShU+mS0Kl0SfhJKk8Ua5RijVKsUS5epvKmJDyh0iWhU7lD5U1JeFOxRinWKMUa5eJjSbhD5Y4kdConKl0SOpU7knCHypeKNUqxRinWKBfDJOFEpVOZpFijFGuUYo1y8Y9LQqfyNyvWKMUapVijXHxM5SepnCShU3lC5Tcp1ijFGqVYo1y8LAm/SRI6lS4JncpJEn6zYo1SrFGKNUr8g79YEjqVf1mxRinWKMUa5eKhJHQqXRLepNKpdEnoVLokdConSXiTypeKNUqxRinWKBcfU+mScKJykoROpVPpknCShC+pdEk4UXmiWKMUa5RijXLxkEqXhBOVLgknSehUuiR0Kp3KSRJOVLokdCq/SbFGKdYoxRrl4qEknKjckYRO5U1JuCMJncpJEv5PxRqlWKMUa5SLh1ROknCicpKETuUkCScqXRI6lS4Jd6icJOFLxRqlWKMUa5SLj6k8ofJ/UjlJQqdyovKlYo1SrFGKNUr8gweS8JNU7kjCicodSehU7khCp/KmYo1SrFGKNcrFy1TelISTJNyh8oRKl4ROpUtCp9IloVN5olijFGuUYo1y8bEk3KHypSR0Kk+odEk4SUKn8qZijVKsUYo1ysUwKidJ6JJwh8oTKl8q1ijFGqVYo1wMk4ROpVPpktCpdEnoktCp/CbFGqVYoxRrlIuPqXxJ5Y4knCThRKVLQqdyRxI6lSeKNUqxRinWKBcvS8JPSsIdKl0SOpWfpPKmYo1SrFGKNUr8gzVGsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxR/gOYUw/mbu3KhQAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6965,7 +7076,7 @@
       "kodeBarcode": "SJ-01-XL-088",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKtSURBVO3BQW7kQAwEwSxC//9yro88NSBI4x0TjIg/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4qEk/CaVLgknKl0STlS6JPwmlSeKNUqxRinWKBcvU3lTEu5Q+SSVNyXhTcUapVijFGuUiw9Lwh0qd6h0SehUOpUuCU8k4Q6VTyrWKMUapVijXPxxSehUTpIwWbFGKdYoxRrl4o9TOUnCicokxRqlWKMUa5SLD1P5n1S6JHRJ6FTuUPkmxRqlWKMUa5SLlyXhNyWhU+mS0Kl0SbgjCd+sWKMUa5RijRJ/8Icl4U0qf1mxRinWKMUa5eKhJHQqXRJOVLok3KHSJeFNSehUTpLQqXRJOFF5olijFGuUYo1y8ctUuiR0Knck4U1JOEnCNyvWKMUapVijxB98UBLepHKShE6lS0Kn8qYk3KHypmKNUqxRijXKxZdRuSMJncoTSehUuiTcoXKShE7liWKNUqxRijXKxUNJ6FROVLokdEm4Q+UkCZ1Kl4RO5UTliSR8UrFGKdYoxRol/uAPS8ITKidJeJNKl4RO5YlijVKsUYo1ysVDSfhNKneodEnoknCicpKETqVLwonKm4o1SrFGKdYoFy9TeVMS7lA5UfkmSehUnijWKMUapVijXHxYEu5QuUPlJAmdSpeETqVLwonKiUqXhE8q1ijFGqVYo1z8cUnoVE6S0Kk8kYQTlROVNxVrlGKNUqxRLoZJQqdykoRO5Q6VLgldEjqVTyrWKMUapVijXHyYyiepdEm4Q6VLQqfSJaFLwjcp1ijFGqVYo1y8LAm/KQmdSpeETuVNKidJ6JLQqbypWKMUa5RijRJ/sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKPwfaAf3QDYd0AAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6974,7 +7085,7 @@
       "kodeBarcode": "SJ-01-XL-089",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAK4SURBVO3BQYrkUAwFwXzC979yziy1+mDsKqqFIuJ/rDGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1y8VASvkmlS0KnckcSOpUuCd+k8kSxRinWKMUa5eJlKm9Kwh1J6FROVO5QeVMS3lSsUYo1SrFGufiwJNyhcofKSRLuULkjCXeofFKxRinWKMUa5eKPS8IdKl0SJinWKMUapVijXPxxKl0SOpUuCZ3KJMUapVijFGuUiw9T+WVJ6FTuUPklxRqlWKMUa5SLlyXhm5LQqXRJ6FS6JNyRhF9WrFGKNUqxRrl4SOUvScIdKn9JsUYp1ijFGuXioSR0Kl0STlS6JNyh0iXhTUnoVE6S0Kl0SThReaJYoxRrlGKNcvGyJJyodEk4UXlCpUvCSRJOkvDLijVKsUYp1igXL1PpknCi0iWhS0KncqJyh8qbktAl4UTlTcUapVijFGuUi4dUuiTckYQTlS4Jn5SETqVLwh0qJ0noVJ4o1ijFGqVYo1y8TOUkCZ3KSRJOVLoknKh0SehUuiR0Kk8k4ZOKNUqxRinWKBdfpnKHykkSTlS6JHQqdyThCZUuCW8q1ijFGqVYo1w8lIRvUjlR6ZJwkoQTlZMkdCpdEk5U3lSsUYo1SrFGuXiZypuScEcSOpVfloRO5YlijVKsUYo1ysWHJeEOlTtUuiTckYROpUvCicqJSpeETyrWKMUapVijXPxxSehUuiScqDyRhBOVE5U3FWuUYo1SrFEuhklCp3KShE7lDpUuCV0SOpVPKtYoxRqlWKNcfJjKJ6k8odIloVPpktAl4ZcUa5RijVKsUS5eloRvSkKn8k0qJ0noktCpvKlYoxRrlGKNEv9jjVGsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5R/zR3/BjwdaBMAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6983,7 +7094,7 @@
       "kodeBarcode": "SJ-01-XL-090",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKtSURBVO3BQW7kQAwEwSxC//9yro88NSBI4x0TjIg/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4qEk/CaVLgmdSpeEE5WTJPwmlSeKNUqxRinWKBcvU3lTEp5QeZPKm5LwpmKNUqxRijXKxYcl4Q6VO1S6JJyovCkJd6h8UrFGKdYoxRrl4o9LwolKl4QTlb+sWKMUa5RijXLxx6l0SbhDZZJijVKsUYo1ysWHqfxPSThJQqdyh8o3KdYoxRqlWKNcvCwJvykJnUqXhE6lS8IdSfhmxRqlWKMUa5SLh1S+mUqXhDtU/pJijVKsUYo1ysVDSehUuiScqHRJuEPlJAlPJKFTOUlCp9Il4UTliWKNUqxRijXKxcuScEcSTlROkvBJKidJ+CbFGqVYoxRrlPiDB5LQqZwkoVPpknCHSpeEO1TelIQ7VN5UrFGKNUqxRrn4sCQ8oXKShE7lJAknSXiTykkSOpUnijVKsUYp1igXD6ncodIloVPpkvBEEjqVLgmdSpeETuWJJHxSsUYp1ijFGiX+4A9LwhMqJ0l4k0qXhE7liWKNUqxRijXKxUNJ+E0qd6h0SeiScKJykoROpUvCicqbijVKsUYp1igXL1N5UxLuUDlR+SZJ6FSeKNYoxRqlWKNcfFgS7lC5Q6VLwolKl4ROpUvCicqJSpeETyrWKMUapVijXPxxSbgjCZ3KE0k4UTlReVOxRinWKMUa5WIYlS4JnUqXhE7lDpUuCV0SOpVPKtYoxRqlWKNcfJjKJ6l0SbhDpUtCp9IloUvCNynWKMUapVijXLwsCb8pCf+TykkSuiR0Km8q1ijFGqVYo8QfrDGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo3yD1eI+vjS+fN2AAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -6992,7 +7103,7 @@
       "kodeBarcode": "SJ-01-XL-091",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAK9SURBVO3BQa7jSAwFwXyE7n/lnF5yVYAg2eNPMCL+wxqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUuiScqJwkoVPpkvBNKk8Ua5RijVKsUS5epvKmJNyh0iXhROUOlTcl4U3FGqVYoxRrlIsPS8IdKneodEk4UemS0KnckYQ7VD6pWKMUa5RijXLxxyWhU7lDZZJijVKsUYo1ysUfp3JHEjqVSYo1SrFGKdYoFx+m8k1J6FROktCp3KHyS4o1SrFGKdYoFy9LwjcloVPpktCpdEm4Iwm/rFijFGuUYo1y8ZDKL1PpknCHyl9SrFGKNUqxRrl4KAmdSpeEE5UuCXeodEl4UxI6lZMkdCpdEk5UnijWKMUapVijXHyYSpeELgmdyptUuiTcoXKShF9SrFGKNUqxRon/8KIkPKHSJaFTeSIJncqbknCHypuKNUqxRinWKBcvU+mS0KmcJKFT6ZLQqZwk4YkkPKFykoRO5YlijVKsUYo1ysXLknBHEjqVLgknSehUOpWTJHQqncqbkvBJxRqlWKMUa5SLl6ncoXKicpKEO5LQqZwk4U0qXRLeVKxRijVKsUa5eCgJ36RykoRO5SQJJyonSehUuiScqLypWKMUa5RijXLxMpU3JeFNKr8kCZ3KE8UapVijFGuUiw9Lwh0qd6h0SeiS0Kl0SehUuiScqJyodEn4pGKNUqxRijXKxR+XhDuS0Kk8kYQTlROVNxVrlGKNUqxRLoZR6ZLQqXRJ6FTuUOmS0CWhU/mkYo1SrFGKNcrFh6l8kkqXhE7lRKVLQqfSJaFLwi8p1ijFGqVYo1y8LAnflIT/k8pJErokdCpvKtYoxRqlWKPEf1hjFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUa5T/JSgwCl92r6gAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7001,7 +7112,7 @@
       "kodeBarcode": "SJ-01-XL-092",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKuSURBVO3BQW7sWAwEwSxC979yjpdcPUCQuu3PYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUnkjCiUqXhG9SeaJYoxRrlGKNcvEylTcl4YkknKjcofKmJLypWKMUa5RijXLxYUm4Q+WOJPymJNyh8knFGqVYoxRrlGKNUqxRijVKsUa5GEalS0Kn0iWhU/mXFWuUYo1SrFEuPkzlm5JwkoRO5QmVv6RYoxRrlGKNcvGyJPwmlS4JnUqXhE7lJAl/WbFGKdYoxRol/uAfloRO5f+sWKMUa5RijXLxUBI6lS4Jb1LpVO5IQqdykoQ3qXxSsUYp1ijFGiX+4IEknKh0SbhD5SQJb1K5IwknKl0STlSeKNYoxRqlWKNcPKTSJeEOlS4JXRI6lROVO5JwkoQTlb+kWKMUa5RijXLxUBI6lS4JnUqXhE7lJAmdykkS7kjCicpJEn5TsUYp1ijFGuXiZUnoVLokdCpdEu5IwonKSRI6lS4Jd6icJOGTijVKsUYp1ijxB/+wJNyh0iWhU7kjCZ3KbyrWKMUapVijXDyUhG9S6VS6JHQqXRI6lTuS0KnckYRO5U3FGqVYoxRrlIuXqbwpCSdJ6FROVJ5Q6ZLQqXRJ6FS6JHQqTxRrlGKNUqxRLj4sCXeoPJGETqVLQqfyhEqXhJMkdCpvKtYoxRqlWKNcDKNyRxLuUHlC5ZOKNUqxRinWKBfDJaFT6ZLQqXRJ6JLQqfwlxRqlWKMUa5SLD1P5JJUuCZ1Kl4STJJyodEnoVO5IQqfyRLFGKdYoxRrl4mVJ+KYkdConKl0SOpVvUnlTsUYp1ijFGiX+YI1RrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuU/wAjBgT4mkg1+AAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7010,7 +7121,7 @@
       "kodeBarcode": "SJ-01-XL-093",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKiSURBVO3BQY7jQAwEwSxC//9yro88NWBI9o4JRsQX1hjFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUa5uCkJ36TSJeEdKl0SOpUuCd+kckexRinWKMUa5eJhKk9Kwl+i8qQkPKlYoxRrlGKNcvFhSXiHypNUTlTuSMI7VD6pWKMUa5RijXLx41ROktCpTFasUYo1SrFGufhxSThR6ZJwovLLijVKsUYp1igXH6bySSpdErokdCpPUvlLijVKsUYp1igXD0vCNyWhU+mScJKETuUkCX9ZsUYp1ijFGiW+MEgSTlQmK9YoxRqlWKNc3JSETuUkCZ+k0iWhS0Kn0iWhUzlJQqfSJeEdKncUa5RijVKsUeILD0pCp3KShBOVkyScqHRJOFHpknCi0iWhU+mS0Kk8qVijFGuUYo1ycVMSTpJwonKShHeodEl4RxI6lS4Jf1mxRinWKMUaJb7wQ5Jwh0qXhE7lJAknKl0S3qFyR7FGKdYoxRolvnBDEjqVLgmdSpeEX6LSJeFE5ZuKNUqxRinWKPGFH5aEE5WTJDxJ5SQJJyp3FGuUYo1SrFEubkrCN6mcqJwkoVPpktCpdEm4Q+WTijVKsUYp1igXD1N5UhLekYQTlROVLgknKidJ6FQ+qVijFGuUYo1y8WFJeIfKHSpdEp6kckcSTlTuKNYoxRqlWKNcDJOEdyThHUk4UTlR+aRijVKsUYo1ysWPUzlJQpeEd6h0SbgjCScqdxRrlGKNUqxRLj5M5X9S6ZJwovIklS4JncqTijVKsUYp1igXD0vCNyWhUzlR6ZLQJaFT6VT+smKNUqxRijVKfGGNUaxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlH8QhQDvCAShtwAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7019,7 +7130,7 @@
       "kodeBarcode": "SJ-01-XL-094",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKXSURBVO3BQY6kAAwEwSyL/385d44+ISGgt8fjiPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFEObkrCJ6k8KQmdSpeET1K5o1ijFGuUYo1y8DCVJyXhiiRcoXKFypOS8KRijVKsUYo1ysHLknCFyhVJ6FTOJOFJSbhC5U3FGqVYoxRrlIPhkvCXFGuUYo1SrFEO/hiVLgmdym9WrFGKNUqxRjl4mconJaFT6ZLQqdyh8k2KNUqxRinWKAcPS8L/pNIloVPpktCpnEnCNyvWKMUapVijxB/8Ykm4QmWyYo1SrFGKNcrBTUnoVLokPEmlU7kiCZ3KmSQ8SeVNxRqlWKMUa5SDm1TuULkjCZ3KFUnoVDqVM0k4o9Il4YzKHcUapVijFGuUg4cloVM5k4Q7VLoknFHpktAl4QqVb1KsUYo1SrFGOfgyKlck4YoknFG5Iwn/U7FGKdYoxRrl4GVJuCIJZ1Q6lTuScCYJncoZlTNJeFOxRinWKMUa5eBhKp+UhE6lS0KncoXKmSR0KmdU3lSsUYo1SrFGObgpCZ+k0ql0SehUuiR0KlckoVO5IgmdypOKNUqxRinWKAcPU3lSEs4k4QqVO1S6JHQqXRI6lS4JncodxRqlWKMUa5SDlyXhCpU3JaFTuUOlS8KZJHQqTyrWKMUapVijHAyjckUSrlC5Q+VNxRqlWKMUa5SDP0alS0Kn0iWhS0Kn8k2KNUqxRinWKAcvU3mTyhVJOJOEMypdEjqVK5LQqdxRrFGKNUqxRjl4WBI+KQmdyhmVLgmdyiepPKlYoxRrlGKNEn+wxijWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNco/MNb25DY6CNYAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7028,7 +7139,7 @@
       "kodeBarcode": "SJ-01-XL-095",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKjSURBVO3BQW7ARgwEwR5C//9yx0eeFhAkOQ7DqviDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFEuHkrCb1I5ScIdKidJ+E0qTxRrlGKNUqxRLl6m8qYkPKHyJpU3JeFNxRqlWKMUa5SLjyXhDpU7ktCpnCThROWOJNyh8qVijVKsUYo1ysUwSThR6ZIwSbFGKdYoxRqlWKMUa5RijVKsUS4+pvKXJKFTeULlLynWKMUapVijXLwsCf8mlS4JnUqXhE7lJAl/WbFGKdYoxRol/uA/LAl3qExWrFGKNUqxRrl4KAmdSpeEN6l0Kl0SOpUuCZ3KSRLepPKlYo1SrFGKNUr8wYuS0Kl0SehUuiR0Kk8k4Q6VO5JwotIl4UTliWKNUqxRijXKxUNJ6FS6JHQqJypdEjqVO1ROktAl4Q6Vv6RYoxRrlGKNcvGyJHQqXRJOVDqVLgmdSpeETqVLwh0qdyTh31SsUYo1SrFGiT/4UBLepHJHEjqVLgmdypeScKLyRLFGKdYoxRrl4mMqX0rCicqXktCpnKh8qVijFGuUYo1y8VASfpNKp9Il4SQJncodSehU7khCp/KmYo1SrFGKNcrFy1TelISTJHQqJypPqHRJ6FS6JHQqXRI6lSeKNUqxRinWKBcfS8IdKk8koVPpktCpPKHSJeEkCZ3Km4o1SrFGKdYoF8Oo3JGEO1SeUPlSsUYp1ijFGuXif0alS0Kn0iWhS0Kn8pcUa5RijVKsUS4+pvIllZMk3JGEE5UuCZ3KHUnoVJ4o1ijFGqVYo1y8LAm/KQmdyolKl4RO5TepvKlYoxRrlGKNEn+wxijWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNco/lC0K4IALd1EAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7037,7 +7148,7 @@
       "kodeBarcode": "SJ-01-XL-096",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKlSURBVO3BQW7sWAwEwUxC979yjZdcPaAhqcfmZ4T5wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFzepfFMSOpUuCScqXRJOVL4pCXcUa5RijVKsUS4eloQnqXxCpUvCiUqXhJMkPEnlScUapVijFGuUi5epfCIJb0pCp3KHyieS8KZijVKsUYo1ysUfl4ROpVP5lxRrlGKNUqxRLv44lS4JJyqTFWuUYo1SrFEuXpaENyWhU+mS0CXhSUn4TYo1SrFGKdYoFw9T+SaVLgmdSpeETqVLwonKb1asUYo1SrFGMT8YROUkCZMVa5RijVKsUS5uUumScKLyf1LpktCpdEk4UemS0Kl8Igl3FGuUYo1SrFHMD16k0iWhU+mScIfKHUnoVE6S0Kl0SehUuiQ8qVijFGuUYo1y8bIkdConKidJ6FROktCpnKh0SehUfrNijVKsUYo1ysVNKl0SPpGEO5LQqZwkoVO5Q6VLQqdyotIl4Y5ijVKsUYo1ysXDVE6S0Kl8k8odSehUOpUuCd9UrFGKNUqxRjE/+MNUuiR0Kl0SOpUnJeFE5SQJdxRrlGKNUqxRLm5S+aYkfCIJnUqXhE6lS0KnckcS3lSsUYo1SrFGuXhYEp6kcodKl4STJHQqJ0k4UemS8KZijVKsUYo1ysXLVD6RhN8sCXeonCThjmKNUqxRijXKxTAqn1D5hMpJEk6S8KZijVKsUYo1ysUfl4QTlU7lE0noVO5QOUnCHcUapVijFGuUi5cl4S9JwpOS0Kl0SXhSsUYp1ijFGuXiYSrfpNIl4SQJnUqn0iWhS8JvVqxRijVKsUYxP1hjFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUa5T8n4/j3CD8jpgAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7046,7 +7157,7 @@
       "kodeBarcode": "SJ-01-XL-097",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAK1SURBVO3BQYrkUAwFwXzC979yTi21+mDsKqaFIuIHa4xijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKNcPJSEX1LpktCpdEm4Q6VLwi+pPFGsUYo1SrFGuXiZypuScEcSOpU3qbwpCW8q1ijFGqVYo1x8WRLuUPmlJHQqdyThDpVvKtYoxRqlWKNc/HEqXRK6JJyoTFKsUYo1SrFGufjjktCpnCShS0Kn8pcVa5RijVKsUS6+TOWbVO5QeZPK/6RYoxRrlGKNcvGyJPxSEjqVLgmdSpeETuUkCf+zYo1SrFGKNUr8YLAkdCqTFWuUYo1SrFEuHkpCp3KShF9S6ZLQqXRJ6FROktCpdEm4Q+WJYo1SrFGKNcrFy5Jwh0qXhE7lJAmdyh1J6FS6JJyodEnoVLokdCpvKtYoxRqlWKNcPKTSJaFT6ZLQJaFT6ZJwonKShDuS0Kl0SfifFWuUYo1SrFHiBw8k4UTlJAmdykkSTlTuSEKn0iXhDpUuCXeoPFGsUYo1SrFGiR88kIQ3qXRJ6FS6JJyodEl4QqVLwonKLxVrlGKNUqxR4gd/WBI6lS4JnUqXhDepnCThROWJYo1SrFGKNcrFQ0n4JZUnktCpdEnoVLokPKHyTcUapVijFGuUi5epvCkJb1I5UemScKJykoRO5ZuKNUqxRinWKBdfloQ7VN6k8iaVJ5JwovJEsUYp1ijFGuVimCScqHRJuCMJJyonKt9UrFGKNUqxRrn441S6JJwk4Q6VLglPJOFE5YlijVKsUYo1ysWXqfySSpeEO1TepNIloVN5U7FGKdYoxRrl4mVJ+KUkdCqdykkSuiR0Kp3K/6xYoxRrlGKNEj9YYxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGuUfbx8R7WEiQI8AAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7055,7 +7166,7 @@
       "kodeBarcode": "SJ-01-XL-098",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKySURBVO3BQW7kQAwEwUxC//9yrY88NSBI4/UQjDA/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4iGV35SETuUkCZ3KSRI6ld+UhCeKNUqxRinWKBcvS8KbVO5IwkkSnkjCm1TeVKxRijVKsUa5+DCVO5JwRxI6lTuS8ITKHUn4pGKNUqxRijXKxZdTuSMJkxVrlGKNUqxRLr5cEk5UOpUuCZMUa5RijVKsUS4+LAm/SaVLQqfSqXRJuCMJf0mxRinWKMUa5eJlKr9JpUtCp9IloVO5Q+UvK9YoxRqlWKOYH3wxlTcl4ZsVa5RijVKsUS4eUumS0KmcJKFTuSMJd6jcodIl4USlS0KncpKEJ4o1SrFGKdYoFx+WhBOVLgl3qJwk4YkknKj8JcUapVijFGsU84MXqXRJ6FS6JJyonCThROUkCZ1Kl4Q7VO5IwpuKNUqxRinWKBf/mUqXhC4JnUqn8kkqTyThRKVLwhPFGqVYoxRrlIuXJaFT6ZLQqZyonCThRKVLQqfSJaFT6ZLwhMonFWuUYo1SrFHMD76YSpeEE5UuCScqb0pCp9Il4YlijVKsUYo1ysVDKr8pCW9SOUnCiUqXhE7lJAlvKtYoxRqlWKNcvCwJb1J5UxL+EpUuCU8Ua5RijVKsUS4+TOWOJNyRhBOVLgmdSpeETuUkCSdJ6FQ+qVijFGuUYo1y8eVU7lDpkvCEykkSTpLwpmKNUqxRijXKxXBJOFHpknBHEjqVTqVLwicVa5RijVKsUS4+LAmflIROpVPpktAloVPpktCpdCp/SbFGKdYoxRrl4mUqv0nlf0rCiUqn0iXhTcUapVijFGsU84M1RrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUf4BH3oCAx0TrKwAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7064,7 +7175,7 @@
       "kodeBarcode": "SJ-01-XL-099",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKkSURBVO3BQW7sWAwEwSxC979yjpdcPUCQur/NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtU7khCp3JHEr5J5YlijVKsUYo1ysXLVN6UhDuScEcSOpUTlTcl4U3FGqVYoxRrlIsPS8IdKnckoVM5SUKn8kQS7lD5pGKNUqxRijXKxXBJOElCp/KXFWuUYo1SrFEu/mdUuiRMUqxRijVKsUa5+DCVf0mlS0Kn8oTKb1KsUYo1SrFGuXhZEn6TJHQqXRI6lZMk/GbFGqVYoxRrlIuHVP4ylROVv6RYoxRrlGKNcvFQEjqVLglvUulU7khCp3KShDepfFKxRinWKMUaJf7ggSTcodIl4UTljiQ8oXJHEk5UuiScqDxRrFGKNUqxRrl4SOVNKl0SOpUuCZ3KHUnoknCHym9SrFGKNUqxRrn4siR0KicqXRI6lZMkvEnlJAn/UrFGKdYoxRrl4mVJOFHpktCpdEl4QuUkCZ3KEyonSfikYo1SrFGKNUr8wR+WhE6lS0Kn0iWhU7kjCZ3Kv1SsUYo1SrFGiT94IAnfpHKShDtU7khCp3JHEjqVNxVrlGKNUqxRLl6m8qYknCThROVNKl0SOpUuCZ1Kl4RO5YlijVKsUYo1ysWHJeEOlTcl4UTlCZUuCSdJ6FTeVKxRijVKsUa5GEblJAldEu5QeULlk4o1SrFGKdYoF8MkoVPpVLokdCpdErokdCq/SbFGKdYoxRrl4sNUPknljiScJOFEpUtCp3JHEjqVJ4o1SrFGKdYoFy9LwjcloVPpktCpdEnoVL5J5U3FGqVYoxRrlPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFH+A8dsAe5chWApAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7073,7 +7184,7 @@
       "kodeBarcode": "SJ-01-XL-100",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKwSURBVO3BQW7sWAwEwSxC979yjpdcPUCQur/NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUuiScqJwkoVPpkvBNKk8Ua5RijVKsUS5epvKmJJyodEnoknCicofKm5LwpmKNUqxRijXKxYcl4Q6VvyQJd6h8UrFGKdYoxRrl4o9LQqfSJeEkCZ3KX1asUYo1SrFGufifUemSMEmxRinWKMUa5eLDVL4pCZ1Kl4RO5QmV36RYoxRrlGKNcvGyJPxLKl0SOpUuCZ3KSRJ+s2KNUqxRijXKxUMqv5lKl4Q7VP6SYo1SrFGKNcrFQ0noVO5IQqfSJeGJJJyodEl4k8pJEjqVJ4o1SrFGKdYo8QcPJOFEpUtCp9IloVPpktCp3JGEJ1ROktCpfFOxRinWKMUa5eJlKl0SOpUTlS4JncodSThRuSMJdyThDpUnijVKsUYp1igXD6l0SehUuiR0Kl0SOpUuCZ1Kl4RO5ZNU7kjCJxVrlGKNUqxRLl6mcqJyRxI6lTcl4ZtUPqlYoxRrlGKNcvHLqNyRhE7lm5LQqZwk4UTliWKNUqxRijXKxUNJ+CaVT1I5ScJJEu5QeVOxRinWKMUa5eJlKm9KwolKl4ROpUvCEyonSehUTpLQqTxRrFGKNUqxRrn4sCTcoXJHEk6ScKLSJeEOlZMkdCqfVKxRijVKsUa5+ONUuiTckYRO5SQJTyThk4o1SrFGKdYoF8OodEk4UTlJwkkSOpV/qVijFGuUYo1y8WEq35SETuWOJJyonCThRKVLQqfyRLFGKdYoxRrl4mVJ+KYkPJGEO5JwonKShE8q1ijFGqVYo8QfrDGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo3yH1yr+f/HauueAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7082,7 +7193,7 @@
       "kodeBarcode": "SJ-01-XL-101",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKmSURBVO3BQa6jAAwFwX4W979yT5ZeISEgk2+5Kn6wxijWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNcrBTUn4JpUzSehUuiScUemS8E0qdxRrlGKNUqxRDh6m8qQk3JGETqVLwhUqT0rCk4o1SrFGKdYoBy9LwhUqVyShU+mS0CXhSUm4QuVNxRqlWKMUa5SDYZJwhcokxRqlWKMUa5SDYVSuSEKn8pcVa5RijVKsUQ5epvJNSehUuiR0Kneo/JJijVKsUYo1ysHDkvA/qXRJ6FS6JHQqZ5Lwy4o1SrFGKdYo8YM/LAlXqExWrFGKNUqxRokf3JCETqVLwpNUziThCpUzSXiSypuKNUqxRinWKAcPS8IZlV+ShE6lU+mS0Kl0SehUuiScUbmjWKMUa5RijXLwMJUuCV0SOpUuCWdUrlA5k4QnqfxPxRqlWKMUa5SDl6mcScIZlStUziThSUn4JcUapVijFGuUg4cloVO5QqVLwh0qnUqXhDNJ6FTuSMKbijVKsUYp1ijxgz8sCVeodEnoVK5IQqfyPxVrlGKNUqxRDm5KwjepdCpdEjqVLgmdyhVJ6FSuSEKn8qRijVKsUYo1ysHDVJ6UhDNJ6FS6JHQqd6h0SehUuiR0Kl0SOpU7ijVKsUYp1igHL0vCFSp3JKFT6ZLQqdyh0iXhTBI6lScVa5RijVKsUQ6GUemScCYJV6jcofKmYo1SrFGKNcrBcCpnktCpdEnoktCp/JJijVKsUYo1ysHLVN6kciYJVyThjEqXhE7liiR0KncUa5RijVKsUQ4eloRvSkKnckalS0Kn8k0qTyrWKMUapVijxA/WGMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRvkH23gE8czUEZIAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7091,7 +7202,7 @@
       "kodeBarcode": "SJ-01-XL-102",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKjSURBVO3BQY7cQAwEwSxC//9yeo88NSBIM/bSjIg/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4qEkfJPKE0noVE6S8E0qTxRrlGKNUqxRLl6m8qYknCShU7kjCZ3KicqbkvCmYo1SrFGKNcrFhyXhDpU3JeFE5Ykk3KHyScUapVijFGuUi2GS0KmcJKFT+c2KNUqxRinWKBe/nEqXhP9ZsUYp1ijFGuXiw1S+SaVLwonKEyr/kmKNUqxRijXKxcuS8E1J6FROVLokdConSfiXFWuUYo1SrFEuHlL5zVROVH6TYo1SrFGKNcrFQ0noVN6UhE7liSR0Kl0STlROknCHypuKNUqxRinWKBcfloQnVE5UnkhCp9Il4SQJJypdEj6pWKMUa5RijXLxkEqXhE6lS8KJSpeEE5U7VLoknKh0SehUnkhCp/JEsUYp1ijFGiX+4C9KwolKl4RvUjlJwptUnijWKMUapVijxB88kIQ7VE6ScKJykoROpUvCEypdEk5UvqlYoxRrlGKNEn/wiyXhROUkCZ3KSRJOVP6mYo1SrFGKNcrFQ0n4JpVOpUvCSRI6lSdU7khCp/KmYo1SrFGKNcrFy1TelIQ7VE5U7kjCE0noVD6pWKMUa5RijXLxYUm4Q+WJJHQqXRI6lROVO5JwkoRO5U3FGqVYoxRrlIvhknCShCdU7lD5pGKNUqxRijXKxTAqXRKeUOmS0CWhU+mS0CXhROWJYo1SrFGKNcrFh6l8UxI6lS4JdyThCZWTJLypWKMUa5RijXLxsiR8UxI6lROVLgmdyh1JeELlTcUapVijFGuU+IM1RrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUf4AEGH+4pUhP3AAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7100,7 +7211,7 @@
       "kodeBarcode": "SJ-01-XL-103",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKeSURBVO3BQW7sWAwEwSxC979yjpdcPaAhqb/NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFzcl4ZtUuiScqNyRhG9SuaNYoxRrlGKNcvEwlScl4TdReVISnlSsUYo1SrFGuXhZEj6h8qQkdCpPSsInVN5UrFGKNUqxRrn441ROktAl4UTlLyvWKMUapVijXPxxSehU/s+KNUqxRinWKBcvU3mTSpeETuVNKr9JsUYp1ijFGuXiYUn4piR0Kl0SOpUuCZ3KSRJ+s2KNUqxRijVK/MEgSThRmaxYoxRrlGKNcnFTEjqVkyS8SeUkCZ1Kl4RO5SQJnUqXhE+o3FGsUYo1SrFGuXhYEu5Q+UQS7khCp9IloVM5SUKn0iWhU3lSsUYp1ijFGuXiy1ROknBHEt6UhE6lS8K/VKxRijVKsUaJP3hQEjqVLgmdSpeETuUkCZ1Kl4ROpUvCicodSfiEyh3FGqVYoxRrlIt/LAmdSpeETqVTOVHpkvCkJJyofFOxRinWKMUaJf7gD0vCJ1S6JDxJ5SQJJyp3FGuUYo1SrFEubkrCN6mcqJwkoVPpktCpdEm4Q+VNxRqlWKMUa5SLh6k8KQmfSEKn0qmcqHRJOFE5SUKn8qZijVKsUYo1ysXLkvAJlTtUuiR0Kneo3JGEE5U7ijVKsUYp1igXwyShUzlJwieScKJyovKmYo1SrFGKNcrFH6dykoQ7VLok3JGEE5U7ijVKsUYp1igXL1P5l1S6JJyoPEmlS0Kn8qRijVKsUYo1ysXDkvBNSehUTlS6JHRJ6FQ6ld+sWKMUa5RijRJ/sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKf6R0/t9RSHP6AAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7109,7 +7220,7 @@
       "kodeBarcode": "SJ-01-XL-104",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKtSURBVO3BQW7kQAwEwSxC//9yro88NSBIM2sTjIg/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4qEkfJNKl4Q7VLokdCpdEr5J5YlijVKsUYo1ysXLVN6UhCdUuiQ8ofKmJLypWKMUa5RijXLxYUm4Q+VNSehU3pSEO1Q+qVijFGuUYo1y8cepnCShS0KnMkmxRinWKMUa5eKPS0KnckcSOpW/rFijFGuUYo1y8WEqn6RyovJJKr9JsUYp1ijFGuXiZUn4piR0Kl0SOpUuCZ3KSRJ+s2KNUqxRijVK/MFgSehUJivWKMUapVijXDyUhE7lJAmfpHKShE6lS0KncpKETqVLwh0qTxRrlGKNUqxR4g8+KAmdykkSOpU7kvCESpeETqVLwolKl4RO5U3FGqVYoxRrlIuHktCpPKHSJaFTOVE5ScITSehUuiT8T8UapVijFGuU+IP/KAknKl0SOpUuCScqXRI6lS4JncodSbhD5YlijVKsUYo1ysXLktCpPJGEO1ROknCShDuScKLyTcUapVijFGuU+IM/LAl3qHRJeJPKSRJOVJ4o1ijFGqVYo1w8lIRvUjlR6ZLQJaFT6ZLQqXRJeELlk4o1SrFGKdYoFy9TeVMS7khCp3KHSpeEE5WTJHQqn1SsUYo1SrFGufiwJNyh8oTKJ6k8kYQTlSeKNUqxRinWKBfDJKFTOUnCHUk4UTlR+aRijVKsUYo1ysUfp9IloUvCEypdEp5IwonKE8UapVijFGuUiw9T+SaVkyScqLxJpUtCp/KmYo1SrFGKNcrFy5LwTUnoVLokdCpdErokdCqdym9WrFGKNUqxRok/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrlH7EqCPCE4R86AAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7118,7 +7229,7 @@
       "kodeBarcode": "SJ-01-XL-105",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKpSURBVO3BQa7jSAwFwXyE7n/lHC+5KsCQ5OlPMCJ+sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKxU1J+CWVLgmdSpeEb6h0SfgllTuKNUqxRinWKBcPU3lSEu5QeZLKk5LwpGKNUqxRijXKxcuS8A2VNyWhU7kjCd9QeVOxRinWKMUa5eKPU+mS0Kl0KpMVa5RijVKsUS7+uCR8IwknKn9ZsUYp1ijFGuXiZSpvUumScKLyJJV/SbFGKdYoxRrl4mFJ+KUkdCpdEjqVLgmdykkS/mXFGqVYoxRrlPjBIEk4UZmsWKMUa5RijXJxUxI6lZMkvEmlS0KXhE6lS0KncpKETqVLwjdU7ijWKMUapVijxA8elIQTlScl4USlS8KJSpeETqVLwolKl4RO5UnFGqVYoxRrlIuHqXRJ6JJwotIloVPpVLokvCkJnUqXhP9TsUYp1ijFGiV+8KAkdCpdEk5UfikJnUqXhE7lG0n4hsodxRqlWKMUa5T4wQ1JuEPlJAknKl0SOpUuCd9QOUnCicovFWuUYo1SrFHiB39YEk5UTpLwJJWTJJyo3FGsUYo1SrFGubgpCb+kckcSOpUuCZ1Kl4Q7VN5UrFGKNUqxRrl4mMqTkvANlROVE5UuCScqJ0noVN5UrFGKNUqxRrl4WRK+oXJHEk5U7lC5IwknKncUa5RijVKsUS6GUzlJwjeScKJyovKmYo1SrFGKNcrFH6fSJaFLwh0qXRLuSMKJyh3FGqVYoxRrlIuXqfyfVLoknKg8SaVLQqfypGKNUqxRijXKxcOS8EtJ6FROVLokdEnoVDqVf1mxRinWKMUaJX6wxijWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNcp/mv4P3dLB4U4AAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7127,7 +7238,7 @@
       "kodeBarcode": "SJ-01-XL-106",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAK5SURBVO3BQY7YSAwEwSxC//9yro88NSBIGnu4jIh/sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKxUNJ+EkqXRJOVJ5Iwk9SeaJYoxRrlGKNcvEylTcl4UTlJAl3qJyovCkJbyrWKMUapVijXHwsCXeo3JGETqVTOUnCE0m4Q+VLxRqlWKMUa5SLX07lJAknKpMUa5RijVKsUS7+55LQqfxmxRqlWKMUa5SLj6l8KQknKl0S3qTyLynWKMUapVijXLwsCX+TSpeETqVLwh1J+JcVa5RijVKsUS4eUvmbVLokvEnlNynWKMUapVijXDyUhE6lS0KnckcSTlSeULkjCZ3KSRI6lS4JncoTxRqlWKMUa5SLvywJJyonSThR6ZLQqdyhcpKEkyR8qVijFGuUYo1y8TGVLgl3JKFT6VSeSMKXVH5SsUYp1ijFGuXiIZUuCZ1Kp3KShE6lS8KJyh0qXRJOVLok3JGEE5UnijVKsUYp1igXDyWhU+mScKLSqXRJOFHpknBHEn6SypeKNUqxRinWKPEPfrEkdCpdEjqVJ5JwotIloVP5UrFGKdYoxRrl4qEk/CSVkyR0Knck4YkkdConSehUnijWKMUapVijXLxM5U1JOFHpktAloVPpktCpnCThROVvKtYoxRqlWKNcfCwJd6i8SeVEpUvCiUqXhJMkdCpfKtYoxRqlWKNcDJeEE5U7ktCpdEnoVE5U3lSsUYo1SrFGufjlkvBEEk5UuiR0SehUuiTcofJEsUYp1ijFGuXiYypfUumScIdKl4QuCW9S6ZLwpmKNUqxRijXKxcuS8JOS0Kl0SThJwh0qJ0noVLokfKlYoxRrlGKNEv9gjVGsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5T/AG4LAwvJHuiUAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7136,7 +7247,7 @@
       "kodeBarcode": "SJ-01-XL-107",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKfSURBVO3BSY7kQAwEQQ9C//+yTx95SkCQqhcOzeIX1hjFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUa5eCgJ30mlS8IdKnck4TupPFGsUYo1SrFGuXiZypuScKLSJeGOJHQqJypvSsKbijVKsUYp1igXH5aEO1Q+KQmdyhNJuEPlk4o1SrFGKdYoF39cEjqVLgn/k2KNUqxRijXKxX9GpUtCp/KXFWuUYo1SrFEuPkzlJ6l0SehUnlD5TYo1SrFGKdYoFy9Lwm+ShE6lS0KncpKE36xYoxRrlGKNcvGQym+ShE6lS8IdKn9JsUYp1ijFGuXioSR0KnckoVPpknCHyh0qXRLepHKShE7liWKNUqxRijVK/MIPSkKncpKEn6RykoRO5TsVa5RijVKsUeIXHkjCHSonSXiTSpeETuWOJHySyhPFGqVYoxRrlIuHVJ5IwonKSRI6lROVkyTcoXJHEj6pWKMUa5RijXLxzZLQqZwk4USlS0KncpKEE5UuCU+ofFKxRinWKMUaJX7hD0tCp3JHEt6kcpKEE5UnijVKsUYp1igXDyXhO6nckYRO5UTlJAknSbhD5U3FGqVYoxRrlIuXqbwpCScqXRI6lS4JT6icJKFTOUlCp/JEsUYp1ijFGuXiw5Jwh8odSXhCpUvCHSonSehUPqlYoxRrlGKNcvHHqXRJ6JJwkoRO5SQJTyThk4o1SrFGKdYoF/85lZMknCShU/lJxRqlWKMUa5SLD1P5SSp3JOFE5SQJJypdEjqVJ4o1SrFGKdYoFy9LwndKwkkSOpUuCXck4UTlJAmfVKxRijVKsUaJX1hjFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUa5R/mMe/0M17BiAAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7145,7 +7256,7 @@
       "kodeBarcode": "SJ-01-XL-108",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAALCSURBVO3BQa7jSAwFwUxC97/yGy+5KkCQbPTnMMJ8sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKxUMqv5SEX1L5pSQ8UaxRijVKsUa5eFkS3qRyotIloVPpktCpdEk4ScKbVN5UrFGKNUqxRrn4MpU7knBHEu5QeZPKHUn4pmKNUqxRijXKxf9MEiYr1ijFGqVYo1z8cSpPqHRJ+MuKNUqxRinWKBdfloRvSsKJyjcl4V9SrFGKNUqxRrl4mcovqXRJ+CaVf1mxRinWKMUaxXwwiEqXhE7lJAl/WbFGKdYoxRrl4iGVLgmdSpeETqVLQqfSJeEkCZ3KSRKeUOmScKLSJeFNxRqlWKMUaxTzwQ+pdEnoVLokdCpPJOFEpUtCp9Il4USlS0Kn0iXhiWKNUqxRijXKxUMqJ0m4IwmdSpeETqVLQqdyonKi0iWhU+mS0CWhU+mS8KZijVKsUYo1ivngAZUnknCHSpeEN6l0SehUTpJwh0qXhCeKNUqxRinWKBcPJaFT6ZJwovKEyh1J6FS6JHQqb1LpkvCmYo1SrFGKNYr54A9T6ZLQqZwkoVPpknCi8kQS3lSsUYo1SrFGMR88oPJLSXhCpUvCiUqXhE6lS8KJykkSnijWKMUapVijXLwsCW9SuUPlDpWTJNyh0iXhl4o1SrFGKdYoF1+mckcS7lDpknCi0iXhROUJlV8q1ijFGqVYo1z8cUk4UemS8EQSnlDpkvCmYo1SrFGKNcrFH6fSJaFLwolKl4QuCScqdyShU+mS8ESxRinWKMUa5eLLkvBNSehUTpLQJeFEpUvCEyrfVKxRijVKsUa5eJnKL6k8odIl4USlS8ITKm8q1ijFGqVYo5gP1hjFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUb5D3RxFfXXymCCAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7154,7 +7265,7 @@
       "kodeBarcode": "SJ-01-XL-109",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKoSURBVO3BQY6kAAwEwSyL/385d44+ISGgp8friPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFEObkrCJ6lckYQzKmeS8EkqdxRrlGKNUqxRDh6m8qQkXJGEMypdEjqVMypPSsKTijVKsUYp1igHL0vCFSpXJKFT6ZLwpiRcofKmYo1SrFGKNcrBMEnoVP4nxRqlWKMUa5SD4ZLQqUxWrFGKNUqxRjl4mco3SUKncofKNynWKMUapVijHDwsCb9JpUtCp9IloVM5k4RvVqxRijVKsUaJP/jDktCp/M+KNUqxRinWKAc3JaFT6ZLwJJVOpUtCp9IloVM5k4QnqbypWKMUa5RijXLwMpUuCZ1Kl4RO5U1J6FQ6lS4JnUqXhE6lS8IZlTuKNUqxRinWKAc3qXRJuEOlS0KnckbljEqXhC4JncoVKr+pWKMUa5RijXLwYSpXqHRJ6FS6JNyhckUSvkmxRinWKMUa5eCmJJxROZOETqVLwh0qZ5JwJgmdyh1JeFOxRinWKMUaJf7gD0tCp3JFEjqVK5LQqfymYo1SrFGKNcrBTUn4JJVO5YokdCpXJKFTuSIJncqTijVKsUYp1igHD1N5UhLOJKFT6ZLQqdyh0iWhU+mS0Kl0SehU7ijWKMUapVijHLwsCVeoPEmlS0KncodKl4QzSehUnlSsUYo1SrFGORguCWeScIXKHSpvKtYoxRqlWKMcDJOEMypdEjqVLgldEjqVb1KsUYo1SrFGOXiZyptUziShS8KZJJxR6ZLQqVyRhE7ljmKNUqxRijXKwcOS8ElJ6FTOqHRJ6FQ+SeVJxRqlWKMUa5T4gzVGsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxR/gEFPAby4T2PbQAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7163,7 +7274,7 @@
       "kodeBarcode": "SJ-01-XL-110",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKZSURBVO3BQY6kAAwEwSyL/385d44+ISGgp8friPiDNUaxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFEObkrCJ6mcScIdKl0SPknljmKNUqxRijXKwcNUnpSEb6LypCQ8qVijFGuUYo1y8LIkXKFyRRLOqJxJwh1JuELlTcUapVijFGuUg+GS0KlMVqxRijVKsUY5GEblf1asUYo1SrFGOXiZyicloVPpktCp3KHyTYo1SrFGKdYoBw9Lwm9S6ZLQqXRJ6FTOJOGbFWuUYo1SrFEOblL5y1TOqPwlxRqlWKMUa5SDm5LQqXRJeJJKp9IloVPpktCpnEnCk1TeVKxRijVKsUY5eFgSzqh0SehUrkjCHUk4o9IloVPpktCpdEk4o3JHsUYp1ijFGuXgyyWhU+lUrlDpkvAkld9UrFGKNUqxRjn4MknoVM4koVPpknCFSpeEM0n4JsUapVijFGuUgw9LwhmVLglnVLokdCpnknCFyh1JeFOxRinWKMUaJf7gD0tCp9IloVPpktCpXJGETuU3FWuUYo1SrFHiD25Iwiep3JGETuWKJHQqVyShU3lSsUYp1ijFGuXgYSpPSsKZJFyhcodKl4ROpUtCp9IloVO5o1ijFGuUYo1y8LIkXKHyJJUuCZ3KHSpdEs4koVN5UrFGKdYoxRrl4D+XhCtU7lB5U7FGKdYoxRrlYBiVLgmdSpeETqVLQpeETuWbFGuUYo1SrFEOXqbyJpUzKl0SziThjEqXhE7liiR0KncUa5RijVKsUQ4eloRPSkKn0iWhU+mS0Kl8ksqTijVKsUYp1ijxB2uMYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVij/AMydvrjjEfE0gAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7172,7 +7283,7 @@
       "kodeBarcode": "SJ-01-XL-111",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKiSURBVO3BQa7jSAwFwXyE7n/lnL/kqgBBsjFmMyL+YY1RrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUi4eS8E0qJ0k4UbkjCd+k8kSxRinWKMUa5eJlKm9KwkkSTlS6JHQqd6i8KQlvKtYoxRqlWKNcfFgS7lC5Q+UkCZ3Km5Jwh8onFWuUYo1SrFEu/nFJ6FR+WbFGKdYoxRrl4scloVP5lxVrlGKNUqxRLj5M5ZNUuiR8k8r/SbFGKdYoxRrl4mVJ+KYkdCpdEt6UhP+zYo1SrFGKNUr8w2BJuEPllxVrlGKNUqxRLh5KQqfSJaFT6ZLQqXRJ6FROknCHyhNJ6FROktCpvKlYoxRrlGKNcvGQSpeETuUJlS4JncodKk8koVM5SUKn0iWhU3miWKMUa5RijRL/8EFJ+CaVO5Jwh0qXhE7lJAmdypuKNUqxRinWKBcPJaFTeULlm1ROktAl4QmVLgmdyhPFGqVYoxRrlIsPU3kiCXeo3JGETuWTktCpvKlYoxRrlGKNEv/ww5JwotIloVPpktCpnCThCZU3FWuUYo1SrFHiHx5IwjepnCThDpWTJHQqXRI6lZMknKg8UaxRijVKsUa5eJnKm5Jwh0qXhJMknKjckYRO5ZuKNUqxRinWKBcfloQ7VO5IQqdyh8pJEp5IwjcVa5RijVKsUS5+nEqXhE7lTSpPJKFTeVOxRinWKMUa5eLHJeGJJHQqncpJEu5Q6ZLQqTxRrFGKNUqxRrn4MJVPUjlJQqfSqZwkoVN5IgmfVKxRijVKsUa5eFkSvikJTyShUzlJQqfyRBLeVKxRijVKsUaJf1hjFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUa5T9oTf/e8mzYigAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7181,7 +7292,7 @@
       "kodeBarcode": "SJ-01-XL-112",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKkSURBVO3BQY6sCAwFwXwW979yTi29QkJATbW/I+IHa4xijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMc3JSEb1I5k4ROpUtCp3ImCd+kckexRinWKMUa5eBhKk9KwhUqb1J5UhKeVKxRijVKsUY5eFkSrlC5IgmdSpeENyXhCpU3FWuUYo1SrFEOhklCp/IvKdYoxRqlWKMcDKPSJaFT6ZLQqfxlxRqlWKMUa5SDl6n8kiR0Kneo/JJijVKsUYo1ysHDkvDLVLokdCpnkvDLijVKsUYp1ijxgz8sCVeoTFasUYo1SrFGObgpCZ1Kl4QnqXQqVyShUzmThCepvKlYoxRrlGKNcvCwJHQqZ5LQqVyRhDMqZ5JwRqVLQqfSJaFT6ZJwRuWOYo1SrFGKNcrBw1TOJOFMEq5QOZOETqVLwpNU/k/FGqVYoxRrlPjBi5LQqXRJ6FTuSMJfpnJHsUYp1ijFGiV+8EOScIXKmSR0Kl0SOpUuCZ3KHUk4o3JHsUYp1ijFGuXgx6hckYQ3qZxJQqdyRuVNxRqlWKMUa5T4wQ1J+CaVM0m4QuWKJHQqVyShU3lSsUYp1ijFGuXgYSpPSsKZJFyhcodKl4ROpUtCp9IloVO5o1ijFGuUYo1y8LIkXKFyh0qXhC4JncodKl0SziShU3lSsUYp1ijFGuVgmCR0Kl0SuiRcoXKHypuKNUqxRinWKAfDqHRJ6FS6JHQqXRK6JHQqv6RYoxRrlGKNcvAylTepdEk4k4QzSTij0iWhU7kiCZ3KHcUapVijFGuUg4cl4ZuS0Kl0SehUuiR0Kt+k8qRijVKsUYo1SvxgjVGsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5T/AHFCBep1Y8G7AAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7190,7 +7301,7 @@
       "kodeBarcode": "SJ-01-XL-113",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKmSURBVO3BQW7sWAwEwSxC979yjpdcCXiQur+HZkT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUTiShUzmRhG9SeaJYoxRrlGKNcvEylTcl4UQSOpU3qbwpCW8q1ijFGqVYo1x8WBJOqJxIQqdyJwl3VE4k4YTKJxVrlGKNUqxRLoZLwl9SrFGKNUqxRrn4Y1S6JExSrFGKNUqxRrn4MJVvSkKn0iWhU3lC5Tcp1ijFGqVYo1y8LAn/kkqXhE6lS0KncicJv1mxRinWKMUaJf7gfywJd1T+kmKNUqxRijXKxUNJ6FS6JLxJpVPpknAnCZ3KnSS8SeWTijVKsUYp1igXL0vCEyp3ktCpdConknBHpUtCp9IloVPpknBH5YlijVKsUYo1ysVDKl0SnkjCm5LQqXRJ6FS6JJxQ+ZeKNUqxRinWKBcvU3kiCZ1Kl4QTKl0STqh0SeiS8JsUa5RijVKsUS4eSkKncicJd1S6JHQqXRJOqHRJOKHyRBI+qVijFGuUYo1y8ZDKCZUTKidUuiR8UhI6lTsqn1SsUYo1SrFGiT94IAnfpHInCSdUTiShUzmRhE7lTcUapVijFGuUi5epvCkJd5LQqXySSpeETqVLQqfSJaFTeaJYoxRrlGKNcvFhSTih8qYk3FF5QqVLwp0kdCpvKtYoxRqlWKNcDKfSJaFLwgmVJ1Q+qVijFGuUYo1yMVwSOpUuCZ1Kl4QuCZ3Kb1KsUYo1SrFGufgwlU9S6ZJwJwl3knBHpUtCp3IiCZ3KE8UapVijFGuUi5cl4ZuS0KmcSEKn8k0qbyrWKMUapVijxB+sMYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijfIfa+z68lXxJhgAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7199,7 +7310,7 @@
       "kodeBarcode": "SJ-01-XL-114",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAK8SURBVO3BQW7sWAwEwSxC979yjpdcPUCQ2t/NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4TepdEnoVLoknKicJOE3qTxRrFGKNUqxRrl4mcqbknCi0iWhU+mS0CWhUzlReVMS3lSsUYo1SrFGufiwJNyh8ptUnkjCHSqfVKxRijVKsUa5+HJJOEnC/0mxRinWKMUa5WIYlTuS0Kl8s2KNUqxRijXKxYep/KYkdCpdEjqVJ1T+kmKNUqxRijXKxcuS8C+pdEnoVLokdConSfjLijVKsUYp1igXD6l8kyTcofJNijVKsUYp1igXDyWhU7kjCZ1Kl4QnVLokdCpdEt6kcpKETuWJYo1SrFGKNcrFy5LQqdyRhE7ljiTckYROpUtCp3KShDtU3lSsUYo1SrFGuXhIpUtCl4RO5USlS8KJyolKl4RO5Y4k3JGEO1SeKNYoxRqlWKNcPJSEE5UuCSdJ6FTepHKHSpeETuWOJHxSsUYp1ijFGuXiIZUuCXeodEnoknCicpKETqVLwonKm1Q+qVijFGuUYo0Sf/DFknCicpKEN6mcJOFE5YlijVKsUYo1ysVDSfhNKicqXRI6lROVkyScJOEOlTcVa5RijVKsUS5epvKmJJyodEk4ScITKidJ6FROktCpPFGsUYo1SrFGufiwJNyhckcSOpWTJHQqXRLuUDlJQqfyScUapVijFGuUiy+n0iWhUzlJQqdykoQnkvBJxRqlWKMUa5SLYVTuUDlJwkkSOpV/qVijFGuUYo1y8WEqf4nKSRJOVE6ScKLSJaFTeaJYoxRrlGKNcvGyJPymJNyh0iXhjiScqJwk4ZOKNUqxRinWKPEHa4xijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKP8B6jjBgilXI5RAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7208,7 +7319,7 @@
       "kodeBarcode": "SJ-01-XL-115",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAALJSURBVO3BQW7sWAwEwSxC979yjpdcPUCQuv3NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUuiR0Kl0S7lDpkvBNKk8Ua5RijVKsUS5epvKmJJyodEk4UXlC5U1JeFOxRinWKMUa5eLDknCHyh1JOFHpktCpPJGEO1Q+qVijFGuUYo1y8cepdEm4Iwmdyl9WrFGKNUqxRrkYRqVLwv9JsUYp1ijFGuXiw1Q+KQm/SeVfUqxRijVKsUa5eFkSfpNKl4ROpUvCHUn4lxVrlGKNUqxRLh5S+U0qXRI6lSdU/pJijVKsUYo1SvzBA0noVLokdCp3JOFE5SQJncoTSehUTpLQqXRJ6FSeKNYoxRqlWKPEH7woCZ3KSRI6lZMkdCpdEjqVLgmdSpeETuWOJDyh8kSxRinWKMUaJf7gRUk4UTlJwhMqXRKeUOmScIfKNxVrlGKNUqxRLj5MpUtCp9KpnCThDpUuCZ1Kl4QTlS4JdyThROWJYo1SrFGKNUr8wS9KQqfSJeFE5SQJb1LpknCi8k3FGqVYoxRrlItfpnKicpKETuVE5YkknKh0SehUPqlYoxRrlGKNcvFQEr5J5ZOS8EQSOpWTJHQqTxRrlGKNUqxRLl6m8qYknKh0SehUTpLQqZwk4UTlNxVrlGKNUqxRLj4sCXeovCkJnUqn0iXhRKVLwkkSOpVPKtYoxRqlWKNcDKfSJaFTuSMJnUqXhE7lROVNxRqlWKMUa5SLPy4JncodSThR6ZLQJaFT6ZJwh8oTxRqlWKMUa5SLD1P5JJUuCZ3KiUqXhC4Jb1LpkvCmYo1SrFGKNcrFy5LwTUnoVLoknCThDpWTJHQqXRI+qVijFGuUYo0Sf7DGKNYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1yn/AcSDq2ewkqQAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7217,7 +7328,7 @@
       "kodeBarcode": "SJ-01-XL-116",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKaSURBVO3BQW7kQAwEwUxC//9yrY88NSBIM2sTjDA/WGMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRrl4iGVb0pCp9Il4UTlJAmdyjcl4YlijVKsUYo1ysXLkvAmlZMknKicJOGOJLxJ5U3FGqVYoxRrlIsPU7kjCZ+UhE6lS8IdKnck4ZOKNUqxRinWKBd/nMpJEjqVyYo1SrFGKdYoF8MkoVPpktCpTFKsUYo1SrFGufiwJPwmKl0SnkjCb1KsUYo1SrFGuXiZym+WhE6lS8KJym9WrFGKNUqxRjE/+MNU3pSEv6xYoxRrlGKNcvGQSpeEO1S6JHQqTyShU+mS0Km8KQknKl0SnijWKMUapVijmB88oHJHEjqVkyTcofJEEjqVLgknKl0SvqlYoxRrlGKNYn7wRSpPJOFE5Y4knKh8UxKeKNYoxRqlWKNc/DJJuEOlS8ITKl0SOpUuCXeofFKxRinWKMUa5eIhlS4JnUqXhE7lROUkCU+ofFMSPqlYoxRrlGKNYn7wh6l0SbhD5U1JOFE5ScITxRqlWKMUa5SLh1S+KQknKl0S7kjCicqJyh1JeFOxRinWKMUa5eJlSXiTykkSOpVO5U1JOFHpknCi0iXhiWKNUqxRijXKxYep3JGEO1SeSEKnckcSTlS6JHxSsUYp1ijFGuXij0tCp9IloVPpVLoknKg8ofJJxRqlWKMUa5SLYZJwRxJOVE5UuiT8T8UapVijFGuUiw9LwjepnCThROUkCScqJ0noVLokPFGsUYo1SrFGuXiZyjepPKFyh8pJEk5UPqlYoxRrlGKNYn6wxijWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNco/fALt9vVqkhkAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7226,7 +7337,7 @@
       "kodeBarcode": "SJ-01-XL-117",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKmSURBVO3BQW7sWAwEwSxC979yjpdcPUCQuv3NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUuiR0Kl0STlROkvBNKk8Ua5RijVKsUS5epvKmJJyo3KHSJaFTOVF5UxLeVKxRijVKsUa5+LAk3KHylyThDpVPKtYoxRqlWKNc/HFJOFHpktCpTFKsUYo1SrFGuRhGpUtCp9IloVP5y4o1SrFGKdYoFx+m8k1JOElCp/KEyr+kWKMUa5RijXLxsiT8JpUuCZ1Kl4RO5SQJ/7JijVKsUYo1ysVDKn9JEu5Q+UuKNUqxRinWKBcPJaFTuSMJnUqXhDuScIdKl4Q3qZwkoVN5olijFGuUYo0Sf/BBSThReSIJncpJEk5UuiR0KidJ6FS+qVijFGuUYo1y8bIkdCpdErokdCpdEj5J5Y4k3JGEO1SeKNYoxRqlWKNcfJnKHSpdEjqVLgmdSqfyJpU7kvBJxRqlWKMUa5SLh5LQqXRJeJPKicodSfgmlU8q1ijFGqVYo8Qf/GFJ6FTuSMKbVE6ScKLyRLFGKdYoxRrl4qEkfJPKSRJOVE5UTpJwkoQ7VN5UrFGKNUqxRrl4mcqbknCi0iXhJAlPqJwkoVM5SUKn8kSxRinWKMUa5eLDknCHyh1JOFHpktCpdEm4Q+UkCZ3KJxVrlGKNUqxRLv44lS4JdyShUzlJwhNJ+KRijVKsUYo1ysX/nMpJEk6S0Kn8pmKNUqxRijXKxYep/KYkdConSThROUnCiUqXhE7liWKNUqxRijXKxcuS8E1JOFE5ScIdSThROUnCJxVrlGKNUqxR4g/WGMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRvkPK2z0+KRG55cAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7235,7 +7346,7 @@
       "kodeBarcode": "SJ-01-XL-118",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKUSURBVO3BQY6kAAwEwSyL/385t48+ISGgZ8briPjBGqNYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1igHNyXhm1SuSEKnckUSvknljmKNUqxRijXKwcNUnpSEJyWhU7lC5UlJeFKxRinWKMUa5eBlSbhC5YokXKHypCRcofKmYo1SrFGKNcrBMCpnknBG5S8r1ijFGqVYoxz8Z1S6JExSrFGKNUqxRjl4mco3JeEKlTtUfpNijVKsUYo1ysHDkvCTVLokdCpdEjqVM0n4zYo1SrFGKdYo8YM/LAlnVP4nxRqlWKMUa5SDm5LQqXRJeJJKp3ImCWdUziThSSpvKtYoxRqlWKPED36RJHQqXRK+SaVLQqfSJaFT6ZJwRuWOYo1SrFGKNcrBw5LQqZxJwpkkPEmlS0Kn0iXhCpWfVKxRijVKsUY5uCkJncqZJJxReVMSnpSE36RYoxRrlGKNcnCTSpeEK1TOJOEKlTMqXRKuULkjCW8q1ijFGqVYo8QP/rAkXKHSJaFTuSIJncpPKtYoxRqlWKPED25IwjepXJGEMypXJKFTuSIJncqTijVKsUYp1igHD1N5UhLOJKFT6VSepNIloVPpktCpdEnoVO4o1ijFGqVYoxy8LAlXqNyRhCtU7lDpknAmCZ3Kk4o1SrFGKdYoB8OonElCl4QrVO5QeVOxRinWKMUa5WCYJJxR6ZLQqXRJ6JLQqfwmxRqlWKMUa5SDl6m8SeWKJJxJwhmVLgmdyhVJ6FTuKNYoxRqlWKMcPCwJ35SETqVLQqfSJaFT+SaVJxVrlGKNUqxR4gdrjGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYo/wDxkvz4asm7GgAAAAASUVORK5CYII=",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7244,7 +7355,7 @@
       "kodeBarcode": "SJ-01-XL-119",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKhSURBVO3BQW7sWAwEwSxC979yjpdcPUCQuv3NYUT8wRqjWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoFw8l4ZtUTpJwotIloVPpkvBNKk8Ua5RijVKsUS5epvKmJJwk4UTlROUOlTcl4U3FGqVYoxRrlIsPS8IdKm9KQqfSJaFTuSMJd6h8UrFGKdYoxRrlYhiVLgknKpMUa5RijVKsUS7+OJUuCZ3KSRI6lb+sWKMUa5RijXLxYSrfpHKShE7lCZV/SbFGKdYoxRrl4mVJ+KYkdCpdEjqVLgmdykkS/mXFGqVYoxRrlPiDPywJncr/WbFGKdYoxRrl4qEkdCpvSkKncpKEO1S6JJyonCThDpU3FWuUYo1SrFEuHlLpktCpdEk4UelUuiScqHRJOEnCE0k4UemS8EnFGqVYoxRrlIuHktCpdEnoVO5IQqfSJeFE5SQJnUqXhC4JncoTSehUnijWKMUapVijxB98URJOVE6S8JtUuiS8SeWJYo1SrFGKNcrFy5LQqdyRhBOVJ5LwTSrfVKxRijVKsUaJP/jDknCicpKETuUkCScqv6lYoxRrlGKNcvFQEr5JpVM5ScKJyhMqdyShU3lTsUYp1ijFGuXiZSpvSsKbVO5IwhNJ6FQ+qVijFGuUYo1y8WFJuEPliSScJKFTOVG5IwknSehU3lSsUYo1SrFGuRhOpUtCl4QnVO5Q+aRijVKsUYo1ysU6UumS0CWhU+mS0CXhROWJYo1SrFGKNcrFh6n8piQ8kYQnVE6S8KZijVKsUYo1ysXLkvBNSehU7khCp3JHEp5QeVOxRinWKMUaJf5gjVGsUYo1SrFGKdYoxRqlWKMUa5RijVKsUYo1SrFGKdYoxRqlWKMUa5T/AEna9fGV88dBAAAAAElFTkSuQmCC",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -7253,7 +7364,7 @@
       "kodeBarcode": "SJ-01-XL-120",
       "size": "XL",
       "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKcSURBVO3BQW7kQAwEwSxC//9yro88NSBIY3tpRsQvrDGKNUqxRinWKMUapVijFGuUYo1SrFGKNUqxRinWKMUapVijFGuUYo1y8VASvpPKHUk4UTlJwndSeaJYoxRrlGKNcvEylTcl4Y4kdConSehUTlTelIQ3FWuUYo1SrFEuPiwJd6jckYSTJHQqb0rCHSqfVKxRijVKsUa5+ONUJinWKMUapVijXAyncpKETuV/VqxRijVKsUa5+DCVn5SEE5UnVH6TYo1SrFGKNcrFy5Lwk1S6JHQqXRI6lZMk/GbFGqVYoxRrlPiF/1gSOpW/rFijFGuUYo1y8VASOpUuCW9S6VROknCicpKEN6l8UrFGKdYoxRrl4iGVO1S6JHQqJ0m4Q6VLQpeETuUOlS4JnUqXhBOVJ4o1SrFGKdYoFw8l4U1JeELlRKVLQpeEJ1R+UrFGKdYoxRrl4iGVT1I5SUKXhE6lS8IdKl0SuiT8JsUapVijFGuUi4eS0KmcJOFEpUtCp3Ki0iWhU+mS0KmcqDyRhE8q1ijFGqVYo1w8pHKHyh0qv1kSOpUTlU8q1ijFGqVYo8QvPJCE76RykoQ7VO5IQqdyRxI6lTcVa5RijVKsUS5epvKmJJwk4UTlTSpdEjqVLgmdSpeETuWJYo1SrFGKNcrFhyXhDpVPSkKn8oRKl4STJHQqbyrWKMUapVijXPxxSbhD5QmVTyrWKMUapVijXAyjcqLSJaFT6ZLQJaFT+U2KNUqxRinWKBcfpvJJKl0SnkjCiUqXhE7ljiR0Kk8Ua5RijVKsUS5eloTvlIQTlZMkdCrfSeVNxRqlWKMUa5T4hTVGsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxR/gFhOQDmU0qLvwAAAABJRU5ErkJggg==",
-      "status": "washing",
+      "status": "washing_dikerjakan",
       "createdAt": "2026-09-21T03:26:01.011Z"
     },
     {
@@ -14322,7 +14433,7 @@
       "transfer_id": 1,
       "status": "Ditolak",
       "createdAt": "2026-09-21T04:59:18.637Z",
-      "alasan_tolak": "tunggu dulu\n"
+      "alasan_tolak": "tunggu dulu"
     },
     {
       "id": 5,
@@ -14572,7 +14683,7 @@
         }
       ],
       "catatan": "ACC Request",
-      "status": "Proses",
+      "status": "Dikerjakan",
       "tanggal_kirim": "2026-09-21T05:01:27.226Z"
     }
   ],
@@ -14634,20 +14745,22 @@
   ],
   "_counters": {
     "pipeline_stages": 6,
-    "kategori_produk": 3,
+    "kategori_produk": 4,
     "data_supplier": 2,
     "data_kain": 2,
-    "purchase_orders": 2,
-    "hutang": 1,
+    "purchase_orders": 3,
+    "hutang": 2,
     "tukang_potong": 2,
-    "pemotongan_kain": 2,
+    "pemotongan_kain": 4,
     "cmt_requests": 6,
     "po_produksi": 2,
     "po_ledgers": 6,
     "barcode_item": 1500,
     "cmt_progres": 1,
     "po_pengambilan": 1,
-    "produksi_transfers": 4
+    "produksi_transfers": 4,
+    "item_pendukung": 6,
+    "gaji_cmt": 2
   },
   "po_pipeline": [
     {
@@ -14899,6 +15012,144 @@
       "butuh_vendor": false,
       "aktif": true,
       "deskripsi": "pengemasan barang jadi masuk kegudang"
+    }
+  ],
+  "item_pendukung": [
+    {
+      "id": 1,
+      "nama": "Benang Astra Jeans 20/2",
+      "kategori": "Benang",
+      "tipe": "20/2 Tebal",
+      "warna": "Gold Jeans (Kuning Emas)",
+      "satuan": "Cones",
+      "stok": 35,
+      "harga_beli": 28000,
+      "catatan": "Benang jahit utama untuk keliling & variasi jeans",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 2,
+      "nama": "Benang Astra Jeans 20/3",
+      "kategori": "Benang",
+      "tipe": "20/3 Ekstra Kuat",
+      "warna": "Navy / Indigo",
+      "satuan": "Cones",
+      "stok": 24,
+      "harga_beli": 31000,
+      "catatan": "Benang make-up & obras 3 benang",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 3,
+      "nama": "Resleting YKK Metal Brass No. 5",
+      "kategori": "Resleting",
+      "tipe": "Gigi Kuningan 5\"",
+      "warna": "Bakar / Antik",
+      "satuan": "Pcs",
+      "stok": 1200,
+      "harga_beli": 3500,
+      "catatan": "Resleting jeans standar pria / wanita",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 4,
+      "nama": "Resleting YKK Nylon Coil No. 4",
+      "kategori": "Resleting",
+      "tipe": "Coil Gigi Halus 6\"",
+      "warna": "Hitam",
+      "satuan": "Pcs",
+      "stok": 850,
+      "harga_beli": 2200,
+      "catatan": "Untuk saku dalam / chino pants",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 5,
+      "nama": "Kancing Logam Jeans 17mm",
+      "kategori": "Kancing",
+      "tipe": "Donut Button Laurel Leaf",
+      "warna": "Antique Brass",
+      "satuan": "Pcs",
+      "stok": 3000,
+      "harga_beli": 650,
+      "catatan": "Kancing pinggang utama celana jeans",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 6,
+      "nama": "Rivet Saku Tembaga 9mm",
+      "kategori": "Rivet",
+      "tipe": "Nipple Rivet",
+      "warna": "Copper / Tembaga",
+      "satuan": "Pcs",
+      "stok": 5000,
+      "harga_beli": 250,
+      "catatan": "Rivet sudut kantong depan & coin pocket",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    }
+  ],
+  "pengaturan_sistem": {
+    "nama_usaha": "TIRTA BINTANG JEANS",
+    "tagline": "Spesialis Denim & Celana Jeans",
+    "alamat": "Jl. Cigondewah Raya No. 45, Bandung",
+    "telepon": "0812-9876-5432",
+    "email": "",
+    "divisi": "Divisi Cutting & Bahan",
+    "logo_url": "/icons/icon-192.png",
+    "catatan_surat_jalan": "Barang/kain & bahan pendukung di atas telah diperiksa dan diserahkan dalam kondisi lengkap dan tepat jumlah.",
+    "jabatan_penyerah": "Bagian Gudang & Bahan",
+    "jabatan_penerima": "Tukang Potong / Cutting",
+    "jabatan_penyetuju": "Admin Produksi / Supervisor",
+    "updated_at": "2026-10-14T21:52:23.420Z"
+  },
+  "data_pelanggan": [
+    {
+      "id": 1,
+      "uid": "CUST-001",
+      "nama": "Toko Bintang Busana (Tanah Abang)",
+      "tipe": "Grosir / Toko Pasar",
+      "kontak": "081288992211",
+      "alamat": "Pasar Tanah Abang Blok A Lt. 1 No. 45, Jakarta Pusat",
+      "kota": "Jakarta",
+      "ekspedisi": "Baraka / MPS Express",
+      "total_order": 14,
+      "total_pembelian": 185000000,
+      "piutang": 0,
+      "catatan": "Langganan jeans pria slim fit & cutbray. Termin tempo 14 hari."
+    },
+    {
+      "id": 2,
+      "uid": "CUST-002",
+      "nama": "Distro Indigo Denim Lab",
+      "tipe": "Distro / Brand Clothing",
+      "kontak": "087755443322",
+      "alamat": "Jl. Trunojoyo No. 24, Bandung",
+      "kota": "Bandung",
+      "ekspedisi": "J&T Cargo / Indah Logistik",
+      "total_order": 8,
+      "total_pembelian": 96000000,
+      "piutang": 12500000,
+      "catatan": "Spesialis raw denim 14oz & selvedge accent. Kualitas QC Grade A."
+    },
+    {
+      "id": 3,
+      "uid": "CUST-003",
+      "nama": "Kurnia Jeans Grosir Surabaya",
+      "tipe": "Grosir / Toko Pasar",
+      "kontak": "081399887766",
+      "alamat": "Pusat Grosir Surabaya (PGS) Lt. 2 Blok B No. 10",
+      "kota": "Surabaya",
+      "ekspedisi": "Karyati / Dakota",
+      "total_order": 19,
+      "total_pembelian": 240000000,
+      "piutang": 0,
+      "catatan": "Order rutin 50 lusin per bulan model standard denim & cargo jeans."
     }
   ]
 }

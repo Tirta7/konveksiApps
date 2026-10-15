@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -58,6 +58,32 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
   }
 
+  // Handle stock changes for item pendukung
+  if (data.item_pendukung) {
+    const isOldSelesai = existingData.status !== "Draft";
+    const isNewSelesai = finalStatus !== "Draft";
+
+    // Revert old item pendukung stock if previously Selesai
+    if (isOldSelesai && Array.isArray(existingData.item_pendukung_used)) {
+      for (const oldItem of existingData.item_pendukung_used) {
+        const itIdx = data.item_pendukung.findIndex((ip: any) => ip.id === Number(oldItem.item_id));
+        if (itIdx !== -1) {
+          data.item_pendukung[itIdx].stok = (Number(data.item_pendukung[itIdx].stok) || 0) + (Number(oldItem.qty) || 0);
+        }
+      }
+    }
+
+    // Deduct new item pendukung stock if new status is Selesai
+    if (isNewSelesai && Array.isArray(body.item_pendukung_used)) {
+      for (const newItem of body.item_pendukung_used) {
+        const itIdx = data.item_pendukung.findIndex((ip: any) => ip.id === Number(newItem.item_id));
+        if (itIdx !== -1) {
+          data.item_pendukung[itIdx].stok = Math.max(0, (Number(data.item_pendukung[itIdx].stok) || 0) - (Number(newItem.qty) || 0));
+        }
+      }
+    }
+  }
+
   // Validate size breakdown so they don't reduce below what's already taken
   for (const s of sizeBreakdown) {
     const oldS = existingData.sizeBreakdown?.find((old: any) => old.size === s.size);
@@ -83,6 +109,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     tukang_potong_id: Number(tukang_potong_id),
     model,
     total_pcs: Number(total_pcs),
+    jenis_jahitan: body.jenis_jahitan !== undefined ? body.jenis_jahitan : (existingData.jenis_jahitan || ""),
+    tipe_benang: body.tipe_benang !== undefined ? body.tipe_benang : (existingData.tipe_benang || ""),
+    tipe_resleting: body.tipe_resleting !== undefined ? body.tipe_resleting : (existingData.tipe_resleting || ""),
+    catatan_jahitan: body.catatan_jahitan !== undefined ? body.catatan_jahitan : (existingData.catatan_jahitan || ""),
+    item_pendukung_used: body.item_pendukung_used !== undefined ? body.item_pendukung_used : (existingData.item_pendukung_used || []),
     sizeBreakdown: sizeBreakdown.map((s: any) => {
       const oldS = existingData.sizeBreakdown?.find((old: any) => old.size === s.size);
       const oldJumlah = oldS ? Number(oldS.jumlah) : 0;
@@ -96,7 +127,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       };
     }),
     status: finalStatus,
-    selectedRolls: body.selectedRolls || []
+    selectedRolls: body.selectedRolls || [],
+    isi_per_bundle: body.isi_per_bundle !== undefined ? Number(body.isi_per_bundle) : (existingData.isi_per_bundle || 20)
   };
 
   data.pemotongan_kain[index] = updatedPemotongan;
@@ -126,15 +158,28 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   // Restore stock if it was previously Selesai
-  if (existingData.status !== "Draft" && data.data_kain) {
-    const kainIndex = data.data_kain.findIndex((k:any) => k.nama_kain === existingData.nama_barang);
-    if (kainIndex !== -1) {
-      data.data_kain[kainIndex].stok_meter += Number(existingData.meter_kain);
-      
-      // Restore rolls
-      if (existingData.selectedRolls && existingData.selectedRolls.length > 0) {
-        if (!data.data_kain[kainIndex].rolls) data.data_kain[kainIndex].rolls = [];
-        data.data_kain[kainIndex].rolls.push(...existingData.selectedRolls);
+  if (existingData.status !== "Draft") {
+    // Restore kain
+    if (data.data_kain) {
+      const kainIndex = data.data_kain.findIndex((k:any) => k.nama_kain === existingData.nama_barang);
+      if (kainIndex !== -1) {
+        data.data_kain[kainIndex].stok_meter += Number(existingData.meter_kain);
+        
+        // Restore rolls
+        if (existingData.selectedRolls && existingData.selectedRolls.length > 0) {
+          if (!data.data_kain[kainIndex].rolls) data.data_kain[kainIndex].rolls = [];
+          data.data_kain[kainIndex].rolls.push(...existingData.selectedRolls);
+        }
+      }
+    }
+
+    // Restore item pendukung stock
+    if (data.item_pendukung && Array.isArray(existingData.item_pendukung_used)) {
+      for (const itemUsed of existingData.item_pendukung_used) {
+        const itIdx = data.item_pendukung.findIndex((ip: any) => ip.id === Number(itemUsed.item_id));
+        if (itIdx !== -1) {
+          data.item_pendukung[itIdx].stok = (Number(data.item_pendukung[itIdx].stok) || 0) + (Number(itemUsed.qty) || 0);
+        }
       }
     }
   }

@@ -363,6 +363,110 @@
         }
       ],
       "createdAt": "2026-09-21T03:18:01.949Z"
+    },
+    {
+      "id": 3,
+      "tanggal": "2026-10-14",
+      "target_selesai": "2026-10-28",
+      "nama_barang": "MK 1299 SST",
+      "meter_kain": 1008,
+      "pemakaian_cm": 120,
+      "tukang_potong_id": 1,
+      "model": "PECAH POLA",
+      "total_pcs": 840,
+      "sizeBreakdown": [
+        {
+          "size": "S",
+          "jumlah": "82",
+          "sisa": 82
+        },
+        {
+          "size": "M",
+          "jumlah": "152",
+          "sisa": 152
+        },
+        {
+          "size": "L",
+          "jumlah": "152",
+          "sisa": 152
+        },
+        {
+          "size": "XL",
+          "jumlah": "182",
+          "sisa": 182
+        },
+        {
+          "size": "XXL",
+          "jumlah": "272",
+          "sisa": 272
+        }
+      ],
+      "status": "Draft",
+      "selectedRolls": [
+        {
+          "id": "R-1789959421924-7023",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-3963",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-1472",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-1380",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-7160",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-4186",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        },
+        {
+          "id": "R-1789959421924-8349",
+          "meter": 144,
+          "po_uid": "POK-0001",
+          "date_added": "2026-09-21T02:57:01.924Z"
+        }
+      ],
+      "jenis_jahitan": "Rantai (Chainstitch), Obras 5 Benang, Make-up Jeans, Double Stitch, Bartack",
+      "tipe_benang": "Benang Astra Jeans 20/2 (Gold Jeans (Kuning Emas))",
+      "tipe_resleting": "Resleting YKK Metal Brass No. 5 (Gigi Kuningan 5\")",
+      "catatan_jahitan": "Kebutuhan PO harap diselesaikan terlebih dahulu",
+      "item_pendukung_used": [
+        {
+          "item_id": 2,
+          "nama_item": "Benang Astra Jeans 20/3",
+          "kategori": "Benang",
+          "qty": "4",
+          "satuan": "Cones"
+        },
+        {
+          "item_id": 4,
+          "nama_item": "Resleting YKK Nylon Coil No. 4",
+          "kategori": "Resleting",
+          "qty": "100",
+          "satuan": "Pcs"
+        }
+      ],
+      "createdAt": "2026-10-14T21:16:42.020Z"
     }
   ],
   "data_kain": [
@@ -14322,7 +14426,7 @@
       "transfer_id": 1,
       "status": "Ditolak",
       "createdAt": "2026-09-21T04:59:18.637Z",
-      "alasan_tolak": "tunggu dulu\n"
+      "alasan_tolak": "tunggu dulu"
     },
     {
       "id": 5,
@@ -14634,20 +14738,22 @@
   ],
   "_counters": {
     "pipeline_stages": 6,
-    "kategori_produk": 3,
+    "kategori_produk": 4,
     "data_supplier": 2,
     "data_kain": 2,
-    "purchase_orders": 2,
-    "hutang": 1,
+    "purchase_orders": 3,
+    "hutang": 2,
     "tukang_potong": 2,
-    "pemotongan_kain": 2,
+    "pemotongan_kain": 4,
     "cmt_requests": 6,
     "po_produksi": 2,
     "po_ledgers": 6,
     "barcode_item": 1500,
     "cmt_progres": 1,
     "po_pengambilan": 1,
-    "produksi_transfers": 4
+    "produksi_transfers": 4,
+    "item_pendukung": 6,
+    "gaji_cmt": 2
   },
   "po_pipeline": [
     {
@@ -14899,6 +15005,144 @@
       "butuh_vendor": false,
       "aktif": true,
       "deskripsi": "pengemasan barang jadi masuk kegudang"
+    }
+  ],
+  "item_pendukung": [
+    {
+      "id": 1,
+      "nama": "Benang Astra Jeans 20/2",
+      "kategori": "Benang",
+      "tipe": "20/2 Tebal",
+      "warna": "Gold Jeans (Kuning Emas)",
+      "satuan": "Cones",
+      "stok": 35,
+      "harga_beli": 28000,
+      "catatan": "Benang jahit utama untuk keliling & variasi jeans",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 2,
+      "nama": "Benang Astra Jeans 20/3",
+      "kategori": "Benang",
+      "tipe": "20/3 Ekstra Kuat",
+      "warna": "Navy / Indigo",
+      "satuan": "Cones",
+      "stok": 24,
+      "harga_beli": 31000,
+      "catatan": "Benang make-up & obras 3 benang",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 3,
+      "nama": "Resleting YKK Metal Brass No. 5",
+      "kategori": "Resleting",
+      "tipe": "Gigi Kuningan 5\"",
+      "warna": "Bakar / Antik",
+      "satuan": "Pcs",
+      "stok": 1200,
+      "harga_beli": 3500,
+      "catatan": "Resleting jeans standar pria / wanita",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 4,
+      "nama": "Resleting YKK Nylon Coil No. 4",
+      "kategori": "Resleting",
+      "tipe": "Coil Gigi Halus 6\"",
+      "warna": "Hitam",
+      "satuan": "Pcs",
+      "stok": 850,
+      "harga_beli": 2200,
+      "catatan": "Untuk saku dalam / chino pants",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 5,
+      "nama": "Kancing Logam Jeans 17mm",
+      "kategori": "Kancing",
+      "tipe": "Donut Button Laurel Leaf",
+      "warna": "Antique Brass",
+      "satuan": "Pcs",
+      "stok": 3000,
+      "harga_beli": 650,
+      "catatan": "Kancing pinggang utama celana jeans",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    },
+    {
+      "id": 6,
+      "nama": "Rivet Saku Tembaga 9mm",
+      "kategori": "Rivet",
+      "tipe": "Nipple Rivet",
+      "warna": "Copper / Tembaga",
+      "satuan": "Pcs",
+      "stok": 5000,
+      "harga_beli": 250,
+      "catatan": "Rivet sudut kantong depan & coin pocket",
+      "createdAt": "2026-10-14T21:03:45.054Z",
+      "updatedAt": "2026-10-14T21:03:45.054Z"
+    }
+  ],
+  "pengaturan_sistem": {
+    "nama_usaha": "TIRTA BINTANG JEANS",
+    "tagline": "Spesialis Denim & Celana Jeans",
+    "alamat": "Jl. Cigondewah Raya No. 45, Bandung",
+    "telepon": "0812-9876-5432",
+    "email": "",
+    "divisi": "Divisi Cutting & Bahan",
+    "logo_url": "/icons/icon-192.png",
+    "catatan_surat_jalan": "Barang/kain & bahan pendukung di atas telah diperiksa dan diserahkan dalam kondisi lengkap dan tepat jumlah.",
+    "jabatan_penyerah": "Bagian Gudang & Bahan",
+    "jabatan_penerima": "Tukang Potong / Cutting",
+    "jabatan_penyetuju": "Admin Produksi / Supervisor",
+    "updated_at": "2026-10-14T21:52:23.420Z"
+  },
+  "data_pelanggan": [
+    {
+      "id": 1,
+      "uid": "CUST-001",
+      "nama": "Toko Bintang Busana (Tanah Abang)",
+      "tipe": "Grosir / Toko Pasar",
+      "kontak": "081288992211",
+      "alamat": "Pasar Tanah Abang Blok A Lt. 1 No. 45, Jakarta Pusat",
+      "kota": "Jakarta",
+      "ekspedisi": "Baraka / MPS Express",
+      "total_order": 14,
+      "total_pembelian": 185000000,
+      "piutang": 0,
+      "catatan": "Langganan jeans pria slim fit & cutbray. Termin tempo 14 hari."
+    },
+    {
+      "id": 2,
+      "uid": "CUST-002",
+      "nama": "Distro Indigo Denim Lab",
+      "tipe": "Distro / Brand Clothing",
+      "kontak": "087755443322",
+      "alamat": "Jl. Trunojoyo No. 24, Bandung",
+      "kota": "Bandung",
+      "ekspedisi": "J&T Cargo / Indah Logistik",
+      "total_order": 8,
+      "total_pembelian": 96000000,
+      "piutang": 12500000,
+      "catatan": "Spesialis raw denim 14oz & selvedge accent. Kualitas QC Grade A."
+    },
+    {
+      "id": 3,
+      "uid": "CUST-003",
+      "nama": "Kurnia Jeans Grosir Surabaya",
+      "tipe": "Grosir / Toko Pasar",
+      "kontak": "081399887766",
+      "alamat": "Pusat Grosir Surabaya (PGS) Lt. 2 Blok B No. 10",
+      "kota": "Surabaya",
+      "ekspedisi": "Karyati / Dakota",
+      "total_order": 19,
+      "total_pembelian": 240000000,
+      "piutang": 0,
+      "catatan": "Order rutin 50 lusin per bulan model standard denim & cargo jeans."
     }
   ]
 }
