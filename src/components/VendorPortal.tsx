@@ -156,6 +156,18 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
     fetchData();
   }, [id]);
 
+  // Ensure page can scroll freely despite body overflow hidden in globals.css
+  useEffect(() => {
+    const origBodyOverflow = document.body.style.overflow;
+    const origHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "auto";
+    document.documentElement.style.overflow = "auto";
+    return () => {
+      document.body.style.overflow = origBodyOverflow;
+      document.documentElement.style.overflow = origHtmlOverflow;
+    };
+  }, []);
+
   // Real-time EventSource / WebSocket listener with auto-reconnect
   useEffect(() => {
     let es: EventSource | null = null;
@@ -423,17 +435,6 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
   const isBlocked = data.canRequest === false;
   const hasOverdue = bi?.maxOverdueDays > 0;
 
-  // Ensure page can scroll freely despite body overflow hidden in globals.css
-  useEffect(() => {
-    const origBodyOverflow = document.body.style.overflow;
-    const origHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "auto";
-    document.documentElement.style.overflow = "auto";
-    return () => {
-      document.body.style.overflow = origBodyOverflow;
-      document.documentElement.style.overflow = origHtmlOverflow;
-    };
-  }, []);
 
   return (
     <div
