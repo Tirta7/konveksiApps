@@ -1,5 +1,5 @@
 "use client";
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useRef } from "react";
 import {
   Briefcase,
   CheckCircle2,
@@ -15,15 +15,13 @@ import {
   XCircle,
   FileText,
   Printer,
-  Check,
   ChevronDown,
   ChevronUp,
   Eye,
   Search,
   AlertTriangle,
   ShieldCheck,
-  ArrowRight,
-  Calendar,
+  Zap,
   Info
 } from "lucide-react";
 import { toast } from "sonner";
@@ -110,6 +108,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<"connected" | "connecting" | "offline">("connecting");
   const [activeTab, setActiveTab] = useState<"dashboard" | "riwayat" | "gaji" | "requests">("dashboard");
 
   // Modal states
@@ -152,20 +151,66 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => {
-      fetchData(true);
-    }, 3000);
-    return () => clearInterval(interval);
   }, [id]);
 
-  // Real-time sync listener
+  // Real-time EventSource / WebSocket listener with auto-reconnect
   useEffect(() => {
-    const handler = () => fetchData(true);
-    window.addEventListener("konveksi-sync", handler);
-    return () => window.removeEventListener("konveksi-sync", handler);
-  }, []);
+    let es: EventSource | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function initRealtime() {
+      try {
+        setRealtimeStatus("connecting");
+        es = new EventSource("/api/events");
+
+        es.addEventListener("open", () => {
+          setRealtimeStatus("connected");
+        });
+
+        es.addEventListener("connected", () => {
+          setRealtimeStatus("connected");
+        });
+
+        // Instant silent data update on any server write
+        es.addEventListener("dataChanged", () => {
+          fetchData(true);
+        });
+
+        es.onerror = () => {
+          setRealtimeStatus("offline");
+          if (es) {
+            es.close();
+            es = null;
+          }
+          retryTimer = setTimeout(initRealtime, 3000);
+        };
+      } catch {
+        setRealtimeStatus("offline");
+        retryTimer = setTimeout(initRealtime, 4000);
+      }
+    }
+
+    initRealtime();
+
+    // Broadcast channel fallback for multi-tab sync
+    const handleLocalSync = () => fetchData(true);
+    window.addEventListener("konveksi-sync", handleLocalSync);
+
+    // Keep fallback safety interval every 8s in case background tab sleeps
+    const safetyPoll = setInterval(() => {
+      fetchData(true);
+    }, 8000);
+
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      clearInterval(safetyPoll);
+      if (es) es.close();
+      window.removeEventListener("konveksi-sync", handleLocalSync);
+    };
+  }, [id]);
 
   // Submit Laporan Progres
   const handleLaporProgres = async (e: React.FormEvent) => {
@@ -385,14 +430,128 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
         background: "#0F172A",
         color: "white",
         fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        paddingBottom: 120
+        paddingBottom: "max(120px, calc(env(safe-area-inset-bottom, 24px) + 90px))",
+        WebkitFontSmoothing: "antialiased"
       }}
     >
+      {/* ── RESPONSIVE STYLES FOR MOBILE & IOS ── */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.4; }
+            }
+            .mobile-touch-btn {
+              -webkit-tap-highlight-color: transparent;
+              touch-action: manipulation;
+            }
+            @media (max-width: 768px) {
+              .vendor-header-bar {
+                padding: 12px 16px !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+              }
+              .vendor-header-right {
+                justify-content: space-between !important;
+                width: 100% !important;
+                flex-wrap: wrap !important;
+              }
+              .vendor-header-right > * {
+                flex-grow: 1;
+                justify-content: center;
+              }
+              .vendor-main-box {
+                padding: 16px 12px 0 !important;
+              }
+              .vendor-kpi-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
+              }
+              .vendor-kpi-card {
+                padding: 14px 16px !important;
+              }
+              .vendor-kpi-val {
+                font-size: 20px !important;
+              }
+              .vendor-tabs-wrapper {
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                scrollbar-width: none !important;
+              }
+              .vendor-tabs-wrapper::-webkit-scrollbar {
+                display: none !important;
+              }
+              .vendor-tab-item {
+                flex-shrink: 0 !important;
+                white-space: nowrap !important;
+                padding: 8px 14px !important;
+                font-size: 12px !important;
+              }
+              .vendor-po-box {
+                padding: 18px 16px !important;
+              }
+              .vendor-po-top-row {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                position: relative !important;
+              }
+              .vendor-radial-wrapper {
+                position: absolute !important;
+                top: 0 !important;
+                right: 0 !important;
+              }
+              .vendor-po-actions-row {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+              }
+              .vendor-po-actions-row > div {
+                width: 100% !important;
+              }
+              .vendor-secondary-actions {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+              }
+              .vendor-primary-actions {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+              }
+              .vendor-primary-actions button {
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 12px 16px !important;
+              }
+              .vendor-modal-container {
+                padding: 10px !important;
+              }
+              .vendor-modal-card {
+                max-height: 94vh !important;
+                width: 100% !important;
+                border-radius: 16px !important;
+              }
+            }
+            @media (max-width: 480px) {
+              .vendor-kpi-grid {
+                grid-template-columns: 1fr !important;
+              }
+            }
+          `
+        }}
+      />
+
       {/* ── STICKY TOPBAR HEADER ── */}
       <header
+        className="vendor-header-bar"
         style={{
-          background: "linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)",
-          backdropFilter: "blur(12px)",
+          background: "linear-gradient(135deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.96) 100%)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
           borderBottom: "1px solid #1E293B",
           padding: "16px 28px",
           display: "flex",
@@ -401,7 +560,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
           position: "sticky",
           top: 0,
           zIndex: 40,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+          boxShadow: "0 4px 20px rgba(0,0,0,0.35)"
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -414,14 +573,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 14px rgba(37,99,235,0.4)"
+              boxShadow: "0 4px 14px rgba(37,99,235,0.4)",
+              flexShrink: 0
             }}
           >
             <Briefcase size={22} color="white" />
           </div>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <h1 style={{ fontSize: 18, fontWeight: 900, margin: 0, letterSpacing: "-0.02em" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h1 style={{ fontSize: "clamp(16px, 4vw, 18px)", fontWeight: 900, margin: 0, letterSpacing: "-0.02em" }}>
                 {vendor.nama || "Portal Mitra Vendor"}
               </h1>
               <span
@@ -438,40 +598,66 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 {vendor.kodeVendor || vendor.kode || "VENDOR"}
               </span>
             </div>
-            <p style={{ fontSize: 12, color: "#94A3B8", margin: "2px 0 0", display: "flex", alignItems: "center", gap: 6 }}>
-              <span>Portal Produksi {vendor.tipe?.toUpperCase() || "CMT"}</span>
+            <div style={{ fontSize: 12, color: "#94A3B8", margin: "3px 0 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span>Portal {vendor.tipe?.toUpperCase() || "CMT"}</span>
               <span>·</span>
-              <span style={{ color: "#10B981", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {/* Live Realtime Status Pill */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  background: realtimeStatus === "connected" ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                  padding: "2px 8px",
+                  borderRadius: 12,
+                  border: realtimeStatus === "connected" ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)"
+                }}
+              >
                 <span
                   style={{
                     width: 7,
                     height: 7,
                     borderRadius: "50%",
-                    background: "#10B981",
-                    boxShadow: "0 0 8px #10B981"
+                    background: realtimeStatus === "connected" ? "#10B981" : "#F59E0B",
+                    boxShadow: realtimeStatus === "connected" ? "0 0 8px #10B981" : "none",
+                    animation: realtimeStatus === "connecting" ? "pulse 1.2s infinite" : "none"
                   }}
                 />
-                Live Connected
-              </span>
-            </p>
+                <span
+                  style={{
+                    color: realtimeStatus === "connected" ? "#34D399" : "#FCD34D",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3
+                  }}
+                >
+                  <Zap size={11} />
+                  {realtimeStatus === "connected" ? "Realtime Live" : "Menghubungkan..."}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Header Right Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Refresh button */}
+        <div className="vendor-header-right" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Manual Sync Button */}
           <button
+            type="button"
+            className="mobile-touch-btn"
             onClick={() => {
               fetchData();
               toast.info("Data portal berhasil disinkronkan!");
             }}
             disabled={refreshing}
-            title="Sinkronkan data terbaru"
+            title="Sinkronkan data sekarang"
             style={{
               background: "#1E293B",
               border: "1px solid #334155",
               color: "#94A3B8",
-              padding: "10px 14px",
+              padding: "9px 14px",
               borderRadius: 10,
               cursor: refreshing ? "not-allowed" : "pointer",
               display: "flex",
@@ -479,29 +665,31 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               gap: 6,
               fontSize: 13,
               fontWeight: 700,
-              transition: "all 0.2s"
+              minHeight: 40
             }}
           >
-            <RefreshCw size={15} style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} />
+            <RefreshCw size={14} style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} />
             <span>Sync</span>
           </button>
 
           {/* Pending Request Pill */}
           {pendingRequests.length > 0 && (
             <div
+              className="mobile-touch-btn"
               onClick={() => setActiveTab("requests")}
               style={{
                 background: "rgba(245, 158, 11, 0.15)",
                 border: "1px solid rgba(245, 158, 11, 0.4)",
                 color: "#FCD34D",
-                padding: "8px 14px",
+                padding: "8px 12px",
                 borderRadius: 10,
                 fontSize: 12,
                 fontWeight: 800,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                cursor: "pointer"
+                cursor: "pointer",
+                minHeight: 40
               }}
             >
               <Clock size={14} />
@@ -509,8 +697,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             </div>
           )}
 
-          {/* Minta Kerjaan Button - Always functional & opens rich modal */}
+          {/* Minta Kerjaan Button */}
           <button
+            type="button"
+            className="mobile-touch-btn"
             onClick={() => setShowRequestModal(true)}
             style={{
               background: isBlocked
@@ -518,7 +708,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 : "linear-gradient(135deg, #10B981 0%, #059669 100%)",
               color: "white",
               border: "none",
-              padding: "10px 20px",
+              padding: "10px 18px",
               borderRadius: 10,
               fontWeight: 800,
               fontSize: 13,
@@ -526,25 +716,23 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               display: "flex",
               alignItems: "center",
               gap: 8,
-              boxShadow: isBlocked ? "0 4px 14px rgba(217,119,6,0.35)" : "0 4px 14px rgba(16,185,129,0.35)",
-              transition: "transform 0.15s, box-shadow 0.15s"
+              minHeight: 40,
+              boxShadow: isBlocked ? "0 4px 14px rgba(217,119,6,0.35)" : "0 4px 14px rgba(16,185,129,0.35)"
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
           >
             <PlusCircle size={16} />
-            <span>Minta Kerjaan {isBlocked ? "(Dispensasi)" : "Baru"}</span>
+            <span>Minta Kerjaan {isBlocked ? "(Dispensasi)" : ""}</span>
           </button>
         </div>
       </header>
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "24px 20px 0" }}>
+      <main className="vendor-main-box" style={{ maxWidth: 1180, margin: "0 auto", padding: "24px 20px 0" }}>
         {/* ── SMART TRACKING BANNER & THROTTLE HEALTH ── */}
         {bi && bi.totalJumlahTerbit > 0 && (
           <div
             style={{
-              marginBottom: 24,
+              marginBottom: 20,
               borderRadius: 16,
               border: isBlocked
                 ? "1.5px solid rgba(239, 68, 68, 0.6)"
@@ -552,10 +740,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 ? "1.5px solid rgba(245, 158, 11, 0.6)"
                 : "1.5px solid rgba(16, 185, 129, 0.6)",
               background: isBlocked
-                ? "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%)"
+                ? "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(15, 23, 42, 0.96) 100%)"
                 : hasOverdue
-                ? "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)"
-                : "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%)",
+                ? "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.96) 100%)"
+                : "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.96) 100%)",
               overflow: "hidden",
               boxShadow: "0 4px 16px rgba(0,0,0,0.2)"
             }}
@@ -563,7 +751,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             {/* Header row */}
             <div
               style={{
-                padding: "14px 20px",
+                padding: "14px 18px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -572,7 +760,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 borderBottom: "1px solid rgba(255,255,255,0.06)"
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 240 }}>
                 <div
                   style={{
                     width: 36,
@@ -586,7 +774,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: isBlocked ? "#EF4444" : hasOverdue ? "#F59E0B" : "#10B981"
+                    color: isBlocked ? "#EF4444" : hasOverdue ? "#F59E0B" : "#10B981",
+                    flexShrink: 0
                   }}
                 >
                   {isBlocked ? <AlertTriangle size={20} /> : hasOverdue ? <Clock size={20} /> : <ShieldCheck size={20} />}
@@ -614,7 +803,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               </div>
 
               {/* Progress and Toggle info */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
                   type="button"
                   onClick={() => setShowThrottleInfo(!showThrottleInfo)}
@@ -633,22 +822,22 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   }}
                 >
                   <Info size={13} />
-                  <span>{showThrottleInfo ? "Tutup Info Aturan" : "Pelajari Aturan Target"}</span>
+                  <span>{showThrottleInfo ? "Tutup Info Aturan" : "Pelajari Aturan"}</span>
                   {showThrottleInfo ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </button>
 
                 <div
                   style={{
-                    background: "rgba(0,0,0,0.3)",
-                    padding: "6px 16px",
+                    background: "rgba(0,0,0,0.35)",
+                    padding: "6px 14px",
                     borderRadius: 10,
                     textAlign: "center",
-                    border: "1px solid rgba(255,255,255,0.05)"
+                    border: "1px solid rgba(255,255,255,0.06)"
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: 900,
                       color: isBlocked ? "#EF4444" : hasOverdue ? "#F59E0B" : "#10B981",
                       lineHeight: 1
@@ -656,7 +845,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   >
                     {bi.overallPct}%
                   </div>
-                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700, marginTop: 2 }}>
+                  <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 700, marginTop: 2 }}>
                     Target: {bi.effectiveMinPct}%
                   </div>
                 </div>
@@ -664,10 +853,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             </div>
 
             {/* Visual Progress Bar */}
-            <div style={{ padding: "12px 20px" }}>
+            <div style={{ padding: "12px 18px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 700 }}>
-                  PROGRESS KUMULATIF PEKERJAAN ({bi.totalApprovedDone.toLocaleString("id-ID")} /{" "}
+                  PROGRESS KUMULATIF ({bi.totalApprovedDone.toLocaleString("id-ID")} /{" "}
                   {bi.totalJumlahTerbit.toLocaleString("id-ID")} pcs)
                 </span>
                 <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 700 }}>TARGET MINIMAL {bi.effectiveMinPct}%</span>
@@ -711,7 +900,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             {bi.overduePoList && bi.overduePoList.length > 0 && (
               <div
                 style={{
-                  padding: "10px 20px",
+                  padding: "10px 18px",
                   background: "rgba(239, 68, 68, 0.08)",
                   borderTop: "1px solid rgba(239, 68, 68, 0.2)",
                   display: "flex",
@@ -752,7 +941,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             {showThrottleInfo && (
               <div
                 style={{
-                  padding: "16px 20px",
+                  padding: "16px 18px",
                   background: "#0F172A",
                   borderTop: "1px solid #334155",
                   fontSize: 12,
@@ -785,41 +974,26 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
         )}
 
         {/* ── 4 KPI SUMMARY STAT CARDS ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: 16,
-            marginBottom: 24
-          }}
-        >
+        <div className="vendor-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 20 }}>
           {/* Card 1: Sedang Dikerjakan */}
           <div
+            className="vendor-kpi-card mobile-touch-btn"
             onClick={() => setActiveTab("dashboard")}
             style={{
               background: "#1E293B",
               borderRadius: 16,
-              padding: "20px 22px",
+              padding: "18px 20px",
               border: "1px solid #334155",
               cursor: "pointer",
-              transition: "transform 0.15s, border-color 0.15s",
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.borderColor = "#3B82F6";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "#334155";
-            }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8" }}>Sedang Dikerjakan</span>
               <div
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   borderRadius: 10,
                   background: "#1E3A5F",
                   color: "#3B82F6",
@@ -828,45 +1002,37 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   justifyContent: "center"
                 }}
               >
-                <Package size={18} />
+                <Package size={17} />
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
+            <div className="vendor-kpi-val" style={{ fontSize: 24, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
               {totalAktifPcs.toLocaleString("id-ID")}{" "}
               <span style={{ fontSize: 13, fontWeight: 600, color: "#94A3B8" }}>pcs</span>
             </div>
-            <div style={{ fontSize: 11, color: "#38BDF8", fontWeight: 700, marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: "#38BDF8", fontWeight: 700, marginTop: 4 }}>
               {totalDiserahkanAktifPcs.toLocaleString("id-ID")} pcs sudah diserahkan
             </div>
           </div>
 
           {/* Card 2: Total Selesai */}
           <div
+            className="vendor-kpi-card mobile-touch-btn"
             onClick={() => setActiveTab("riwayat")}
             style={{
               background: "#1E293B",
               borderRadius: 16,
-              padding: "20px 22px",
+              padding: "18px 20px",
               border: "1px solid #334155",
               cursor: "pointer",
-              transition: "transform 0.15s, border-color 0.15s",
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.borderColor = "#10B981";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "#334155";
-            }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8" }}>Total PO Selesai</span>
               <div
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   borderRadius: 10,
                   background: "#064E3B",
                   color: "#10B981",
@@ -875,45 +1041,37 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   justifyContent: "center"
                 }}
               >
-                <CheckCircle2 size={18} />
+                <CheckCircle2 size={17} />
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
+            <div className="vendor-kpi-val" style={{ fontSize: 24, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
               {totalSelesaiPcs.toLocaleString("id-ID")}{" "}
               <span style={{ fontSize: 13, fontWeight: 600, color: "#94A3B8" }}>pcs</span>
             </div>
-            <div style={{ fontSize: 11, color: "#34D399", fontWeight: 700, marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: "#34D399", fontWeight: 700, marginTop: 4 }}>
               {historiPOs.length} PO selesai diarsipkan
             </div>
           </div>
 
           {/* Card 3: Hak / Hutang Gaji */}
           <div
+            className="vendor-kpi-card mobile-touch-btn"
             onClick={() => setActiveTab("gaji")}
             style={{
               background: "#1E293B",
               borderRadius: 16,
-              padding: "20px 22px",
+              padding: "18px 20px",
               border: "1px solid #334155",
               cursor: "pointer",
-              transition: "transform 0.15s, border-color 0.15s",
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.borderColor = "#F59E0B";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "#334155";
-            }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8" }}>Hak / Hutang Gaji</span>
               <div
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   borderRadius: 10,
                   background: "#451A03",
                   color: "#F59E0B",
@@ -922,44 +1080,36 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   justifyContent: "center"
                 }}
               >
-                <DollarSign size={18} />
+                <DollarSign size={17} />
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
+            <div className="vendor-kpi-val" style={{ fontSize: 24, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
               {formatRupiah(totalTertunggak)}
             </div>
-            <div style={{ fontSize: 11, color: totalTertunggak > 0 ? "#FCD34D" : "#10B981", fontWeight: 700, marginTop: 6 }}>
-              {totalTertunggak > 0 ? "Menunggu pencairan dari kasir" : "Semua upah telah diselesaikan"}
+            <div style={{ fontSize: 11, color: totalTertunggak > 0 ? "#FCD34D" : "#10B981", fontWeight: 700, marginTop: 4 }}>
+              {totalTertunggak > 0 ? "Menunggu pencairan kasir" : "Semua upah terselesaikan"}
             </div>
           </div>
 
           {/* Card 4: PO Aktif */}
           <div
+            className="vendor-kpi-card mobile-touch-btn"
             onClick={() => setActiveTab("dashboard")}
             style={{
               background: "#1E293B",
               borderRadius: 16,
-              padding: "20px 22px",
+              padding: "18px 20px",
               border: "1px solid #334155",
               cursor: "pointer",
-              transition: "transform 0.15s, border-color 0.15s",
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.borderColor = "#8B5CF6";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "#334155";
-            }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8" }}>Pekerjaan Aktif</span>
               <div
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   borderRadius: 10,
                   background: "#2E1065",
                   color: "#8B5CF6",
@@ -968,20 +1118,21 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   justifyContent: "center"
                 }}
               >
-                <Clock size={18} />
+                <Clock size={17} />
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
+            <div className="vendor-kpi-val" style={{ fontSize: 24, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
               {activePOs.length} <span style={{ fontSize: 13, fontWeight: 600, color: "#94A3B8" }}>PO</span>
             </div>
-            <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 700, marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 700, marginTop: 4 }}>
               {hasOverdue ? `${bi?.overduePoList?.length} PO melewati target` : "Semua sesuai jadwal"}
             </div>
           </div>
         </div>
 
-        {/* ── TAB CONTROLS ── */}
+        {/* ── HORIZONTAL SCROLLABLE TAB CONTROLS (IOS SAFE) ── */}
         <div
+          className="vendor-tabs-wrapper"
           style={{
             display: "flex",
             alignItems: "center",
@@ -989,8 +1140,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             background: "#1E293B",
             padding: 6,
             borderRadius: 14,
-            marginBottom: 24,
-            width: "fit-content",
+            marginBottom: 20,
             border: "1px solid #334155"
           }}
         >
@@ -1005,6 +1155,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               <button
                 key={tab.key}
                 type="button"
+                className="vendor-tab-item mobile-touch-btn"
                 onClick={() => setActiveTab(tab.key as any)}
                 style={{
                   padding: "9px 18px",
@@ -1045,29 +1196,30 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             TAB 1: PO AKTIF
            ══════════════════════════════════════════════════════════════ */}
         {activeTab === "dashboard" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {activePOs.length === 0 ? (
               <div
                 style={{
                   background: "#1E293B",
                   borderRadius: 18,
-                  padding: 56,
+                  padding: "48px 24px",
                   textAlign: "center",
                   border: "1px solid #334155"
                 }}
               >
-                <Package size={48} style={{ color: "#475569", margin: "0 auto 16px" }} />
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: "white", margin: 0 }}>
+                <Package size={44} style={{ color: "#475569", margin: "0 auto 14px" }} />
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "white", margin: 0 }}>
                   Tidak Ada Pekerjaan Aktif Saat Ini
                 </h3>
-                <p style={{ color: "#94A3B8", fontSize: 13, marginTop: 8, maxWidth: 460, margin: "8px auto 0" }}>
-                  Semua SPK sudah selesai dikerjakan. Silakan klik tombol <strong>"Minta Kerjaan Baru"</strong> di kanan atas
-                  untuk memilih kain dari bagian pemotongan.
+                <p style={{ color: "#94A3B8", fontSize: 13, marginTop: 6, maxWidth: 440, margin: "6px auto 0" }}>
+                  Semua SPK sudah selesai dikerjakan. Silakan klik tombol <strong>"Minta Kerjaan"</strong> di atas untuk
+                  memilih kain yang sudah siap potong.
                 </p>
                 <button
                   onClick={() => setShowRequestModal(true)}
+                  className="mobile-touch-btn"
                   style={{
-                    marginTop: 20,
+                    marginTop: 18,
                     padding: "10px 22px",
                     background: "linear-gradient(135deg, #10B981, #059669)",
                     color: "white",
@@ -1075,10 +1227,11 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     border: "none",
                     fontWeight: 800,
                     cursor: "pointer",
-                    fontSize: 14,
+                    fontSize: 13,
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 8
+                    gap: 8,
+                    minHeight: 42
                   }}
                 >
                   <PlusCircle size={16} /> Minta Kerjaan Baru
@@ -1107,16 +1260,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                         ? "2px solid rgba(239, 68, 68, 0.7)"
                         : "1px solid #334155",
                       overflow: "hidden",
-                      boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-                      transition: "all 0.3s ease"
+                      boxShadow: "0 6px 20px rgba(0,0,0,0.2)"
                     }}
                   >
-                    {/* Overdue Warning Strip */}
+                    {/* Overdue Strip */}
                     {isOverdue && (
                       <div
                         style={{
                           background: "linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%)",
-                          padding: "10px 24px",
+                          padding: "10px 18px",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
@@ -1124,19 +1276,17 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           gap: 10
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <AlertTriangle size={18} color="#FCA5A5" />
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <AlertTriangle size={16} color="#FCA5A5" />
                           <div>
-                            <span style={{ fontWeight: 800, fontSize: 13, color: "#FCA5A5" }}>
-                              PO INI MELEBIHI TARGET SELESAI ({overdueDays} HARI)
+                            <span style={{ fontWeight: 800, fontSize: 12, color: "#FCA5A5" }}>
+                              PO MELEBIHI TARGET SELESAI ({overdueDays} HARI)
                             </span>
-                            <span style={{ fontSize: 12, color: "#FECACA", marginLeft: 8, opacity: 0.9 }}>
-                              Batas:{" "}
+                            <span style={{ fontSize: 11, color: "#FECACA", marginLeft: 8 }}>
+                              Target:{" "}
                               {new Date(targetSelesai).toLocaleDateString("id-ID", {
-                                weekday: "short",
                                 day: "numeric",
-                                month: "short",
-                                year: "numeric"
+                                month: "short"
                               })}
                             </span>
                           </div>
@@ -1147,8 +1297,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                             color: "white",
                             fontSize: 11,
                             fontWeight: 800,
-                            padding: "3px 12px",
-                            borderRadius: 20
+                            padding: "2px 10px",
+                            borderRadius: 16
                           }}
                         >
                           -{overdueDays}% Throttle
@@ -1156,21 +1306,12 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       </div>
                     )}
 
-                    <div style={{ padding: "24px 28px" }}>
+                    <div className="vendor-po-box" style={{ padding: "22px 24px" }}>
                       {/* Top Header of Card */}
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          flexWrap: "wrap",
-                          gap: 16,
-                          marginBottom: 20
-                        }}
-                      >
+                      <div className="vendor-po-top-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
                         <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            <h2 style={{ fontSize: 20, fontWeight: 900, color: "white", margin: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <h2 style={{ fontSize: 19, fontWeight: 900, color: "white", margin: 0 }}>
                               {po.no_po || po.noPo || "PO-PRODUKSI"}
                             </h2>
                             <span
@@ -1178,8 +1319,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 background: isDikerjakan ? "#064E3B" : "#1E3A5F",
                                 color: isDikerjakan ? "#34D399" : "#60A5FA",
                                 border: isDikerjakan ? "1px solid #059669" : "1px solid #2563EB",
-                                padding: "3px 10px",
-                                borderRadius: 8,
+                                padding: "2px 8px",
+                                borderRadius: 6,
                                 fontSize: 11,
                                 fontWeight: 800
                               }}
@@ -1190,10 +1331,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
                           <div
                             style={{
-                              fontSize: 13,
+                              fontSize: 12,
                               color: "#94A3B8",
                               display: "flex",
-                              gap: 12,
+                              gap: 10,
                               alignItems: "center",
                               flexWrap: "wrap",
                               marginTop: 6
@@ -1207,7 +1348,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                               style={{
                                 background: "#451A03",
                                 color: "#FCD34D",
-                                padding: "2px 8px",
+                                padding: "2px 7px",
                                 borderRadius: 6,
                                 fontSize: 11,
                                 fontWeight: 700
@@ -1220,17 +1361,16 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 style={{
                                   background: "#064E3B",
                                   color: "#34D399",
-                                  padding: "2px 8px",
+                                  padding: "2px 7px",
                                   borderRadius: 6,
                                   fontSize: 11,
                                   fontWeight: 700
                                 }}
                               >
-                                Target:{" "}
+                                Batas:{" "}
                                 {new Date(targetSelesai).toLocaleDateString("id-ID", {
                                   day: "numeric",
-                                  month: "short",
-                                  year: "numeric"
+                                  month: "short"
                                 })}
                               </div>
                             )}
@@ -1239,53 +1379,46 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           {isJustSubmitted && (
                             <div
                               style={{
-                                marginTop: 10,
+                                marginTop: 8,
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: 6,
                                 background: "#064E3B",
-                                padding: "6px 12px",
+                                padding: "5px 10px",
                                 borderRadius: 8
                               }}
                             >
-                              <CheckCircle2 size={14} color="#10B981" />
-                              <span style={{ fontSize: 12, color: "#10B981", fontWeight: 700 }}>
-                                Laporan berhasil dikirim! Menunggu ACC verifikasi admin.
+                              <CheckCircle2 size={13} color="#10B981" />
+                              <span style={{ fontSize: 11, color: "#10B981", fontWeight: 700 }}>
+                                Laporan dikirim! Menunggu ACC verifikasi admin.
                               </span>
                             </div>
                           )}
                         </div>
 
                         {/* Radial Progress Graphic */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                          <RadialProgress pct={pct} size={74} stroke={6} color="#3B82F6" />
+                        <div className="vendor-radial-wrapper" style={{ display: "flex", alignItems: "center" }}>
+                          <RadialProgress pct={pct} size={70} stroke={6} color="#3B82F6" />
                         </div>
                       </div>
 
-                      {/* Progress Bar Row */}
+                      {/* Progress Bar */}
                       <div
                         style={{
                           background: "#0F172A",
-                          borderRadius: 14,
-                          padding: "14px 18px",
-                          marginBottom: 20,
+                          borderRadius: 12,
+                          padding: "12px 16px",
+                          marginBottom: 18,
                           border: "1px solid #1E293B"
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: 8
-                          }}
-                        >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                           <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 800, textTransform: "uppercase" }}>
                             Progres Diserahkan & Diverifikasi
                           </span>
                           <span
                             style={{
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: 900,
                               color: pct >= 100 ? "#10B981" : "#38BDF8"
                             }}
@@ -1293,25 +1426,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                             {totalDone.toLocaleString("id-ID")} / {totalTarget.toLocaleString("id-ID")} pcs ({pct}%)
                           </span>
                         </div>
-                        <div
-                          style={{
-                            width: "100%",
-                            background: "#1E293B",
-                            height: 10,
-                            borderRadius: 6,
-                            overflow: "hidden"
-                          }}
-                        >
+                        <div style={{ width: "100%", background: "#1E293B", height: 8, borderRadius: 5, overflow: "hidden" }}>
                           <div
                             style={{
                               background:
-                                pct >= 100
-                                  ? "#10B981"
-                                  : "linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)",
+                                pct >= 100 ? "#10B981" : "linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)",
                               height: "100%",
                               width: `${Math.min(pct, 100)}%`,
                               transition: "width 0.8s cubic-bezier(.4,2,.6,1)",
-                              borderRadius: 6
+                              borderRadius: 5
                             }}
                           />
                         </div>
@@ -1319,20 +1442,11 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
                       {/* Breakdown per Size */}
                       {po.sizeBreakdown && po.sizeBreakdown.length > 0 && (
-                        <div style={{ marginBottom: 20 }}>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "#64748B",
-                              fontWeight: 800,
-                              textTransform: "uppercase",
-                              letterSpacing: 0.5,
-                              marginBottom: 8
-                            }}
-                          >
+                        <div style={{ marginBottom: 18 }}>
+                          <div style={{ fontSize: 11, color: "#64748B", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                             Rincian per Size:
                           </div>
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {po.sizeBreakdown.map((s: any, i: number) => {
                               const sDone = po.sizeProgress?.[s.size] || 0;
                               const sPending = po.pendingSizeProgress?.[s.size] || 0;
@@ -1343,19 +1457,20 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                   key={i}
                                   style={{
                                     background: "#0F172A",
-                                    padding: "10px 14px",
-                                    borderRadius: 12,
+                                    padding: "8px 12px",
+                                    borderRadius: 10,
                                     border:
                                       sPct >= 100
                                         ? "1px solid #10B981"
                                         : sPending > 0
                                         ? "1px solid #F59E0B"
                                         : "1px solid #334155",
-                                    minWidth: 85,
+                                    minWidth: 72,
+                                    flex: "1 1 auto",
                                     textAlign: "center"
                                   }}
                                 >
-                                  <div style={{ fontWeight: 900, color: "white", fontSize: 15 }}>{s.size}</div>
+                                  <div style={{ fontWeight: 900, color: "white", fontSize: 14 }}>{s.size}</div>
                                   <div
                                     style={{
                                       fontSize: 11,
@@ -1364,17 +1479,17 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                       fontWeight: 700
                                     }}
                                   >
-                                    {sDone} / {totalSizeTarget}
+                                    {sDone}/{totalSizeTarget}
                                   </div>
                                   {sPending > 0 && (
-                                    <div style={{ fontSize: 10, color: "#F59E0B", fontWeight: 800, marginTop: 2 }}>
+                                    <div style={{ fontSize: 9, color: "#F59E0B", fontWeight: 800, marginTop: 2 }}>
                                       +{sPending} pending
                                     </div>
                                   )}
                                   <div
                                     style={{
-                                      marginTop: 6,
-                                      height: 4,
+                                      marginTop: 5,
+                                      height: 3,
                                       background: "#1E293B",
                                       borderRadius: 2,
                                       overflow: "hidden"
@@ -1398,6 +1513,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
                       {/* ── ACTION BUTTONS TOOLBAR ── */}
                       <div
+                        className="vendor-po-actions-row"
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
@@ -1409,60 +1525,58 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                         }}
                       >
                         {/* Secondary buttons on the left */}
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div className="vendor-secondary-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <button
                             type="button"
+                            className="mobile-touch-btn"
                             onClick={() => setDetailPoModal(po)}
                             style={{
                               background: "#0F172A",
                               border: "1px solid #334155",
                               color: "#94A3B8",
-                              padding: "9px 14px",
+                              padding: "9px 13px",
                               borderRadius: 10,
                               fontWeight: 700,
-                              fontSize: 13,
+                              fontSize: 12,
                               cursor: "pointer",
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 6,
-                              transition: "all 0.15s"
+                              minHeight: 40
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#94A3B8")}
                           >
-                            <FileText size={15} /> Rincian SPK
+                            <FileText size={14} /> Rincian SPK
                           </button>
 
                           <button
                             type="button"
+                            className="mobile-touch-btn"
                             onClick={() => setPoReportsModal(po)}
                             style={{
                               background: "#0F172A",
                               border: "1px solid #334155",
                               color: "#94A3B8",
-                              padding: "9px 14px",
+                              padding: "9px 13px",
                               borderRadius: 10,
                               fontWeight: 700,
-                              fontSize: 13,
+                              fontSize: 12,
                               cursor: "pointer",
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 6,
-                              transition: "all 0.15s"
+                              minHeight: 40
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#94A3B8")}
                           >
-                            <Clock size={15} /> Riwayat Laporan PO
+                            <Clock size={14} /> Riwayat Laporan PO
                           </button>
                         </div>
 
                         {/* Primary actions on the right */}
-                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                          {/* Status Toggle Button: Mulai / Batal Mulai */}
+                        <div className="vendor-primary-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                           {!isDikerjakan ? (
                             <button
                               type="button"
+                              className="mobile-touch-btn"
                               onClick={() => handleMulaiKerja(po, "mulai")}
                               style={{
                                 background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
@@ -1476,16 +1590,17 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 7,
+                                minHeight: 42,
                                 boxShadow: "0 4px 12px rgba(245,158,11,0.3)"
                               }}
                             >
-                              <PlayCircle size={16} /> Mulai Mengerjakan
+                              <PlayCircle size={15} /> Mulai Mengerjakan
                             </button>
                           ) : (
                             <button
                               type="button"
+                              className="mobile-touch-btn"
                               onClick={() => handleMulaiKerja(po, "batal")}
-                              title="Batalkan status Sedang Dikerjakan"
                               style={{
                                 background: "transparent",
                                 color: "#EF4444",
@@ -1497,16 +1612,18 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 6
+                                gap: 6,
+                                minHeight: 42
                               }}
                             >
                               <XCircle size={15} /> Batal Mulai
                             </button>
                           )}
 
-                          {/* Lapor Progres Selesai Button - Always accessible! */}
+                          {/* Lapor Progres Selesai Button */}
                           <button
                             type="button"
+                            className="mobile-touch-btn"
                             onClick={() => {
                               setShowProgresModal(po);
                               const breakdown = po.sizeBreakdown || [];
@@ -1529,32 +1646,28 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                             }}
                             style={{
                               background:
-                                pct >= 100
-                                  ? "#064E3B"
-                                  : "linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)",
+                                pct >= 100 ? "#064E3B" : "linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)",
                               color: pct >= 100 ? "#34D399" : "white",
                               border: pct >= 100 ? "1px solid #059669" : "none",
-                              padding: "10px 20px",
+                              padding: "10px 18px",
                               borderRadius: 10,
                               fontWeight: 800,
                               fontSize: 13,
                               cursor: "pointer",
                               display: "flex",
                               alignItems: "center",
-                              gap: 8,
-                              boxShadow: pct >= 100 ? "none" : "0 4px 14px rgba(37,99,235,0.35)",
-                              transition: "transform 0.15s, box-shadow 0.15s"
+                              gap: 7,
+                              minHeight: 42,
+                              boxShadow: pct >= 100 ? "none" : "0 4px 14px rgba(37,99,235,0.35)"
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
-                            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
                           >
                             {pct >= 100 ? (
                               <>
-                                <CheckCircle2 size={16} /> Sudah 100% · Lapor Tambahan?
+                                <CheckCircle2 size={15} /> Sudah 100% · Lapor Tambahan?
                               </>
                             ) : (
                               <>
-                                <TrendingUp size={16} /> Lapor Progres Selesai
+                                <TrendingUp size={15} /> Lapor Progres Selesai
                               </>
                             )}
                           </button>
@@ -1573,7 +1686,6 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
            ══════════════════════════════════════════════════════════════ */}
         {activeTab === "riwayat" && (
           <div>
-            {/* Search Bar & Summary */}
             <div
               style={{
                 display: "flex",
@@ -1584,7 +1696,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 marginBottom: 16
               }}
             >
-              <div style={{ position: "relative", minWidth: 260 }}>
+              <div style={{ position: "relative", minWidth: 240, flex: 1 }}>
                 <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#64748B" }} />
                 <input
                   type="text"
@@ -1598,19 +1710,18 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     color: "white",
                     padding: "9px 14px 9px 38px",
                     borderRadius: 10,
-                    fontSize: 13,
+                    fontSize: 16, // iOS safe font-size >= 16px to prevent safari zoom
                     outline: "none"
                   }}
                 />
               </div>
 
-              <div style={{ fontSize: 13, color: "#94A3B8" }}>
+              <div style={{ fontSize: 12, color: "#94A3B8" }}>
                 Total selesai: <strong style={{ color: "white" }}>{historiPOs.length} PO</strong> (
                 {totalSelesaiPcs.toLocaleString("id-ID")} pcs)
               </div>
             </div>
 
-            {/* Table Container */}
             <div style={{ background: "#1E293B", borderRadius: 16, border: "1px solid #334155", overflow: "hidden" }}>
               {(() => {
                 const filtered = historiPOs.filter((po: any) => {
@@ -1621,22 +1732,22 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
                 if (filtered.length === 0) {
                   return (
-                    <div style={{ padding: 48, textAlign: "center", color: "#64748B" }}>
+                    <div style={{ padding: 40, textAlign: "center", color: "#64748B", fontSize: 13 }}>
                       Tidak ada riwayat pekerjaan yang cocok dengan pencarian.
                     </div>
                   );
                 }
 
                 return (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: 540 }}>
                       <thead>
                         <tr style={{ background: "#0F172A", borderBottom: "1px solid #334155" }}>
                           {["NO PO", "MODEL", "TOTAL PCS", "TANGGAL SELESAI", "STATUS", "AKSI"].map((h) => (
                             <th
                               key={h}
                               style={{
-                                padding: "14px 18px",
+                                padding: "12px 16px",
                                 fontSize: 11,
                                 fontWeight: 800,
                                 color: "#64748B",
@@ -1651,44 +1762,45 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       <tbody>
                         {filtered.map((po: any) => (
                           <tr key={po.id} style={{ borderBottom: "1px solid #1E293B" }}>
-                            <td style={{ padding: "14px 18px", fontFamily: "monospace", color: "#38BDF8", fontWeight: 700, fontSize: 13 }}>
+                            <td style={{ padding: "12px 16px", fontFamily: "monospace", color: "#38BDF8", fontWeight: 700, fontSize: 13 }}>
                               {po.no_po || po.noPo || "-"}
                             </td>
-                            <td style={{ padding: "14px 18px", fontWeight: 700, color: "white", fontSize: 13 }}>
+                            <td style={{ padding: "12px 16px", fontWeight: 700, color: "white", fontSize: 13 }}>
                               {po.model}
                             </td>
-                            <td style={{ padding: "14px 18px", fontWeight: 800, color: "#10B981", fontSize: 13 }}>
+                            <td style={{ padding: "12px 16px", fontWeight: 800, color: "#10B981", fontSize: 13 }}>
                               {(po.jumlah_terbit || 0).toLocaleString("id-ID")} pcs
                             </td>
-                            <td style={{ padding: "14px 18px", color: "#94A3B8", fontSize: 12 }}>
+                            <td style={{ padding: "12px 16px", color: "#94A3B8", fontSize: 12 }}>
                               {po.tanggalSelesai
                                 ? new Date(po.tanggalSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
-                                : "Selesai Lengkap"}
+                                : "Selesai"}
                             </td>
-                            <td style={{ padding: "14px 18px" }}>
+                            <td style={{ padding: "12px 16px" }}>
                               <span
                                 style={{
                                   background: "#064E3B",
                                   color: "#34D399",
-                                  padding: "3px 10px",
-                                  borderRadius: 8,
+                                  padding: "2px 8px",
+                                  borderRadius: 6,
                                   fontSize: 11,
                                   fontWeight: 800
                                 }}
                               >
-                                100% Selesai
+                                Selesai
                               </span>
                             </td>
-                            <td style={{ padding: "14px 18px" }}>
+                            <td style={{ padding: "12px 16px" }}>
                               <div style={{ display: "flex", gap: 6 }}>
                                 <button
                                   type="button"
+                                  className="mobile-touch-btn"
                                   onClick={() => setDetailPoModal(po)}
                                   style={{
                                     background: "#0F172A",
                                     border: "1px solid #334155",
                                     color: "#94A3B8",
-                                    padding: "5px 10px",
+                                    padding: "5px 9px",
                                     borderRadius: 6,
                                     fontSize: 11,
                                     fontWeight: 700,
@@ -1702,12 +1814,13 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 </button>
                                 <button
                                   type="button"
+                                  className="mobile-touch-btn"
                                   onClick={() => setPrintDocModal({ type: "spk", item: po })}
                                   style={{
                                     background: "#1E3A5F",
                                     border: "1px solid #2563EB",
                                     color: "#60A5FA",
-                                    padding: "5px 10px",
+                                    padding: "5px 9px",
                                     borderRadius: 6,
                                     fontSize: 11,
                                     fontWeight: 700,
@@ -1717,7 +1830,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                     gap: 4
                                   }}
                                 >
-                                  <Printer size={12} /> Cetak Bukti
+                                  <Printer size={12} /> Cetak
                                 </button>
                               </div>
                             </td>
@@ -1737,7 +1850,6 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
            ══════════════════════════════════════════════════════════════ */}
         {activeTab === "gaji" && (
           <div>
-            {/* Filter Pills */}
             <div
               style={{
                 display: "flex",
@@ -1753,9 +1865,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   <button
                     key={f}
                     type="button"
+                    className="mobile-touch-btn"
                     onClick={() => setGajiFilter(f)}
                     style={{
-                      padding: "6px 14px",
+                      padding: "6px 12px",
                       borderRadius: 8,
                       fontSize: 12,
                       fontWeight: 700,
@@ -1770,7 +1883,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 ))}
               </div>
 
-              <div style={{ fontSize: 13, color: "#94A3B8" }}>
+              <div style={{ fontSize: 12, color: "#94A3B8" }}>
                 Total Tertunggak:{" "}
                 <strong style={{ color: totalTertunggak > 0 ? "#FCD34D" : "#10B981" }}>
                   {formatRupiah(totalTertunggak)}
@@ -1778,7 +1891,6 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               </div>
             </div>
 
-            {/* List of Gaji Cards */}
             {(() => {
               const filtered = gajiRecords.filter((g: any) => {
                 if (gajiFilter === "Semua") return true;
@@ -1793,10 +1905,11 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     style={{
                       background: "#1E293B",
                       borderRadius: 16,
-                      padding: 48,
+                      padding: 40,
                       textAlign: "center",
                       border: "1px solid #334155",
-                      color: "#64748B"
+                      color: "#64748B",
+                      fontSize: 13
                     }}
                   >
                     Belum ada catatan penggajian untuk kategori ini.
@@ -1805,7 +1918,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               }
 
               return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {filtered.map((g: any) => {
                     const isLunas = g.status === "Lunas";
                     const amt = Number(g.totalGaji || g.total || 0);
@@ -1815,26 +1928,25 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                         style={{
                           background: "#1E293B",
                           borderRadius: 16,
-                          padding: "18px 24px",
+                          padding: "16px 20px",
                           border: "1px solid #334155",
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
                           flexWrap: "wrap",
-                          gap: 16,
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+                          gap: 12
                         }}
                       >
                         <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontWeight: 800, color: "white", fontSize: 16 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 800, color: "white", fontSize: 15 }}>
                               {g.keterangan || `Gaji Produksi #${g.poId || g.id}`}
                             </span>
                             <span
                               style={{
                                 background: isLunas ? "#064E3B" : "#451A03",
                                 color: isLunas ? "#34D399" : "#FCD34D",
-                                padding: "2px 8px",
+                                padding: "2px 7px",
                                 borderRadius: 6,
                                 fontSize: 11,
                                 fontWeight: 800
@@ -1849,54 +1961,44 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                               {g.tanggal
                                 ? new Date(g.tanggal).toLocaleDateString("id-ID", {
                                     day: "numeric",
-                                    month: "long",
+                                    month: "short",
                                     year: "numeric"
                                   })
                                 : "-"}
                             </span>
                             <span>·</span>
-                            <span>Metode: {g.metode || "Transfer Bank"}</span>
-                            {g.jumlahPcs && (
-                              <>
-                                <span>·</span>
-                                <span>{g.jumlahPcs} pcs</span>
-                              </>
-                            )}
+                            <span>{g.metode || "Transfer Bank"}</span>
+                            {g.jumlahPcs && <span>· {g.jumlahPcs} pcs</span>}
                           </div>
-                          {g.catatan && (
-                            <div style={{ fontSize: 12, color: "#64748B", marginTop: 4, fontStyle: "italic" }}>
-                              "{g.catatan}"
-                            </div>
-                          )}
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                           <div style={{ textAlign: "right" }}>
                             <div
                               style={{
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: 900,
-                                color: isLunas ? "#10B981" : "#F59E0B",
-                                letterSpacing: "-0.02em"
+                                color: isLunas ? "#10B981" : "#F59E0B"
                               }}
                             >
                               {formatRupiah(amt)}
                             </div>
                             {g.sisaTagihan > 0 && (
-                              <div style={{ fontSize: 11, color: "#F87171", fontWeight: 700 }}>
-                                Sisa belum cair: {formatRupiah(g.sisaTagihan)}
+                              <div style={{ fontSize: 10, color: "#F87171", fontWeight: 700 }}>
+                                Sisa: {formatRupiah(g.sisaTagihan)}
                               </div>
                             )}
                           </div>
 
                           <button
                             type="button"
+                            className="mobile-touch-btn"
                             onClick={() => setPrintDocModal({ type: "gaji", item: g })}
                             style={{
                               background: "#0F172A",
                               border: "1px solid #334155",
                               color: "white",
-                              padding: "8px 14px",
+                              padding: "8px 12px",
                               borderRadius: 8,
                               fontSize: 12,
                               fontWeight: 700,
@@ -1906,7 +2008,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                               gap: 6
                             }}
                           >
-                            <Printer size={14} /> Cetak Slip
+                            <Printer size={13} /> Cetak
                           </button>
                         </div>
                       </div>
@@ -1923,7 +2025,6 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
            ══════════════════════════════════════════════════════════════ */}
         {activeTab === "requests" && (
           <div>
-            {/* Filter pills */}
             <div
               style={{
                 display: "flex",
@@ -1939,9 +2040,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   <button
                     key={f}
                     type="button"
+                    className="mobile-touch-btn"
                     onClick={() => setRequestFilter(f)}
                     style={{
-                      padding: "6px 14px",
+                      padding: "6px 12px",
                       borderRadius: 8,
                       fontSize: 12,
                       fontWeight: 700,
@@ -1958,6 +2060,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setShowRequestModal(true)}
                 style={{
                   background: "linear-gradient(135deg, #10B981, #059669)",
@@ -1973,11 +2076,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   gap: 6
                 }}
               >
-                <PlusCircle size={14} /> Ajukan Permohonan Baru
+                <PlusCircle size={14} /> Ajukan Permohonan
               </button>
             </div>
 
-            {/* List */}
             {(() => {
               const filtered = requests.filter((r: any) => {
                 if (requestFilter === "Semua") return true;
@@ -1991,10 +2093,11 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     style={{
                       background: "#1E293B",
                       borderRadius: 16,
-                      padding: 48,
+                      padding: 40,
                       textAlign: "center",
                       border: "1px solid #334155",
-                      color: "#64748B"
+                      color: "#64748B",
+                      fontSize: 13
                     }}
                   >
                     Tidak ada catatan permohonan dengan status "{requestFilter}".
@@ -2003,7 +2106,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               }
 
               return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {filtered.map((r: any) => {
                     const isPending = r.status === "Pending";
                     const isDitolak = r.status === "Ditolak";
@@ -2015,7 +2118,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                         style={{
                           background: "#1E293B",
                           borderRadius: 16,
-                          padding: "20px 24px",
+                          padding: "16px 20px",
                           border: isPending
                             ? "1px solid rgba(245, 158, 11, 0.4)"
                             : isDitolak
@@ -2025,12 +2128,12 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           justifyContent: "space-between",
                           alignItems: "center",
                           flexWrap: "wrap",
-                          gap: 16
+                          gap: 12
                         }}
                       >
                         <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontWeight: 800, color: "white", fontSize: 16 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 800, color: "white", fontSize: 15 }}>
                               Permohonan {r.total_request} pcs
                             </span>
                             {r.pemotongan && (
@@ -2038,7 +2141,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 style={{
                                   background: "#1E3A5F",
                                   color: "#60A5FA",
-                                  padding: "2px 8px",
+                                  padding: "2px 7px",
                                   borderRadius: 6,
                                   fontSize: 11,
                                   fontWeight: 700
@@ -2050,10 +2153,9 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           </div>
 
                           <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>
-                            Diajukan pada:{" "}
                             {new Date(r.createdAt).toLocaleDateString("id-ID", {
                               day: "numeric",
-                              month: "long",
+                              month: "short",
                               year: "numeric",
                               hour: "2-digit",
                               minute: "2-digit"
@@ -2061,7 +2163,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           </div>
 
                           {r.catatan && (
-                            <div style={{ fontSize: 12, color: "#CBD5E1", marginTop: 6, fontStyle: "italic" }}>
+                            <div style={{ fontSize: 12, color: "#CBD5E1", marginTop: 4, fontStyle: "italic" }}>
                               "{r.catatan}"
                             </div>
                           )}
@@ -2069,13 +2171,13 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           {isDitolak && r.alasan_tolak && (
                             <div
                               style={{
-                                marginTop: 8,
+                                marginTop: 6,
                                 background: "rgba(239, 68, 68, 0.15)",
                                 border: "1px solid rgba(239, 68, 68, 0.3)",
                                 borderRadius: 8,
-                                padding: "8px 12px",
+                                padding: "6px 10px",
                                 color: "#FCA5A5",
-                                fontSize: 12
+                                fontSize: 11
                               }}
                             >
                               <strong>Alasan Penolakan:</strong> {r.alasan_tolak}
@@ -2083,10 +2185,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           )}
                         </div>
 
-                        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                           <div
                             style={{
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: 900,
                               color: isDone ? "#10B981" : isDitolak ? "#EF4444" : "#F59E0B"
                             }}
@@ -2098,8 +2200,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                             style={{
                               background: isDone ? "#064E3B" : isDitolak ? "#450A0A" : "#451A03",
                               color: isDone ? "#34D399" : isDitolak ? "#FCA5A5" : "#FCD34D",
-                              padding: "3px 10px",
-                              borderRadius: 8,
+                              padding: "2px 8px",
+                              borderRadius: 6,
                               fontSize: 11,
                               fontWeight: 800
                             }}
@@ -2110,13 +2212,14 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           {isPending && (
                             <button
                               type="button"
+                              className="mobile-touch-btn"
                               onClick={() => setConfirmCancelModal(r)}
                               style={{
                                 background: "transparent",
                                 border: "1px solid #64748B",
                                 color: "#94A3B8",
                                 fontSize: 11,
-                                padding: "4px 10px",
+                                padding: "3px 8px",
                                 borderRadius: 6,
                                 cursor: "pointer",
                                 display: "inline-flex",
@@ -2124,7 +2227,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                                 gap: 4
                               }}
                             >
-                              <X size={12} /> Batalkan Permohonan
+                              <X size={11} /> Batal Request
                             </button>
                           )}
                         </div>
@@ -2143,28 +2246,31 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
          ══════════════════════════════════════════════════════════════ */}
       {showRequestModal && (
         <div
+          className="vendor-modal-container"
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.85)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
-            padding: 20
+            padding: 16
           }}
         >
           <div
+            className="vendor-modal-card"
             style={{
               background: "#1E293B",
               width: "100%",
-              maxWidth: 620,
+              maxWidth: 600,
               borderRadius: 20,
               overflow: "hidden",
               boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
               border: "1px solid #334155",
-              maxHeight: "92vh",
+              maxHeight: "90vh",
               display: "flex",
               flexDirection: "column"
             }}
@@ -2172,7 +2278,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             {/* Header */}
             <div
               style={{
-                padding: "20px 24px",
+                padding: "16px 20px",
                 borderBottom: "1px solid #334155",
                 display: "flex",
                 justifyContent: "space-between",
@@ -2181,13 +2287,14 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               }}
             >
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 900, color: "white", margin: 0 }}>Minta Kerjaan Baru</h2>
-                <p style={{ fontSize: 12, color: "#94A3B8", margin: "4px 0 0" }}>
-                  Pilih tumpukan kain yang tersedia di tahap pemotongan & beritahu Admin jumlah yang disanggupi
+                <h2 style={{ fontSize: 17, fontWeight: 900, color: "white", margin: 0 }}>Minta Kerjaan Baru</h2>
+                <p style={{ fontSize: 12, color: "#94A3B8", margin: "2px 0 0" }}>
+                  Pilih tumpukan kain yang tersedia di tahap pemotongan
                 </p>
               </div>
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setShowRequestModal(false)}
                 style={{ background: "#334155", border: "none", color: "#94A3B8", padding: 8, borderRadius: 8, cursor: "pointer" }}
               >
@@ -2196,15 +2303,24 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmitRequest} style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
-              {/* Throttle Notice Banner */}
+            <form
+              onSubmit={handleSubmitRequest}
+              style={{
+                padding: "20px 20px",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16
+              }}
+            >
               {isBlocked && (
                 <div
                   style={{
                     background: "rgba(245, 158, 11, 0.1)",
                     border: "1px solid rgba(245, 158, 11, 0.3)",
                     borderRadius: 12,
-                    padding: "12px 16px",
+                    padding: "10px 14px",
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 10
@@ -2218,18 +2334,17 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 </div>
               )}
 
-              {/* Step 1: Search & Choose Fabric */}
+              {/* Step 1: Fabric Selection */}
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label style={{ fontSize: 12, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase" }}>
-                    1. Pilih Kain / Batch yang Tersedia: <span style={{ color: "#EF4444" }}>*</span>
+                    1. Pilih Kain Tersedia: <span style={{ color: "#EF4444" }}>*</span>
                   </label>
                   <span style={{ fontSize: 11, color: "#64748B" }}>
                     {(data?.pemotonganReady || []).length} batch siap dikerjakan
                   </span>
                 </div>
 
-                {/* Filter input */}
                 {(data?.pemotonganReady || []).length > 3 && (
                   <input
                     type="text"
@@ -2238,25 +2353,24 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     onChange={(e) => setFabricSearch(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "8px 14px",
+                      padding: "8px 12px",
                       borderRadius: 10,
                       border: "1px solid #334155",
                       background: "#0F172A",
                       color: "white",
-                      fontSize: 12,
-                      marginBottom: 10,
+                      fontSize: 16, // iOS safe
+                      marginBottom: 8,
                       outline: "none"
                     }}
                   />
                 )}
 
-                {/* Available list */}
                 {(data?.pemotonganReady || []).length === 0 ? (
-                  <div style={{ background: "#0F172A", borderRadius: 12, padding: 20, textAlign: "center", color: "#64748B", fontSize: 13 }}>
-                    Belum ada stok kain yang selesai dipotong saat ini. Hubungi Admin gudang/pemotongan.
+                  <div style={{ background: "#0F172A", borderRadius: 12, padding: 18, textAlign: "center", color: "#64748B", fontSize: 13 }}>
+                    Belum ada stok kain yang selesai dipotong saat ini. Hubungi Admin pemotongan.
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflowY: "auto" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
                     {(data?.pemotonganReady || [])
                       .filter((p: any) => {
                         if (!fabricSearch) return true;
@@ -2268,6 +2382,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                         return (
                           <div
                             key={p.id}
+                            className="mobile-touch-btn"
                             onClick={() =>
                               setRequestForm((prev) => ({
                                 ...prev,
@@ -2278,44 +2393,24 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                               background: isSelected ? "#0D2137" : "#0F172A",
                               border: isSelected ? "2px solid #3B82F6" : "1px solid #334155",
                               borderRadius: 12,
-                              padding: "12px 16px",
-                              cursor: "pointer",
-                              transition: "all 0.15s"
+                              padding: "10px 14px",
+                              cursor: "pointer"
                             }}
                           >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <div>
-                                <div style={{ fontWeight: 800, color: "white", fontSize: 14 }}>{p.nama_barang}</div>
+                                <div style={{ fontWeight: 800, color: "white", fontSize: 13 }}>{p.nama_barang}</div>
                                 <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
-                                  Model: <strong style={{ color: "white" }}>{p.model}</strong> · Tanggal Potong:{" "}
+                                  Model: <strong style={{ color: "white" }}>{p.model}</strong> · Tanggal:{" "}
                                   {new Date(p.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                                 </div>
                               </div>
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: 18, fontWeight: 900, color: isSelected ? "#38BDF8" : "#10B981" }}>
+                                <div style={{ fontSize: 17, fontWeight: 900, color: isSelected ? "#38BDF8" : "#10B981" }}>
                                   {p.sisa_total.toLocaleString("id-ID")}
                                 </div>
-                                <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>sisa pcs</div>
+                                <div style={{ fontSize: 9, color: "#64748B", fontWeight: 700 }}>sisa pcs</div>
                               </div>
-                            </div>
-
-                            {/* Size breakdown chips */}
-                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                              {(p.sizeBreakdown || []).map((s: any) => (
-                                <span
-                                  key={s.size}
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    padding: "2px 7px",
-                                    borderRadius: 6,
-                                    background: (s.sisa || s.jumlah) > 0 ? "#1E3A5F" : "#1E293B",
-                                    color: (s.sisa || s.jumlah) > 0 ? "#60A5FA" : "#475569"
-                                  }}
-                                >
-                                  {s.size}: {s.sisa ?? s.jumlah}
-                                </span>
-                              ))}
                             </div>
                           </div>
                         );
@@ -2324,9 +2419,9 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 )}
               </div>
 
-              {/* Step 2: Total pcs */}
+              {/* Step 2: Quantity */}
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase", marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase", marginBottom: 6 }}>
                   2. Jumlah yang Sanggup Dikerjakan (pcs): <span style={{ color: "#EF4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
@@ -2339,23 +2434,22 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     onChange={(e) => setRequestForm({ ...requestForm, total_request: e.target.value })}
                     style={{
                       width: "100%",
-                      padding: "14px 60px 14px 20px",
+                      padding: "12px 60px 12px 16px",
                       borderRadius: 12,
                       border: "2px solid #334155",
                       background: "#0F172A",
                       color: "white",
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: 900,
                       outline: "none",
                       textAlign: "center"
                     }}
                   />
-                  <span style={{ position: "absolute", right: 20, top: "50%", transform: "translateY(-50%)", color: "#64748B", fontWeight: 800 }}>
+                  <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: "#64748B", fontWeight: 800 }}>
                     pcs
                   </span>
                 </div>
 
-                {/* Quick preset buttons */}
                 {requestForm.pemotongan_id && (() => {
                   const sel = (data?.pemotonganReady || []).find((x: any) => String(x.id) === requestForm.pemotongan_id);
                   if (!sel) return null;
@@ -2367,19 +2461,20 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           <button
                             key={val}
                             type="button"
+                            className="mobile-touch-btn"
                             onClick={() => setRequestForm((prev) => ({ ...prev, total_request: String(val) }))}
                             style={{
                               background: "#0F172A",
                               border: "1px solid #334155",
                               color: "#94A3B8",
-                              padding: "4px 10px",
+                              padding: "4px 8px",
                               borderRadius: 6,
                               fontSize: 11,
                               fontWeight: 700,
                               cursor: "pointer"
                             }}
                           >
-                            {val === sel.sisa_total ? `Semua (${val} pcs)` : `${val} pcs`}
+                            {val === sel.sisa_total ? `Semua (${val})` : `${val} pcs`}
                           </button>
                         );
                       })}
@@ -2390,32 +2485,32 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
               {/* Step 3: Catatan */}
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase", marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase", marginBottom: 6 }}>
                   3. Catatan / Alasan Permohonan:
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Misal: Penjahit sudah stand by 5 orang, sanggup selesai dalam 4 hari..."
+                  placeholder="Misal: Tim penjahit siap mulai hari ini..."
                   value={requestForm.catatan}
                   onChange={(e) => setRequestForm({ ...requestForm, catatan: e.target.value })}
                   style={{
                     width: "100%",
-                    padding: "10px 14px",
+                    padding: "10px 12px",
                     borderRadius: 12,
                     border: "1px solid #334155",
                     background: "#0F172A",
                     color: "white",
-                    fontSize: 13,
+                    fontSize: 16, // iOS safe
                     outline: "none",
                     resize: "none"
                   }}
                 />
               </div>
 
-              {/* Modal Buttons */}
-              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button
                   type="button"
+                  className="mobile-touch-btn"
                   onClick={() => setShowRequestModal(false)}
                   style={{
                     flex: 1,
@@ -2425,13 +2520,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     border: "none",
                     borderRadius: 10,
                     fontWeight: 700,
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    minHeight: 44
                   }}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
+                  className="mobile-touch-btn"
                   disabled={submitting}
                   style={{
                     flex: 2,
@@ -2443,6 +2540,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     fontWeight: 800,
                     cursor: submitting ? "not-allowed" : "pointer",
                     fontSize: 14,
+                    minHeight: 44,
                     boxShadow: "0 4px 12px rgba(16,185,129,0.3)"
                   }}
                 >
@@ -2459,28 +2557,31 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
          ══════════════════════════════════════════════════════════════ */}
       {showProgresModal && (
         <div
+          className="vendor-modal-container"
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.85)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
-            padding: 20
+            padding: 16
           }}
         >
           <div
+            className="vendor-modal-card"
             style={{
               background: "#1E293B",
               borderRadius: 20,
               width: "100%",
-              maxWidth: 540,
+              maxWidth: 520,
               overflow: "hidden",
               border: "1px solid #334155",
               boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-              maxHeight: "92vh",
+              maxHeight: "90vh",
               display: "flex",
               flexDirection: "column"
             }}
@@ -2488,7 +2589,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             {/* Header */}
             <div
               style={{
-                padding: "20px 24px",
+                padding: "16px 20px",
                 borderBottom: "1px solid #334155",
                 display: "flex",
                 justifyContent: "space-between",
@@ -2498,14 +2599,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               }}
             >
               <div>
-                <h3 style={{ margin: 0, color: "white", fontSize: 18, fontWeight: 900 }}>Lapor Progres Selesai</h3>
-                <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>
+                <h3 style={{ margin: 0, color: "white", fontSize: 17, fontWeight: 900 }}>Lapor Progres Selesai</h3>
+                <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
                   PO: <strong style={{ color: "white" }}>{showProgresModal.no_po || showProgresModal.noPo}</strong> · Model:{" "}
                   <strong style={{ color: "white" }}>{showProgresModal.model}</strong>
                 </div>
               </div>
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setShowProgresModal(null)}
                 style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer" }}
               >
@@ -2514,15 +2616,25 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             </div>
 
             {/* Form */}
-            <form onSubmit={handleLaporProgres} style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Header tool to fill all remaining */}
+            <form
+              onSubmit={handleLaporProgres}
+              style={{
+                padding: "18px 20px",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                display: "flex",
+                flexDirection: "column",
+                gap: 14
+              }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase" }}>
-                  Masukkan Jumlah per Size:
+                  Jumlah per Size:
                 </span>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 6 }}>
                   <button
                     type="button"
+                    className="mobile-touch-btn"
                     onClick={() => {
                       setProgresForm((prev) =>
                         prev.map((pf) => ({
@@ -2535,7 +2647,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       background: "#1E3A5F",
                       color: "#60A5FA",
                       border: "1px solid #2563EB",
-                      padding: "4px 10px",
+                      padding: "4px 8px",
                       borderRadius: 6,
                       fontSize: 11,
                       fontWeight: 800,
@@ -2546,6 +2658,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   </button>
                   <button
                     type="button"
+                    className="mobile-touch-btn"
                     onClick={() => {
                       setProgresForm((prev) => prev.map((pf) => ({ ...pf, jumlah: "" })));
                     }}
@@ -2553,7 +2666,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       background: "transparent",
                       color: "#64748B",
                       border: "1px solid #334155",
-                      padding: "4px 8px",
+                      padding: "4px 6px",
                       borderRadius: 6,
                       fontSize: 11,
                       fontWeight: 700,
@@ -2566,16 +2679,16 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               </div>
 
               {/* Size inputs */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {progresForm.map((pf, idx) => (
                   <div
                     key={pf.size}
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 12,
+                      gap: 10,
                       background: "#0F172A",
-                      padding: 12,
+                      padding: "10px 12px",
                       borderRadius: 12,
                       border: "1px solid #1E293B"
                     }}
@@ -2584,19 +2697,20 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       style={{
                         background: "#1E293B",
                         color: "white",
-                        width: 44,
-                        height: 44,
-                        borderRadius: 10,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 8,
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
                         fontWeight: 900,
-                        fontSize: 14
+                        fontSize: 13,
+                        flexShrink: 0
                       }}
                     >
                       <span>{pf.size}</span>
-                      {pf.done > 0 && <span style={{ fontSize: 9, color: "#10B981", fontWeight: 800 }}>+{pf.done}</span>}
+                      {pf.done > 0 && <span style={{ fontSize: 8, color: "#10B981", fontWeight: 800 }}>+{pf.done}</span>}
                     </div>
 
                     <div style={{ flex: 1 }}>
@@ -2618,62 +2732,57 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           background: "transparent",
                           border: "none",
                           color: Number(pf.jumlah) > pf.maxSisa ? "#EF4444" : "white",
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: 800,
                           outline: "none"
                         }}
                       />
                     </div>
 
-                    <div style={{ textAlign: "right", minWidth: 90 }}>
+                    <div style={{ textAlign: "right", minWidth: 85 }}>
                       {pf.maxSisa > 0 ? (
                         <div
+                          className="mobile-touch-btn"
                           onClick={() => {
                             const newForm = [...progresForm];
                             newForm[idx].jumlah = pf.maxSisa;
                             setProgresForm(newForm);
                           }}
-                          title="Klik untuk mengisi sisa ini"
                           style={{
                             fontSize: 11,
                             color: "#38BDF8",
                             fontWeight: 700,
                             cursor: "pointer",
-                            padding: "3px 8px",
+                            padding: "3px 6px",
                             borderRadius: 6,
                             border: "1px dashed #0284C7"
                           }}
                         >
-                          Sisa: <strong>{pf.maxSisa} pcs</strong>
+                          Sisa: <strong>{pf.maxSisa}</strong>
                         </div>
                       ) : (
                         <div style={{ fontSize: 11, color: "#10B981", fontWeight: 800 }}>Selesai!</div>
-                      )}
-                      {pf.pending > 0 && (
-                        <div style={{ fontSize: 10, color: "#F59E0B", fontWeight: 700, marginTop: 2 }}>
-                          {pf.pending} pending ACC
-                        </div>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Total Summary Row */}
+              {/* Total Calculation */}
               {progresForm.some((pf) => Number(pf.jumlah) > 0) && (
                 <div
                   style={{
-                    padding: "12px 16px",
+                    padding: "10px 14px",
                     background: "linear-gradient(135deg, #1E3A5F 0%, #1E293B 100%)",
                     border: "1px solid #3B82F6",
-                    borderRadius: 12,
+                    borderRadius: 10,
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center"
                   }}
                 >
-                  <span style={{ fontSize: 13, color: "#94A3B8", fontWeight: 700 }}>Total yang dilaporkan saat ini:</span>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: "#38BDF8" }}>
+                  <span style={{ fontSize: 12, color: "#94A3B8", fontWeight: 700 }}>Total dilaporkan:</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: "#38BDF8" }}>
                     {progresForm.reduce((s, pf) => s + (Number(pf.jumlah) || 0), 0)} pcs
                   </span>
                 </div>
@@ -2686,7 +2795,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Misal: Sudah dipacking karung putih nomor 1-4..."
+                  placeholder="Misal: Sudah dipacking..."
                   value={progresCatatan}
                   onChange={(e) => setProgresCatatan(e.target.value)}
                   style={{
@@ -2695,18 +2804,18 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     border: "1px solid #334155",
                     color: "white",
                     borderRadius: 10,
-                    padding: "10px 14px",
+                    padding: "10px 12px",
                     outline: "none",
-                    fontSize: 13,
+                    fontSize: 16, // iOS safe
                     resize: "none"
                   }}
                 />
               </div>
 
-              {/* Submit Buttons */}
-              <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+              <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button
                   type="button"
+                  className="mobile-touch-btn"
                   onClick={() => setShowProgresModal(null)}
                   style={{
                     flex: 1,
@@ -2716,13 +2825,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     border: "none",
                     borderRadius: 10,
                     fontWeight: 700,
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    minHeight: 44
                   }}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
+                  className="mobile-touch-btn"
                   disabled={submitting}
                   style={{
                     flex: 2,
@@ -2733,11 +2844,12 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     borderRadius: 10,
                     fontWeight: 800,
                     fontSize: 14,
+                    minHeight: 44,
                     cursor: submitting ? "not-allowed" : "pointer",
                     boxShadow: "0 4px 14px rgba(37,99,235,0.3)"
                   }}
                 >
-                  {submitting ? "Mengirim Laporan..." : "Kirim Laporan Progres"}
+                  {submitting ? "Mengirim..." : "Kirim Laporan Progres"}
                 </button>
               </div>
             </form>
@@ -2750,24 +2862,27 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
          ══════════════════════════════════════════════════════════════ */}
       {detailPoModal && (
         <div
+          className="vendor-modal-container"
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.85)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
-            padding: 20
+            padding: 16
           }}
         >
           <div
+            className="vendor-modal-card"
             style={{
               background: "#1E293B",
               borderRadius: 20,
               width: "100%",
-              maxWidth: 540,
+              maxWidth: 520,
               overflow: "hidden",
               border: "1px solid #334155",
               boxShadow: "0 25px 50px rgba(0,0,0,0.5)"
@@ -2775,7 +2890,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
           >
             <div
               style={{
-                padding: "20px 24px",
+                padding: "16px 20px",
                 borderBottom: "1px solid #334155",
                 display: "flex",
                 justifyContent: "space-between",
@@ -2784,13 +2899,14 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               }}
             >
               <div>
-                <h3 style={{ margin: 0, color: "white", fontSize: 18, fontWeight: 900 }}>Rincian Dokumen SPK</h3>
+                <h3 style={{ margin: 0, color: "white", fontSize: 17, fontWeight: 900 }}>Rincian Dokumen SPK</h3>
                 <div style={{ fontSize: 12, color: "#38BDF8", marginTop: 2, fontFamily: "monospace" }}>
                   {detailPoModal.no_po || detailPoModal.noPo}
                 </div>
               </div>
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setDetailPoModal(null)}
                 style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer" }}
               >
@@ -2798,63 +2914,62 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               </button>
             </div>
 
-            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ background: "#0F172A", padding: 12, borderRadius: 10 }}>
+            <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ background: "#0F172A", padding: 10, borderRadius: 10 }}>
                   <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>MODEL</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "white", marginTop: 2 }}>{detailPoModal.model}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginTop: 2 }}>{detailPoModal.model}</div>
                 </div>
-                <div style={{ background: "#0F172A", padding: 12, borderRadius: 10 }}>
+                <div style={{ background: "#0F172A", padding: 10, borderRadius: 10 }}>
                   <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>TOTAL TARGET</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#10B981", marginTop: 2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#10B981", marginTop: 2 }}>
                     {(detailPoModal.jumlah_terbit || detailPoModal.jumlahTerbit || 0).toLocaleString("id-ID")} pcs
                   </div>
                 </div>
-                <div style={{ background: "#0F172A", padding: 12, borderRadius: 10 }}>
+                <div style={{ background: "#0F172A", padding: 10, borderRadius: 10 }}>
                   <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>TANGGAL TERBIT</div>
-                  <div style={{ fontSize: 13, color: "white", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "white", marginTop: 2 }}>
                     {detailPoModal.tanggalTerbit
-                      ? new Date(detailPoModal.tanggalTerbit).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+                      ? new Date(detailPoModal.tanggalTerbit).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
                       : "-"}
                   </div>
                 </div>
-                <div style={{ background: "#0F172A", padding: 12, borderRadius: 10 }}>
+                <div style={{ background: "#0F172A", padding: 10, borderRadius: 10 }}>
                   <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>TARGET SELESAI</div>
                   <div
                     style={{
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 700,
                       color: detailPoModal.isOverdue ? "#EF4444" : "white",
                       marginTop: 2
                     }}
                   >
                     {detailPoModal.targetSelesai
-                      ? new Date(detailPoModal.targetSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-                      : "Tidak ditentukan"}
+                      ? new Date(detailPoModal.targetSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
+                      : "Sesuai antrean"}
                   </div>
                 </div>
               </div>
 
               {detailPoModal.catatan && (
-                <div style={{ background: "#0F172A", padding: 12, borderRadius: 10, fontSize: 13, color: "#CBD5E1" }}>
-                  <div style={{ fontSize: 11, color: "#64748B", fontWeight: 800, marginBottom: 4 }}>CATATAN DARI ADMIN:</div>
+                <div style={{ background: "#0F172A", padding: 10, borderRadius: 10, fontSize: 12, color: "#CBD5E1" }}>
+                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 800, marginBottom: 2 }}>CATATAN:</div>
                   "{detailPoModal.catatan}"
                 </div>
               )}
 
-              {/* Table of sizes */}
               <div>
-                <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 800, marginBottom: 8, textTransform: "uppercase" }}>
-                  Distribusi Size & Realisasi:
+                <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 800, marginBottom: 6, textTransform: "uppercase" }}>
+                  Distribusi Size:
                 </div>
-                <div style={{ background: "#0F172A", borderRadius: 12, border: "1px solid #334155", overflow: "hidden" }}>
+                <div style={{ background: "#0F172A", borderRadius: 10, border: "1px solid #334155", overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #334155", color: "#64748B" }}>
-                        <th style={{ padding: "8px 14px" }}>SIZE</th>
-                        <th style={{ padding: "8px 14px" }}>TARGET</th>
-                        <th style={{ padding: "8px 14px" }}>ACC SELESAI</th>
-                        <th style={{ padding: "8px 14px" }}>SISA</th>
+                        <th style={{ padding: "6px 12px" }}>SIZE</th>
+                        <th style={{ padding: "6px 12px" }}>TARGET</th>
+                        <th style={{ padding: "6px 12px" }}>ACC SELESAI</th>
+                        <th style={{ padding: "6px 12px" }}>SISA</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2863,10 +2978,10 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                         const tgt = Number(s.jumlah || s.sisa || 0);
                         return (
                           <tr key={s.size} style={{ borderBottom: "1px solid #1E293B" }}>
-                            <td style={{ padding: "8px 14px", fontWeight: 800, color: "white" }}>{s.size}</td>
-                            <td style={{ padding: "8px 14px", color: "#94A3B8" }}>{tgt} pcs</td>
-                            <td style={{ padding: "8px 14px", color: "#10B981", fontWeight: 700 }}>{done} pcs</td>
-                            <td style={{ padding: "8px 14px", color: Math.max(0, tgt - done) > 0 ? "#F59E0B" : "#10B981" }}>
+                            <td style={{ padding: "6px 12px", fontWeight: 800, color: "white" }}>{s.size}</td>
+                            <td style={{ padding: "6px 12px", color: "#94A3B8" }}>{tgt} pcs</td>
+                            <td style={{ padding: "6px 12px", color: "#10B981", fontWeight: 700 }}>{done} pcs</td>
+                            <td style={{ padding: "6px 12px", color: Math.max(0, tgt - done) > 0 ? "#F59E0B" : "#10B981" }}>
                               {Math.max(0, tgt - done)} pcs
                             </td>
                           </tr>
@@ -2879,17 +2994,18 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
 
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setDetailPoModal(null)}
                 style={{
                   width: "100%",
-                  padding: 12,
+                  padding: 10,
                   background: "#334155",
                   color: "white",
                   border: "none",
                   borderRadius: 10,
                   fontWeight: 800,
                   cursor: "pointer",
-                  marginTop: 6
+                  minHeight: 42
                 }}
               >
                 Tutup
@@ -2904,24 +3020,27 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
          ══════════════════════════════════════════════════════════════ */}
       {poReportsModal && (
         <div
+          className="vendor-modal-container"
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.85)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
-            padding: 20
+            padding: 16
           }}
         >
           <div
+            className="vendor-modal-card"
             style={{
               background: "#1E293B",
               borderRadius: 20,
               width: "100%",
-              maxWidth: 580,
+              maxWidth: 540,
               overflow: "hidden",
               border: "1px solid #334155",
               boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
@@ -2932,7 +3051,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
           >
             <div
               style={{
-                padding: "20px 24px",
+                padding: "16px 20px",
                 borderBottom: "1px solid #334155",
                 display: "flex",
                 justifyContent: "space-between",
@@ -2942,13 +3061,14 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               }}
             >
               <div>
-                <h3 style={{ margin: 0, color: "white", fontSize: 18, fontWeight: 900 }}>Riwayat Laporan Progres</h3>
+                <h3 style={{ margin: 0, color: "white", fontSize: 17, fontWeight: 900 }}>Riwayat Laporan PO</h3>
                 <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
                   PO: <strong style={{ color: "white" }}>{poReportsModal.no_po || poReportsModal.noPo}</strong>
                 </div>
               </div>
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setPoReportsModal(null)}
                 style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer" }}
               >
@@ -2956,9 +3076,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               </button>
             </div>
 
-            <div style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ padding: "18px 20px", overflowY: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", gap: 10 }}>
               {(() => {
-                // Find all reports for this PO
                 const cmtReports = (data.cmt_progres || []).filter(
                   (p: any) =>
                     p.po_id === poReportsModal.id ||
@@ -2982,7 +3101,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       key={idx}
                       style={{
                         background: "#0F172A",
-                        padding: "14px 16px",
+                        padding: "12px 14px",
                         borderRadius: 12,
                         border: "1px solid #1E293B",
                         display: "flex",
@@ -3028,8 +3147,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                           style={{
                             background: isAcc ? "#064E3B" : isPending ? "#451A03" : "#450A0A",
                             color: isAcc ? "#34D399" : isPending ? "#FCD34D" : "#FCA5A5",
-                            padding: "3px 10px",
-                            borderRadius: 8,
+                            padding: "3px 8px",
+                            borderRadius: 6,
                             fontSize: 11,
                             fontWeight: 800
                           }}
@@ -3047,28 +3166,31 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
       )}
 
       {/* ══════════════════════════════════════════════════════════════
-          MODAL: CETAK SLIP GAJI / BUKTI SELESAI PEKERJAAN
+          MODAL: CETAK SLIP GAJI / BUKTI SELESAI
          ══════════════════════════════════════════════════════════════ */}
       {printDocModal && (
         <div
+          className="vendor-modal-container"
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.85)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
-            padding: 20
+            padding: 16
           }}
         >
           <div
+            className="vendor-modal-card"
             style={{
               background: "#FFFFFF",
               color: "#0F172A",
               width: "100%",
-              maxWidth: 580,
+              maxWidth: 540,
               borderRadius: 16,
               overflow: "hidden",
               boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
@@ -3077,12 +3199,12 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               fontFamily: "'Courier New', Courier, monospace"
             }}
           >
-            {/* Action Bar (Top) */}
+            {/* Action Bar */}
             <div
               style={{
                 background: "#0F172A",
                 color: "white",
-                padding: "12px 20px",
+                padding: "12px 18px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -3093,12 +3215,13 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
+                  className="mobile-touch-btn"
                   onClick={() => window.print()}
                   style={{
                     background: "#2563EB",
                     color: "white",
                     border: "none",
-                    padding: "6px 14px",
+                    padding: "6px 12px",
                     borderRadius: 8,
                     fontSize: 12,
                     fontWeight: 800,
@@ -3108,16 +3231,17 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                     gap: 6
                   }}
                 >
-                  <Printer size={14} /> Cetak (Print/PDF)
+                  <Printer size={14} /> Cetak (PDF)
                 </button>
                 <button
                   type="button"
+                  className="mobile-touch-btn"
                   onClick={() => setPrintDocModal(null)}
                   style={{
                     background: "#334155",
                     color: "#94A3B8",
                     border: "none",
-                    padding: "6px 10px",
+                    padding: "6px 8px",
                     borderRadius: 8,
                     cursor: "pointer"
                   }}
@@ -3128,36 +3252,23 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
             </div>
 
             {/* Printable Content */}
-            <div id="printable-voucher" style={{ padding: "28px 32px" }}>
-              <div style={{ textAlign: "center", borderBottom: "2px dashed #CBD5E1", paddingBottom: 16, marginBottom: 16 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>TIRTA BINTANG JEANS</h2>
-                <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-                  Spesialis Denim & Celana Jeans Konveksi
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 900, marginTop: 8, letterSpacing: 1 }}>
+            <div id="printable-voucher" style={{ padding: "24px 24px" }}>
+              <div style={{ textAlign: "center", borderBottom: "2px dashed #CBD5E1", paddingBottom: 12, marginBottom: 14 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 900, margin: 0 }}>TIRTA BINTANG JEANS</h2>
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Spesialis Denim & Celana Jeans Konveksi</div>
+                <div style={{ fontSize: 12, fontWeight: 900, marginTop: 6, letterSpacing: 1 }}>
                   {printDocModal.type === "gaji" ? "SLIP BUKTI PEMBAYARAN UPAH / GAJI" : "BUKTI PENYELESAIAN SPK PRODUKSI"}
                 </div>
               </div>
 
-              {/* Meta */}
-              <div style={{ fontSize: 12, lineHeight: 1.8, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, lineHeight: 1.8, marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span>Mitra Vendor:</span>
                   <strong>{vendor.nama} ({vendor.kodeVendor || vendor.kode})</strong>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Tipe Vendor:</span>
-                  <span>{vendor.tipe?.toUpperCase() || defaultTipe.toUpperCase()}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Tanggal Cetak:</span>
-                  <span>
-                    {new Date().toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric"
-                    })}
-                  </span>
+                  <span>Tanggal:</span>
+                  <span>{new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
                 {printDocModal.type === "gaji" && (
                   <>
@@ -3166,7 +3277,7 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       <span>{printDocModal.item.keterangan || `Gaji PO #${printDocModal.item.poId || printDocModal.item.id}`}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Metode Pembayaran:</span>
+                      <span>Metode:</span>
                       <span>{printDocModal.item.metode || "Transfer Bank"}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -3187,47 +3298,41 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                       <span>Model:</span>
                       <span>{printDocModal.item.model}</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Total Pcs:</span>
-                      <strong>{(printDocModal.item.jumlah_terbit || 0).toLocaleString("id-ID")} pcs</strong>
-                    </div>
                   </>
                 )}
               </div>
 
-              {/* Total Box */}
               <div
                 style={{
                   background: "#F1F5F9",
                   border: "1px solid #E2E8F0",
                   borderRadius: 8,
-                  padding: "12px 16px",
+                  padding: "10px 14px",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 24
+                  marginBottom: 20
                 }}
               >
-                <span style={{ fontSize: 13, fontWeight: 700 }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>
                   {printDocModal.type === "gaji" ? "TOTAL DIBAYARKAN:" : "TOTAL SELESAI:"}
                 </span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: "#0F172A" }}>
+                <span style={{ fontSize: 16, fontWeight: 900, color: "#0F172A" }}>
                   {printDocModal.type === "gaji"
                     ? formatRupiah(Number(printDocModal.item.totalGaji || printDocModal.item.total || 0))
                     : `${(printDocModal.item.jumlah_terbit || 0).toLocaleString("id-ID")} pcs`}
                 </span>
               </div>
 
-              {/* Signatures */}
-              <div style={{ display: "flex", justifyContent: "space-between", textAlign: "center", fontSize: 11, marginTop: 32 }}>
-                <div style={{ width: 140 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", textAlign: "center", fontSize: 10, marginTop: 24 }}>
+                <div style={{ width: 120 }}>
                   <div>Diserahkan Oleh,</div>
-                  <div style={{ height: 48 }} />
+                  <div style={{ height: 40 }} />
                   <div style={{ borderTop: "1px solid #0F172A", paddingTop: 4 }}>Bag. Keuangan / Kasir</div>
                 </div>
-                <div style={{ width: 140 }}>
+                <div style={{ width: 120 }}>
                   <div>Diterima Oleh,</div>
-                  <div style={{ height: 48 }} />
+                  <div style={{ height: 40 }} />
                   <div style={{ borderTop: "1px solid #0F172A", paddingTop: 4 }}>{vendor.nama}</div>
                 </div>
               </div>
@@ -3241,16 +3346,18 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
          ══════════════════════════════════════════════════════════════ */}
       {confirmCancelModal && (
         <div
+          className="vendor-modal-container"
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.85)",
             backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 110,
-            padding: 20
+            padding: 16
           }}
         >
           <div
@@ -3258,22 +3365,22 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
               background: "#1E293B",
               borderRadius: 16,
               width: "100%",
-              maxWidth: 420,
-              padding: 24,
+              maxWidth: 400,
+              padding: 22,
               border: "1px solid #334155",
               boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
               textAlign: "center"
             }}
           >
-            <AlertCircle size={44} color="#EF4444" style={{ margin: "0 auto 12px" }} />
-            <h3 style={{ fontSize: 18, fontWeight: 900, color: "white", margin: 0 }}>Batalkan Permohonan?</h3>
-            <p style={{ color: "#94A3B8", fontSize: 13, marginTop: 8, lineHeight: 1.5 }}>
-              Yakin ingin membatalkan permohonan <strong>{confirmCancelModal.total_request} pcs</strong> ini? Tindakan ini
-              tidak dapat diurungkan.
+            <AlertCircle size={40} color="#EF4444" style={{ margin: "0 auto 10px" }} />
+            <h3 style={{ fontSize: 17, fontWeight: 900, color: "white", margin: 0 }}>Batalkan Permohonan?</h3>
+            <p style={{ color: "#94A3B8", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+              Yakin ingin membatalkan permohonan <strong>{confirmCancelModal.total_request} pcs</strong> ini?
             </p>
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={() => setConfirmCancelModal(null)}
                 style={{
                   flex: 1,
@@ -3283,13 +3390,15 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   border: "none",
                   borderRadius: 8,
                   fontWeight: 700,
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  minHeight: 40
                 }}
               >
                 Kembali
               </button>
               <button
                 type="button"
+                className="mobile-touch-btn"
                 onClick={handleCancelRequestConfirmed}
                 disabled={submitting}
                 style={{
@@ -3300,7 +3409,8 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
                   border: "none",
                   borderRadius: 8,
                   fontWeight: 800,
-                  cursor: submitting ? "not-allowed" : "pointer"
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  minHeight: 40
                 }}
               >
                 {submitting ? "Memproses..." : "Ya, Batalkan"}
