@@ -423,10 +423,27 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
   const isBlocked = data.canRequest === false;
   const hasOverdue = bi?.maxOverdueDays > 0;
 
+  // Ensure page can scroll freely despite body overflow hidden in globals.css
+  useEffect(() => {
+    const origBodyOverflow = document.body.style.overflow;
+    const origHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "auto";
+    document.documentElement.style.overflow = "auto";
+    return () => {
+      document.body.style.overflow = origBodyOverflow;
+      document.documentElement.style.overflow = origHtmlOverflow;
+    };
+  }, []);
+
   return (
     <div
+      id="vendor-portal-scroll-container"
       style={{
-        minHeight: "100vh",
+        position: "fixed",
+        inset: 0,
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
         background: "#0F172A",
         color: "white",
         fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -438,6 +455,21 @@ export default function VendorPortal({ params, defaultTipe = "cmt" }: VendorPort
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            html, body {
+              overflow: auto !important;
+              height: 100% !important;
+            }
+            #vendor-portal-scroll-container {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              right: 0 !important;
+              bottom: 0 !important;
+              overflow-y: auto !important;
+              overflow-x: hidden !important;
+              -webkit-overflow-scrolling: touch !important;
+              overscroll-behavior-y: contain !important;
+            }
             @keyframes pulse {
               0%, 100% { opacity: 1; }
               50% { opacity: 0.4; }
