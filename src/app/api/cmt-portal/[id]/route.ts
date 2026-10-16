@@ -127,10 +127,21 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
   // Gaji / Tagihan
   const gaji = (data.gaji_cmt || [])
     .filter((g: any) => g.cmtId === vendorId)
+    .map((g: any) => {
+      const amt = Number(g.totalGaji ?? g.total ?? 0);
+      const dibayar = Number(g.dibayar ?? 0);
+      return {
+        ...g,
+        total: amt,
+        totalGaji: amt,
+        dibayar,
+        sisaTagihan: Math.max(0, amt - dibayar)
+      };
+    })
     .slice().reverse();
 
   const totalTertunggak = gaji.filter((g: any) => g.status !== "Lunas")
-    .reduce((sum: number, g: any) => sum + (Number(g.total) - Number(g.dibayar || 0)), 0);
+    .reduce((sum: number, g: any) => sum + (Number(g.total || 0) - Number(g.dibayar || 0)), 0);
 
   // Requests dari CMT ini
   const requests = (data.cmt_requests || [])
@@ -302,6 +313,10 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     return { ...po, targetSelesai, overdueDays, isOverdue };
   });
 
+  const cmt_progres = (data.cmt_progres || [])
+    .filter((p: any) => String(p.vendor_id) === String(vendorId))
+    .slice().reverse();
+
   return NextResponse.json({
     vendor,
     activePO: activePOWithOverdue,
@@ -312,6 +327,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     pemotonganReady,
     canRequest,
     blockInfo,
+    cmt_progres
   });
 }
 
