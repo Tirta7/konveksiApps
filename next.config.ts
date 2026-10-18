@@ -8,7 +8,7 @@ const nextConfig = {
   // Izinkan akses dev server dari semua perangkat di jaringan LAN (HP, tablet, dll).
   // Tanpa ini, Next.js memblokir file JS sehingga halaman tidak ter-hydrate
   // dan berhenti di "Memuat Dashboard...".
-  allowedDevOrigins: ['localhost', '192.168.18.144', '192.168.*.*', '10.*.*.*'],
+  allowedDevOrigins: ['localhost', '192.168.*.*', '10.*.*.*', '172.*.*.*', '*.local'],
 };
 
 module.exports = nextConfig;
