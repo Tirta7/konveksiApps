@@ -95,6 +95,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       <Sidebar 
         isCollapsed={isCollapsed} 
         toggleSidebar={() => setIsCollapsed(!isCollapsed)} 
+        onCloseMobile={() => setIsMobileOpen(false)}
       />
       
       <main className="app-content">

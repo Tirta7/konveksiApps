@@ -14968,30 +14968,31 @@
       "deskripsi": "pencucian"
     },
     {
+      "id": 5,
+      "nama": "Gudang",
+      "slug": "qc_bahan",
+      "emoji": "??",
+      "warna": "#6366F1",
+      "urutan": 4,
+      "vendor_tipe": "finishing",
+      "opsional": false,
+      "butuh_vendor": true,
+      "aktif": true,
+      "deskripsi": "pengecekan",
+      "estimasi_hari": 2
+    },
+    {
       "id": 4,
       "nama": "Bersih Benang",
       "slug": "bersih_benang",
       "emoji": "??",
       "warna": "#059669",
-      "urutan": 4,
+      "urutan": 5,
       "vendor_tipe": "bersih_benang",
       "opsional": false,
       "butuh_vendor": true,
       "aktif": true,
       "deskripsi": "pembersihan benang"
-    },
-    {
-      "id": 5,
-      "nama": "QC Gudang",
-      "slug": "qc_bahan",
-      "emoji": "??",
-      "warna": "#6366F1",
-      "urutan": 5,
-      "vendor_tipe": "finishing",
-      "opsional": false,
-      "butuh_vendor": true,
-      "aktif": true,
-      "deskripsi": "pengecekan"
     },
     {
       "id": 6,

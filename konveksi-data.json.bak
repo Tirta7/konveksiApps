@@ -746,13 +746,6 @@
       "nama": "PECAH POLA",
       "deskripsi": "",
       "createdAt": "2026-09-21T02:48:15.760Z"
-    },
-    {
-      "id": 4,
-      "uid": "KTG-YIRDHU",
-      "nama": "TEST POLA REVISED",
-      "deskripsi": "Updated testing deskripsi",
-      "createdAt": "2026-10-15T18:24:08.061Z"
     }
   ],
   "data_barang": [],
@@ -14980,7 +14973,7 @@
       "slug": "bersih_benang",
       "emoji": "??",
       "warna": "#059669",
-      "urutan": 4,
+      "urutan": 5,
       "vendor_tipe": "bersih_benang",
       "opsional": false,
       "butuh_vendor": true,
@@ -14993,7 +14986,7 @@
       "slug": "qc_bahan",
       "emoji": "??",
       "warna": "#6366F1",
-      "urutan": 5,
+      "urutan": 4,
       "vendor_tipe": "finishing",
       "opsional": false,
       "butuh_vendor": true,

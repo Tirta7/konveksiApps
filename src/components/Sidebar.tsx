@@ -60,10 +60,12 @@ const MENU = [
 
 export default function Sidebar({ 
   isCollapsed = false, 
-  toggleSidebar 
+  toggleSidebar,
+  onCloseMobile
 }: { 
   isCollapsed?: boolean;
   toggleSidebar?: () => void;
+  onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
   const [namaUsaha, setNamaUsaha] = useState("KonveksiApps");
@@ -141,11 +143,33 @@ export default function Sidebar({
               </div>
             )}
           </div>
-          {toggleSidebar && (
-            <button onClick={toggleSidebar} className="toggle-btn" title="Toggle Sidebar">
-              {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-            </button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {onCloseMobile && (
+              <button 
+                onClick={onCloseMobile} 
+                className="mobile-close-btn"
+                title="Tutup Menu"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94A3B8",
+                  cursor: "pointer",
+                  padding: "6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "6px"
+                }}
+              >
+                <X size={20} />
+              </button>
+            )}
+            {toggleSidebar && (
+              <button onClick={toggleSidebar} className="toggle-btn" title="Toggle Sidebar">
+                {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              </button>
+            )}
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -161,6 +185,7 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => onCloseMobile?.()}
                 className={`sidebar-menu-item${isActive ? " active" : ""}`}
                 title={isCollapsed ? item.label : undefined}
               >

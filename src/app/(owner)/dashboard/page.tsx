@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -34,9 +34,12 @@ export default function DashboardPage() {
   const prevRef = useRef<string>("");
 
   useEffect(() => {
-    const el = document.querySelector(".app-content") as HTMLElement;
-    if (el) { el.style.overflow = "hidden"; el.style.padding = "0"; el.style.height = "100vh"; }
-    return () => { if (el) { el.style.overflow = ""; el.style.padding = ""; el.style.height = ""; } };
+    // Only lock .app-content on desktop (width > 900px)
+    if (typeof window !== "undefined" && window.innerWidth > 900) {
+      const el = document.querySelector(".app-content") as HTMLElement;
+      if (el) { el.style.overflow = "hidden"; el.style.padding = "0"; el.style.height = "100vh"; }
+      return () => { if (el) { el.style.overflow = ""; el.style.padding = ""; el.style.height = ""; } };
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -62,7 +65,7 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#F1F5F9" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "#F1F5F9" }}>
       <div style={{ textAlign: "center", color: "#94A3B8" }}>
         <RefreshCw size={32} style={{ animation: "spin 1s linear infinite", display: "block", margin: "0 auto 12px" }} />
         <p style={{ fontSize: 15, fontWeight: 600 }}>Memuat Dashboard...</p>
@@ -82,14 +85,102 @@ export default function DashboardPage() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
         .dash-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08)!important; transform: translateY(-1px); }
+
+        .dash-outer-container {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+          background: #F1F5F9;
+          overflow: hidden;
+        }
+        .dash-header-bar {
+          padding: 20px 28px;
+          background: white;
+          border-bottom: 1px solid #E2E8F0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .dash-main-scroll {
+          flex: 1;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          padding: 20px 28px;
+          gap: 20px;
+        }
+        .dash-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 14px;
+          flex-shrink: 0;
+        }
+        .dash-content-row {
+          display: flex;
+          gap: 20px;
+          flex: 1;
+          overflow: hidden;
+        }
+        .dash-vendor-col {
+          width: 32%;
+          min-width: 280px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        @media (max-width: 960px) {
+          .dash-outer-container {
+            height: auto !important;
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow: visible !important;
+          }
+          .dash-header-bar {
+            padding: 16px 18px !important;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          .dash-main-scroll {
+            overflow: visible !important;
+            height: auto !important;
+            padding: 14px 14px 48px !important;
+            gap: 16px !important;
+          }
+          .dash-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+          .dash-content-row {
+            flex-direction: column !important;
+            overflow: visible !important;
+            height: auto !important;
+            gap: 16px !important;
+          }
+          .dash-vendor-col {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .dash-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+          .dash-header-bar {
+            padding: 12px 14px !important;
+          }
+        }
       `}</style>
 
-      <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#F1F5F9", overflow: "hidden" }}>
+      <div className="dash-outer-container">
 
         {/* Header */}
-        <div style={{ padding: "20px 28px", background: "white", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <div className="dash-header-bar">
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, color: "#0F172A", marginBottom: 2 }}>Dashboard Produksi</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 900, color: "#0F172A", marginBottom: 2 }}>Dashboard Produksi</h1>
             <p style={{ fontSize: 12, color: "#64748B" }}>Ringkasan aktivitas real-time konveksi hari ini</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -103,10 +194,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", padding: "20px 28px", gap: 20 }}>
+        <div className="dash-main-scroll">
 
           {/*  STATS ROW  */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, flexShrink: 0 }}>
+          <div className="dash-stats-grid">
             {[
               { fiIcon: "fi-sr-document", bg: "#EFF6FF", color: "#1D4ED8", label: "PO Aktif", val: data?.poAktif ?? 0 },
               { fiIcon: "fi-sr-badge-check", bg: "#ECFDF5", color: "#059669", label: "PO Selesai", val: data?.poSelesai ?? 0 },
@@ -114,20 +205,20 @@ export default function DashboardPage() {
               { fiIcon: "fi-sr-box-open", bg: "#DCFCE7", color: "#16A34A", label: "Di Gudang", val: data?.totalDiGudang ?? 0 },
               { fiIcon: "fi-sr-users", bg: "#F5F3FF", color: "#7C3AED", label: "Vendor Aktif", val: vendorList.length },
             ].map((item, i) => (
-              <div key={i} className="dash-card" style={{ background: "white", padding: "16px 18px", borderRadius: 14, border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)", transition: "all 0.2s" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: item.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <i className={`fi ${item.fiIcon}`} style={{ fontSize: 16, color: item.color }} />
+              <div key={i} className="dash-card" style={{ background: "white", padding: "14px 16px", borderRadius: 14, border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)", transition: "all 0.2s" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: item.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <i className={`fi ${item.fiIcon}`} style={{ fontSize: 15, color: item.color }} />
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B" }}>{item.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B" }}>{item.label}</div>
                 </div>
-                <div style={{ fontSize: 26, fontWeight: 900, color: "#0F172A" }}>{item.val}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: "#0F172A" }}>{item.val}</div>
               </div>
             ))}
           </div>
 
           {/*  MAIN TWO-COLUMN  */}
-          <div style={{ display: "flex", gap: 20, flex: 1, overflow: "hidden" }}>
+          <div className="dash-content-row">
 
             {/* LEFT: PO Progress */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "white", borderRadius: 18, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.03)" }}>
@@ -186,7 +277,7 @@ export default function DashboardPage() {
             </div>
 
             {/* RIGHT: Vendor Aktif + Quick Actions */}
-            <div style={{ width: "32%", minWidth: 280, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="dash-vendor-col">
 
               {/* Quick Actions */}
               <div style={{ background: "white", borderRadius: 14, border: "1px solid #E2E8F0", padding: "14px 16px", flexShrink: 0, boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
