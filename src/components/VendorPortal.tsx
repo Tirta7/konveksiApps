@@ -466,16 +466,42 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
               0%, 100% { opacity: 1; }
               50% { opacity: 0.4; }
             }
-            .mobile-touch-btn {
-              -webkit-tap-highlight-color: transparent;
-              touch-action: manipulation;
+            .vendor-header-bar {
+              padding-top: max(14px, calc(env(safe-area-inset-top, 14px) + 4px)) !important;
+              padding-left: max(24px, env(safe-area-inset-left, 24px)) !important;
+              padding-right: max(24px, env(safe-area-inset-right, 24px)) !important;
+            }
+            .vendor-modal-overlay {
+              position: fixed !important;
+              inset: 0 !important;
+              background: rgba(0,0,0,0.85) !important;
+              backdrop-filter: blur(8px) !important;
+              -webkit-backdrop-filter: blur(8px) !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              z-index: 100 !important;
+              padding-top: max(16px, calc(env(safe-area-inset-top, 16px) + 8px)) !important;
+              padding-bottom: max(24px, calc(env(safe-area-inset-bottom, 24px) + 12px)) !important;
+              padding-left: max(12px, env(safe-area-inset-left, 12px)) !important;
+              padding-right: max(12px, env(safe-area-inset-right, 12px)) !important;
+              box-sizing: border-box !important;
+            }
+            .vendor-modal-box {
+              max-height: calc(100dvh - env(safe-area-inset-top, 24px) - env(safe-area-inset-bottom, 24px) - 24px) !important;
+              overflow-y: auto !important;
+              -webkit-overflow-scrolling: touch !important;
             }
             @media (max-width: 768px) {
               .vendor-header-bar {
-                padding: 12px 14px !important;
+                padding-top: max(14px, calc(env(safe-area-inset-top, 14px) + 8px)) !important;
+                padding-bottom: 14px !important;
+                padding-left: max(14px, env(safe-area-inset-left, 14px)) !important;
+                padding-right: max(14px, env(safe-area-inset-right, 14px)) !important;
                 flex-direction: column !important;
                 align-items: stretch !important;
                 gap: 10px !important;
+                box-sizing: border-box !important;
               }
               .vendor-header-right {
                 display: flex !important;
@@ -2258,21 +2284,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           MODAL: MINTA KERJAAN BARU
          ══════════════════════════════════════════════════════════════ */}
       {showRequestModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 12
-          }}
-        >
+        <div className="vendor-modal-overlay">
           <div
+            className="vendor-modal-box"
             style={{
               background: "#1E293B",
               width: "100%",
@@ -2564,21 +2578,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           MODAL: LAPOR PROGRES JAHITAN
          ══════════════════════════════════════════════════════════════ */}
       {showProgresModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 12
-          }}
-        >
+        <div className="vendor-modal-overlay">
           <div
+            className="vendor-modal-box"
             style={{
               background: "#1E293B",
               borderRadius: 16,
@@ -2865,21 +2867,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           MODAL: DETAIL SPK / PO
          ══════════════════════════════════════════════════════════════ */}
       {detailPoModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 12
-          }}
-        >
+        <div className="vendor-modal-overlay">
           <div
+            className="vendor-modal-box"
             style={{
               background: "#1E293B",
               borderRadius: 16,
@@ -3021,21 +3011,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           MODAL: RIWAYAT LAPORAN PO SPESIFIK
          ══════════════════════════════════════════════════════════════ */}
       {poReportsModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 12
-          }}
-        >
+        <div className="vendor-modal-overlay">
           <div
+            className="vendor-modal-box"
             style={{
               background: "#1E293B",
               borderRadius: 16,
@@ -3168,21 +3146,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           MODAL: CETAK SLIP GAJI / BUKTI SELESAI
          ══════════════════════════════════════════════════════════════ */}
       {printDocModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 12
-          }}
-        >
+        <div className="vendor-modal-overlay">
           <div
+            className="vendor-modal-box"
             style={{
               background: "#FFFFFF",
               color: "#0F172A",
@@ -3340,21 +3306,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           MODAL: KONFIRMASI BATALKAN PERMOHONAN
          ══════════════════════════════════════════════════════════════ */}
       {confirmCancelModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 110,
-            padding: 12
-          }}
-        >
+        <div className="vendor-modal-overlay" style={{ zIndex: 110 }}>
           <div
+            className="vendor-modal-box"
             style={{
               background: "#1E293B",
               borderRadius: 14,

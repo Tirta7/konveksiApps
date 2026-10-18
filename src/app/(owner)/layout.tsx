@@ -39,6 +39,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [appName, setAppName] = useState("KonveksiApps");
+  const [logoUrl, setLogoUrl] = useState("/icons/icon-192.png");
 
   // Start global real-time sync for all pages under this layout
   useGlobalSync();
@@ -55,6 +56,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
             document.title = title;
           }
           if (d?.logo_url) {
+            setLogoUrl(d.logo_url);
             let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
             if (!link) {
               link = document.createElement("link");
@@ -100,9 +102,21 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       
       <main className="app-content">
         <header className="mobile-header">
-           <div className="mobile-header-logo"> {appName}</div>
-           <button className="mobile-toggle-btn" onClick={() => setIsMobileOpen(true)}>
-             <Menu size={24} />
+           <div className="mobile-header-logo">
+             <img 
+               src={logoUrl} 
+               alt="Logo" 
+               style={{ width: 28, height: 28, borderRadius: 7, objectFit: "cover", background: "#1E293B", border: "1px solid #CBD5E1" }} 
+               onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/icons/icon-192.png"; }}
+             />
+             <span>{appName}</span>
+           </div>
+           <button 
+             className="mobile-toggle-btn" 
+             onClick={() => setIsMobileOpen(true)}
+             aria-label="Buka Menu"
+           >
+             <Menu size={22} />
            </button>
         </header>
         {children}
