@@ -1,5 +1,5 @@
 "use client";
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import {
   Briefcase,
   CheckCircle2,
@@ -25,6 +25,7 @@ import {
   Info
 } from "lucide-react";
 import { toast } from "sonner";
+import { subscribeRealtime, subscribeRealtimeStatus, visiblePoll } from "@/lib/realtime-client";
 
 // Radial Progress Component
 function RadialProgress({
@@ -155,56 +156,21 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
     fetchData();
   }, [id]);
 
-  // 2. Real-time EventSource / WebSocket listener (Top-level Hook)
+  // 2. Real-time listener via shared SSE connection (Top-level Hook)
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
   useEffect(() => {
-    let es: EventSource | null = null;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-
-    function initRealtime() {
-      try {
-        setRealtimeStatus("connecting");
-        es = new EventSource("/api/events");
-
-        es.addEventListener("open", () => {
-          setRealtimeStatus("connected");
-        });
-
-        es.addEventListener("connected", () => {
-          setRealtimeStatus("connected");
-        });
-
-        es.addEventListener("dataChanged", () => {
-          fetchData(true);
-        });
-
-        es.onerror = () => {
-          setRealtimeStatus("offline");
-          if (es) {
-            es.close();
-            es = null;
-          }
-          retryTimer = setTimeout(initRealtime, 3000);
-        };
-      } catch {
-        setRealtimeStatus("offline");
-        retryTimer = setTimeout(initRealtime, 4000);
-      }
-    }
-
-    initRealtime();
-
-    const handleLocalSync = () => fetchData(true);
-    window.addEventListener("konveksi-sync", handleLocalSync);
-
-    const safetyPoll = setInterval(() => {
-      fetchData(true);
-    }, 8000);
+    const unsubStatus = subscribeRealtimeStatus((s) => {
+      setRealtimeStatus(s === "live" ? "connected" : s);
+    });
+    const unsubSync = subscribeRealtime(() => fetchDataRef.current(true));
+    // Fallback poll only (realtime handles normal updates); skipped while tab hidden
+    const stopPoll = visiblePoll(() => fetchDataRef.current(true), 30000);
 
     return () => {
-      if (retryTimer) clearTimeout(retryTimer);
-      clearInterval(safetyPoll);
-      if (es) es.close();
-      window.removeEventListener("konveksi-sync", handleLocalSync);
+      unsubStatus();
+      unsubSync();
+      stopPoll();
     };
   }, [id]);
 

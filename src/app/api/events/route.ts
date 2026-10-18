@@ -1,6 +1,8 @@
-﻿import { NextRequest } from "next/server";
-import { addClient, removeClient, broadcast } from "@/lib/sse";
-import { CHANNEL } from "@/lib/redis";
+import { NextRequest } from "next/server";
+import { addClient, removeClient, broadcast, currentVersion } from "@/lib/sse";
+import { CHANNEL, PROCESS_ID } from "@/lib/redis";
+
+export const dynamic = "force-dynamic";
 
 // Setup Redis Pub/Sub listener once per process
 // so cross-process broadcasts reach all SSE clients
@@ -15,11 +17,13 @@ if (!g.__redisSubSetup) {
           await redisSub.connect();
         }
         await redisSub.subscribe(CHANNEL);
-        redisSub.on("message", (ch: string) => {
-          if (ch === CHANNEL) {
-            // Received change from another process  broadcast to our local SSE clients
-            broadcast("dataChanged");
-          }
+        redisSub.on("message", (ch: string, msg: string) => {
+          if (ch !== CHANNEL) return;
+          // Our own write already broadcast locally — skip to avoid double refresh
+          if (msg === PROCESS_ID) return;
+          // Another process changed the data: drop stale RAM cache, then notify local clients
+          if (!g.__flushTimer) g.__memCache = null;
+          broadcast("dataChanged");
         });
         console.log("[SSE] Redis Pub/Sub subscriber ready");
       } catch (e) {
@@ -42,8 +46,8 @@ export async function GET(req: NextRequest) {
     start(controller) {
       addClient(clientId, controller);
 
-      // Send initial "connected" event
-      const hello = `event: connected\ndata: {"clientId":"${clientId}"}\n\n`;
+      // retry hint for browser auto-reconnect + initial "connected" event with current data version
+      const hello = `retry: 3000\nevent: connected\ndata: {"clientId":"${clientId}","v":${currentVersion()}}\n\n`;
       controller.enqueue(new TextEncoder().encode(hello));
 
       // Keep-alive ping every 25s (prevents proxy/nginx timeouts)

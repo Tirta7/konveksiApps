@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Clock, Shirt, CheckCircle2, Loader2, Hourglass, Package, FileText, ClipboardList, AlertTriangle, AlertCircle, PackageCheck, ClipboardCheck, CheckCircle, Search, XCircle, ClipboardX, Link as LinkIcon, ChevronDown } from "lucide-react";
+import { subscribeRealtime } from "@/lib/realtime-client";
 
 function fmtTgl(str?: string) {
   if (!str) return "-";
@@ -87,8 +88,10 @@ export default function VendorSPKPage() {
 
   useEffect(() => {
     load();
-    pollRef.current = setInterval(() => load(true), 4000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    // Fallback poll (realtime SSE handles normal updates); skipped while tab hidden
+    pollRef.current = setInterval(() => { if (!document.hidden) load(true); }, 30000);
+    const unsub = subscribeRealtime(() => load(true));
+    return () => { if (pollRef.current) clearInterval(pollRef.current); unsub(); };
   }, [load]);
 
   useEffect(() => {
@@ -117,7 +120,7 @@ export default function VendorSPKPage() {
 
     if (aksi === "terima") {
       setPhase("confirmed");
-      pollRef.current = setInterval(() => load(true), 4000);
+      pollRef.current = setInterval(() => { if (!document.hidden) load(true); }, 30000);
       return;
     }
     if (aksi === "selesai") {

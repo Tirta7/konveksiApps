@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
   useEffect(() => { 
     load(); 
-    const id = setInterval(() => load(false), 5000); 
+    const id = setInterval(() => { if (!document.hidden) load(false); }, 30000); 
     return () => clearInterval(id); 
   }, [load]);
 

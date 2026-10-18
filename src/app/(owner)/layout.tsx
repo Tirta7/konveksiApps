@@ -3,35 +3,18 @@
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Menu } from "lucide-react";
+import { subscribeRealtime } from "@/lib/realtime-client";
 
 /**
- * Opens ONE SSE connection per browser tab.
+ * Uses ONE shared SSE connection per browser (shared across tabs, see realtime-client).
  * When server broadcasts "dataChanged", dispatches a window event
  * so any page-level fetchData() listeners refresh automatically.
  */
 function useGlobalSync() {
   useEffect(() => {
-    let es: EventSource;
-    let retryTimeout: ReturnType<typeof setTimeout>;
-
-    function connect() {
-      es = new EventSource("/api/events");
-
-      es.addEventListener("dataChanged", () => {
-        window.dispatchEvent(new CustomEvent("konveksi-sync"));
-      });
-
-      es.onerror = () => {
-        es.close();
-        retryTimeout = setTimeout(connect, 3000);
-      };
-    }
-
-    connect();
-    return () => {
-      clearTimeout(retryTimeout);
-      es?.close();
-    };
+    return subscribeRealtime(() => {
+      window.dispatchEvent(new CustomEvent("konveksi-sync"));
+    });
   }, []);
 }
 

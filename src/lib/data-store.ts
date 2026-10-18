@@ -142,20 +142,24 @@ export async function readDataAsync(): Promise<DataStore> {
 
 /**
  * Write data safely:
- * 1. Queued    concurrent writes serialized, never overlapping
- * 2. Atomic    temprename, no partial writes
- * 3. Backup    keeps .bak copy before each write
- * 4. MemCache  update in-memory instantly
- * 5. Redis     update distributed cache
- * 6. Broadcast  push SSE to all open browsers
+ * 1. MemCache  update in-memory instantly (all reads come from RAM)
+ * 2. Broadcast  push SSE to all open browsers immediately (coalesced in sse.ts)
+ * 3. Debounced flush  a burst of writes = ONE stringify + ONE disk write
+ * 4. Queued    flushes serialized, never overlapping
+ * 5. Atomic    temprename, no partial writes
+ * 6. Backup    keeps .bak copy before each flush
+ * 7. Pub/Sub   notify other processes AFTER the file is fresh
  */
-export function writeData(data: DataStore): void {
-  const jsonStr = JSON.stringify(data, null, 2);
+const FLUSH_DELAY_MS = 40;
+if (g.__flushTimer === undefined) g.__flushTimer = null;
 
-  // Update in-memory cache immediately (so reads after write are instant)
-  setMemCache(data);
-
+function flushToDisk(): void {
+  g.__flushTimer = null;
   enqueueWrite(() => {
+    const latest = getMemCache();
+    if (!latest) return;
+    const jsonStr = JSON.stringify(latest);
+
     // Backup previous version
     try {
       if (fs.existsSync(DATA_PATH)) fs.copyFileSync(DATA_PATH, DATA_PATH + ".bak");
@@ -164,15 +168,37 @@ export function writeData(data: DataStore): void {
     // Atomic write to disk
     atomicWriteFile(jsonStr);
 
-    // Update Redis cache
-    setCache(jsonStr).catch(() => {});
-
-    // Notify other processes
+    // Notify other processes (they drop their RAM cache and re-read the file)
     publishChange().catch(() => {});
-
-    // Instant SSE broadcast to all open browsers
-    try { broadcast("dataChanged"); } catch {}
   });
+}
+
+export function writeData(data: DataStore): void {
+  // Update in-memory cache immediately (so reads after write are instant)
+  setMemCache(data);
+
+  // Instant SSE broadcast to all open browsers (coalesced per burst)
+  try { broadcast("dataChanged"); } catch {}
+
+  // Debounced disk flush
+  if (!g.__flushTimer) g.__flushTimer = setTimeout(flushToDisk, FLUSH_DELAY_MS);
+}
+
+// Flush pending writes on shutdown so nothing is lost
+if (!g.__flushHooked) {
+  g.__flushHooked = true;
+  const flushSync = () => {
+    if (g.__flushTimer) {
+      clearTimeout(g.__flushTimer);
+      g.__flushTimer = null;
+      try {
+        const latest = getMemCache();
+        if (latest) atomicWriteFile(JSON.stringify(latest));
+      } catch (e) { console.error("[data-store] Shutdown flush error:", e); }
+    }
+  };
+  process.on("beforeExit", flushSync);
+  process.on("exit", flushSync);
 }
 
 export function nextId(data: DataStore, table: keyof DataStore["_counters"]): number {

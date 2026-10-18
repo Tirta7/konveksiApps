@@ -100,7 +100,7 @@ export default function LaporanProduksiPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 3000);
+    const interval = setInterval(() => { if (!document.hidden) fetchData(); }, 30000);
     return () => clearInterval(interval);
   }, []);
 

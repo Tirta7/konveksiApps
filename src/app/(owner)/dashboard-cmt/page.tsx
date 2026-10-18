@@ -117,7 +117,7 @@ export default function DashboardCMTPage() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 4000);
+    const interval = setInterval(() => { if (!document.hidden) loadData(); }, 30000);
     return () => clearInterval(interval);
   }, []);
 

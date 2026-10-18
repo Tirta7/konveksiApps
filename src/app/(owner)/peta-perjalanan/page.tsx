@@ -106,17 +106,27 @@ export default function PetaPerjalananPage() {
   useEffect(() => {
     loadStages();
     loadList();
-    const t = setInterval(loadList, 6000);
+    const t = setInterval(() => { if (!document.hidden) loadList(); }, 30000);
     return () => clearInterval(t);
   }, [loadList, loadStages]);
 
   useEffect(() => {
     if (selectedPoId) {
       loadDetail(selectedPoId);
-      const t = setInterval(() => loadDetail(selectedPoId, true), 5000);
+      const t = setInterval(() => { if (!document.hidden) loadDetail(selectedPoId, true); }, 30000);
       return () => clearInterval(t);
     }
   }, [selectedPoId, loadDetail]);
+
+  // Realtime: refresh list + open detail silently whenever data changes on the server
+  useEffect(() => {
+    const handler = () => {
+      loadList();
+      if (selectedPoId) loadDetail(selectedPoId, true);
+    };
+    window.addEventListener("konveksi-sync", handler);
+    return () => window.removeEventListener("konveksi-sync", handler);
+  }, [loadList, loadDetail, selectedPoId]);
 
   // Filtered POs
   const filteredPo = useMemo(() => {

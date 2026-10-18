@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Redis client untuk KonveksiApps
  * 
  * Fitur:
@@ -14,6 +14,10 @@ const CHANNEL   = "konveksi:changes";
 const CACHE_TTL = 0; // 0 = no expiry (data selalu fresh)
 
 const g = global as any;
+
+/** Unique id of this server process — used to ignore our own Pub/Sub messages */
+if (!g.__processId) g.__processId = `${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+export const PROCESS_ID: string = g.__processId;
 
 function createClient(name: string) {
   const client = new Redis(REDIS_URL, {
@@ -64,10 +68,14 @@ export async function invalidateCache(): Promise<void> {
   try { await redis.del(CACHE_KEY); } catch {}
 }
 
-/** Publish event ke semua subscriber (multi-proses) */
+/** Publish event ke semua subscriber (multi-proses). Payload = PROCESS_ID pengirim. */
 export async function publishChange(): Promise<void> {
-  if (!isRedisReady()) return;
-  try { await redis.publish(CHANNEL, "1"); } catch {}
+  if (!isRedisReady()) {
+    // lazyConnect: coba sambungkan sekali di background agar pub/sub aktif berikutnya
+    if (redis.status === "wait") redis.connect().catch(() => {});
+    return;
+  }
+  try { await redis.publish(CHANNEL, PROCESS_ID); } catch {}
 }
 
 /** Subscribe ke channel perubahan data */

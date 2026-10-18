@@ -184,7 +184,7 @@ export default function BuatPOProduksi() {
 
   useEffect(() => { 
     fetchAll(); 
-    const interval = setInterval(fetchAll, 3000);
+    const interval = setInterval(() => { if (!document.hidden) fetchAll(); }, 30000);
     return () => clearInterval(interval);
   }, []);
 

@@ -69,7 +69,7 @@ export default function DaftarSPKPage() {
 
   useEffect(() => { 
     loadData(); 
-    const interval = setInterval(loadData, 3000);
+    const interval = setInterval(() => { if (!document.hidden) loadData(); }, 30000);
     return () => clearInterval(interval);
   }, []);
 
