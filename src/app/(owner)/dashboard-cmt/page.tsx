@@ -226,7 +226,7 @@ export default function DashboardCMTPage() {
   }, [filteredVendors]);
 
   return (
-    <div style={{ padding: "26px 32px 140px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: "26px 32px 48px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes pulse2 { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.92); } }
@@ -849,7 +849,7 @@ export default function DashboardCMTPage() {
 
       {/* BOTTOM COMFORT SPACER & STATUS BAR */}
       <div style={{
-        marginTop: 36,
+        marginTop: 24,
         padding: "16px 22px",
         background: "#FFFFFF",
         borderRadius: 14,
@@ -869,7 +869,7 @@ export default function DashboardCMTPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => document.querySelector(".app-content")?.scrollTo({ top: 0, behavior: "smooth" })}
             style={{
               background: "#F8FAFC",
               border: "1px solid #CBD5E1",

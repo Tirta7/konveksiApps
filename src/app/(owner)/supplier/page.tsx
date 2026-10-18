@@ -148,7 +148,7 @@ export default function SupplierPage() {
   }, [data]);
 
   return (
-    <div style={{ padding: "28px 32px 140px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: "28px 32px 48px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .sup-card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }

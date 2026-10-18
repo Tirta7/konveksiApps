@@ -212,7 +212,7 @@ export default function BarcodeProduksiPage() {
   }
 
   return (
-    <div style={{ padding: "32px 32px 140px 32px", background: "var(--bg-app)", minHeight: "100%", overflowY: "auto" }}>
+    <div style={{ padding: "32px 32px 48px 32px", background: "var(--bg-app)", minHeight: "100%", overflowY: "auto" }}>
       {/* PRINT STYLES */}
       <style>{`
         @media print {

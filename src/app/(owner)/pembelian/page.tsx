@@ -377,7 +377,7 @@ export default function PembelianPage() {
   };
 
   return (
-    <div style={{ padding: "28px 32px 140px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: "28px 32px 48px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .po-card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -1134,7 +1134,7 @@ export default function PembelianPage() {
             </div>
 
             {/* PRINTABLE INVOICE CONTENT */}
-            <div style={{ padding: "28px 32px 140px 32px", overflowY: "auto", flex: 1 }}>
+            <div style={{ padding: "28px 32px", overflowY: "auto", flex: 1 }}>
               {/* COMPANY LETTERHEAD */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #0F172A", paddingBottom: 16, marginBottom: 20 }}>
                 <div>

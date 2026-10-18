@@ -737,7 +737,7 @@ export default function AlurProduksiPage() {
   }
 
   return (
-    <div style={{ padding: "28px 32px 140px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: "28px 32px 48px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .flow-card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -1724,7 +1724,7 @@ export default function AlurProduksiPage() {
 
       {/* BOTTOM COMFORT SPACER & STATUS BAR */}
       <div style={{
-        marginTop: 36,
+        marginTop: 24,
         padding: "16px 22px",
         background: "#FFFFFF",
         borderRadius: 14,
@@ -1747,7 +1747,7 @@ export default function AlurProduksiPage() {
             Total Produksi: <strong style={{ color: "#0F172A" }}>{filteredActivePoItems.reduce((s, p) => s + (getPO(p.po_id)?.jumlahTerbit || 0), 0).toLocaleString("id-ID")} pcs</strong>
           </span>
           <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => document.querySelector(".app-content")?.scrollTo({ top: 0, behavior: "smooth" })}
             style={{
               background: "#F8FAFC",
               border: "1px solid #CBD5E1",

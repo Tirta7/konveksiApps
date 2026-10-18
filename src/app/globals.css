@@ -129,7 +129,7 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
 .app-content > main,
 .app-content > form,
 .app-content > section {
-  padding-bottom: 140px !important;
+  padding-bottom: 48px !important;
   box-sizing: border-box;
 }
 
@@ -824,7 +824,7 @@ tbody tr:hover { background: #F8FAFC; }
   /* Override inline paddings for page wrappers */
   .app-content > div:not(.mobile-header) {
     padding: 16px !important;
-    padding-bottom: max(140px, calc(env(safe-area-inset-bottom, 34px) + 100px)) !important;
+    padding-bottom: max(40px, calc(env(safe-area-inset-bottom, 0px) + 28px)) !important;
   }
   
   /* Fix page header squishing */

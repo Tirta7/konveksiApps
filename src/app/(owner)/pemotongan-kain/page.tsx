@@ -327,7 +327,7 @@ export default function PemotonganKainPage() {
   }, [data, searchQuery, filterTukang, filterStatus, sortBy]);
 
   return (
-    <div style={{ padding: "32px 32px 140px 32px", background: "var(--bg-app)", minHeight: "100%", overflowY: "auto" }}>
+    <div style={{ padding: "32px 32px 48px 32px", background: "var(--bg-app)", minHeight: "100%", overflowY: "auto" }}>
       {/* PAGE HEADER */}
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
         <div>
