@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 
 export const dynamic = "force-dynamic";
@@ -55,20 +55,45 @@ export async function GET() {
       else if (totalDisetujui > 0) stage = "siap-tarik";
       else if (totalDilaporkan > 0) stage = "dijahit";
 
+      // Target Selesai & Overdue Check
+      const targetSelesai = po.target_selesai || pemotongan?.target_selesai || null;
+      let overdueDays = 0;
+      let isOverdue = false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (targetSelesai && stage !== "selesai") {
+        const targetDate = new Date(targetSelesai);
+        targetDate.setHours(0, 0, 0, 0);
+        const graceDate = new Date(targetDate);
+        graceDate.setDate(graceDate.getDate() + 1); // 1 hari toleransi
+        if (today > graceDate) {
+          overdueDays = Math.floor((today.getTime() - graceDate.getTime()) / (1000 * 60 * 60 * 24));
+          isOverdue = true;
+        }
+      }
+
       return {
         id: po.id,
         noPo: po.noPo,
         model: po.model,
         jumlahTerbit: po.jumlahTerbit,
         tanggalTerbit: po.tanggalTerbit,
+        vendorId: po.vendorId,
         vendor_nama: vendor?.nama || "",
         vendor_tipe: vendor?.tipe || "",
+        vendor_kontak: vendor?.kontak || vendor?.no_hp || "",
+        pemotongan_id: po.pemotongan_id,
         pemotongan_nama_barang: pemotongan?.nama_barang || null,
+        target_selesai: targetSelesai,
+        overdueDays,
+        isOverdue,
         totalDilaporkan,
         totalDisetujui,
         totalWashing,
         totalWashingDone,
         totalDiGudang,
+        sisaPcs: Math.max(0, po.jumlahTerbit - totalDiGudang),
         pctCMT,
         pctDisetujui,
         pctGudang,
@@ -83,16 +108,36 @@ export async function GET() {
     const totalDiGudangSemua = poList.reduce((s: any, p: any) => s + p.totalDiGudang, 0);
     const totalPCS = poList.reduce((s: any, p: any) => s + p.jumlahTerbit, 0);
 
-    // Vendor aktif dengan PO
+    // Keterlambatan PO & Vendor
+    const overdueList = poList
+      .filter((p: any) => p.isOverdue)
+      .sort((a: any, b: any) => b.overdueDays - a.overdueDays);
+    const totalPoTerlambat = overdueList.length;
+
+    // Vendor aktif dengan PO & status keterlambatan
     const vendorAktifIds = new Set(po_produksi.filter((po: any) => {
       const g = gudangLedger[po.id] || 0;
       return g < po.jumlahTerbit;
     }).map((po: any) => po.vendorId));
+
     const vendorList = vendors
       .filter((v: any) => vendorAktifIds.has(v.id))
       .map((v: any) => {
-        const poVendor = po_produksi.filter((po: any) => po.vendorId === v.id);
-        return { id: v.id, nama: v.nama, tipe: v.tipe, jenis_pekerjaan: v.jenis_pekerjaan, jumlahPO: poVendor.length };
+        const poVendor = poList.filter((po: any) => po.vendorId === v.id && po.stage !== "selesai");
+        const vendorOverdue = poVendor.filter((po: any) => po.isOverdue);
+        const maxOverdue = vendorOverdue.reduce((max: number, p: any) => Math.max(max, p.overdueDays), 0);
+        return { 
+          id: v.id, 
+          nama: v.nama, 
+          tipe: v.tipe, 
+          jenis_pekerjaan: v.jenis_pekerjaan, 
+          kontak: v.kontak || v.no_hp || "",
+          jumlahPO: poVendor.length,
+          hasOverdue: vendorOverdue.length > 0,
+          overdueCount: vendorOverdue.length,
+          maxOverdueDays: maxOverdue,
+          overduePoNames: vendorOverdue.map((p: any) => p.noPo)
+        };
       });
 
     return NextResponse.json({
@@ -103,12 +148,14 @@ export async function GET() {
       terlaris: poList[0]?.model || "",
       batches: [],
       spkList: [],
-      // New fields
+      // Metrics & Alerts
       poAktif,
       poSelesai,
       totalPCS,
       totalDiGudang: totalDiGudangSemua,
-      poList: poList.slice(0, 10),
+      totalPoTerlambat,
+      overdueList,
+      poList: poList.slice(0, 15),
       vendorList,
     });
   } catch (e: any) {
