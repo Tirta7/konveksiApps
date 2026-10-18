@@ -130,19 +130,24 @@ export async function POST() {
       };
     });
 
-    const pipelineEntry = {
-      po_id: po.id,
-      stages,
-      updatedAt: new Date().toISOString(),
-      auto_synced: true,
-    };
+    const prevEntry = existingIndex !== -1 ? data.po_pipeline[existingIndex] : null;
+    const stagesChanged = !prevEntry || JSON.stringify(prevEntry.stages) !== JSON.stringify(stages);
 
-    if (existingIndex !== -1) {
-      data.po_pipeline[existingIndex] = pipelineEntry;
-    } else {
-      data.po_pipeline.push(pipelineEntry);
+    if (stagesChanged) {
+      const pipelineEntry = {
+        po_id: po.id,
+        stages,
+        updatedAt: new Date().toISOString(),
+        auto_synced: true,
+      };
+
+      if (existingIndex !== -1) {
+        data.po_pipeline[existingIndex] = pipelineEntry;
+      } else {
+        data.po_pipeline.push(pipelineEntry);
+      }
+      synced++;
     }
-    synced++;
   }
 
   if (synced > 0) writeData(data);

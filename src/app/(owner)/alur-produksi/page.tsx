@@ -161,17 +161,25 @@ export default function AlurProduksiPage() {
   const [showAllVendors, setShowAllVendors] = useState(false);
   const [expandedVendorId, setExpandedVendorId] = useState<number | null>(null);
 
-  const doSync = async () => {
+  const handleManualSync = async () => {
     setSyncing(true);
     try { 
-      await fetch("/api/po-pipeline/sync", { method: "POST" }); 
-    } catch {}
-    setSyncing(false);
+      const res = await fetch("/api/po-pipeline/sync", { method: "POST" }); 
+      if (res.ok) {
+        toast.success("Pipeline berhasil disinkronkan!");
+        await fetchAll(true);
+      } else {
+        toast.error("Gagal menyinkronkan pipeline");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat sinkronisasi");
+    } finally {
+      setSyncing(false);
+    }
   };
 
-  const fetchAll = async () => {
-    setLoading(true);
-    await doSync();
+  const fetchAll = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const [s, pp, po, v, cp, tf] = await Promise.all([
         fetch("/api/pipeline-stages?_t=" + Date.now()).then(r => r.json()).catch(() => []),
@@ -192,13 +200,15 @@ export default function AlurProduksiPage() {
     } catch (e) {
       toast.error("Gagal memuat data alur produksi");
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => { 
-    fetchAll(); 
-    const handleSync = () => { fetchAll(); };
+    fetchAll(false); 
+    const handleSync = () => { 
+      fetchAll(true); // Silent background reload, no blinking!
+    };
     window.addEventListener("konveksi-sync", handleSync);
     return () => window.removeEventListener("konveksi-sync", handleSync);
   }, []);
@@ -842,7 +852,7 @@ export default function AlurProduksiPage() {
               <Workflow size={14} color="#64748B" /> Pengaturan Alur
             </Link>
             <button
-              onClick={fetchAll}
+              onClick={handleManualSync}
               disabled={syncing}
               style={{
                 display: "flex",
