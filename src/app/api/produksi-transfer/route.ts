@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 // GET: list transfers, optionally filter by po_id or tahap_ke
@@ -27,13 +27,14 @@ export async function POST(req: NextRequest) {
   const data = readData();
   if (!data.produksi_transfers) data.produksi_transfers = [];
   const body = await req.json();
-  const { po_id, dari, ke, vendor_id, jumlah_kirim, sizeBreakdown, catatan, transfer_id_asal } = body;
+  const { po_id, dari, ke, vendor_id, jumlah_kirim, sizeBreakdown, catatan, transfer_id_asal, target_selesai } = body;
   if (!po_id || !dari || !ke || !jumlah_kirim) return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
   const id = nextId(data, "produksi_transfers" as any);
   const transfer = {
     id, po_id: Number(po_id),
     dari, ke,
     vendor_id: vendor_id ? Number(vendor_id) : null,
+    target_selesai: target_selesai || null,
     jumlah_kirim: Number(jumlah_kirim),
     jumlah_diterima: null,
     sizeBreakdown: sizeBreakdown || [],
@@ -44,6 +45,27 @@ export async function POST(req: NextRequest) {
     tanggal_terima: null
   };
   data.produksi_transfers.push(transfer);
+
+  // Sync with po_pipeline if exists
+  if (data.po_pipeline) {
+    const pEntry = data.po_pipeline.find((p: any) => p.po_id === Number(po_id));
+    if (pEntry && Array.isArray(pEntry.stages)) {
+      // Mark 'dari' as Selesai
+      const fromStage = pEntry.stages.find((s: any) => s.slug === dari);
+      if (fromStage) {
+        fromStage.status = "Selesai";
+        fromStage.selesai_tgl = new Date().toISOString().split("T")[0];
+      }
+      // Mark 'ke' as Proses with assigned vendor & target_selesai
+      const toStage = pEntry.stages.find((s: any) => s.slug === ke);
+      if (toStage) {
+        toStage.status = "Proses";
+        if (vendor_id) toStage.vendor_id = Number(vendor_id);
+        if (target_selesai) toStage.target_selesai = target_selesai;
+      }
+      pEntry.updatedAt = new Date().toISOString();
+    }
+  }
 
   // Mark the incoming transfer to Gudang as forwarded so it disappears from the "Siap Dikirim" list
   if (transfer_id_asal) {

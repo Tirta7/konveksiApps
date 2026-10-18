@@ -58,6 +58,10 @@ export async function GET() {
     const pctWashing = po.jumlahTerbit > 0 ? Math.round((washingKirim / po.jumlahTerbit) * 100) : 0;
     const pctWashingACC = po.jumlahTerbit > 0 ? Math.round((washingACC / po.jumlahTerbit) * 100) : 0;
 
+    // Target selesai lookup from pemotongan if null
+    const pemotongan = (data.pemotongan_kain || []).find((pk: any) => pk.id === po.pemotongan_id);
+    const targetSelesai = po.target_selesai || pemotongan?.target_selesai || null;
+
     // Current stage determination
     let currentStage = "cmt";
     if (washingACC > 0) currentStage = "selesai_washing";
@@ -67,6 +71,8 @@ export async function GET() {
 
     return {
       ...po,
+      target_selesai: targetSelesai,
+      pemotongan_target_selesai: pemotongan?.target_selesai || null,
       totalDiambil,
       sisa,
       sizeProgress,

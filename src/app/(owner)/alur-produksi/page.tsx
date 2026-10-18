@@ -86,6 +86,7 @@ export default function AlurProduksiPage() {
     ke_slug: "",
     vendor_id: "",
     jumlah_kirim: "",
+    target_selesai: "",
     catatan: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -204,12 +205,148 @@ export default function AlurProduksiPage() {
   const countFor = (stageId: number, status: string) =>
     posForStage(stageId).filter(p => (p.stageEntry?.status || "Menunggu") === status).length;
 
+  function fmtDate(str?: string) {
+    if (!str) return "-";
+    return new Date(str).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  }
+
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const isOverdue = (t?: string) => t ? new Date(t) < today : false;
+  const isOverdue = (t?: string) => {
+    if (!t) return false;
+    const targetDate = new Date(t);
+    targetDate.setHours(0, 0, 0, 0);
+    const graceDate = new Date(targetDate);
+    graceDate.setDate(graceDate.getDate() + 1); // 1 hari toleransi
+    return today > graceDate;
+  };
   const overdueDays = (t?: string) => {
     if (!t) return 0;
-    const diff = today.getTime() - new Date(t).setHours(0,0,0,0);
-    return Math.ceil(diff / (1000*60*60*24));
+    const targetDate = new Date(t);
+    targetDate.setHours(0, 0, 0, 0);
+    const graceDate = new Date(targetDate);
+    graceDate.setDate(graceDate.getDate() + 1);
+    if (today <= graceDate) return 0;
+    const diff = today.getTime() - graceDate.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  };
+  const remainingDays = (t?: string) => {
+    if (!t) return 0;
+    const targetDate = new Date(t);
+    targetDate.setHours(0, 0, 0, 0);
+    const diff = targetDate.getTime() - today.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  // Vendor Workload & Capacity Analysis (Kapasitas & Status Barang Belum Selesai)
+  const getVendorWorkload = (vendorId: number) => {
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (!vendor) return null;
+
+    // Check all active POs assigned to this vendor
+    const activePOs = poProduksi.filter(p => p.vendorId === vendorId && p.status !== "Selesai" && p.status !== "Pipeline Selesai");
+    
+    // Also check transfers sent to this vendor that haven't been completed
+    const activeTransfers = transfers.filter(t => t.vendor_id === vendorId && t.status !== "Diverifikasi");
+
+    const unfinishedPOs: any[] = [];
+    let totalPcsAssigned = 0;
+    let totalPcsUnfinished = 0;
+
+    for (const po of activePOs) {
+      // Find progress
+      const records = cmtProgres.filter(p => p.po_id === po.id);
+      const acc = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
+                         .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
+      const sisa = Math.max(0, (po.jumlahTerbit || 0) - acc);
+      const pct = po.jumlahTerbit > 0 ? Math.round((acc / po.jumlahTerbit) * 100) : 0;
+      
+      const targetDate = po.target_selesai || null;
+      const late = isOverdue(targetDate);
+      const lateDays = overdueDays(targetDate);
+
+      totalPcsAssigned += po.jumlahTerbit || 0;
+      totalPcsUnfinished += sisa;
+
+      unfinishedPOs.push({
+        poId: po.id,
+        noPo: po.noPo,
+        model: po.model,
+        jumlahTerbit: po.jumlahTerbit,
+        selesaiPcs: acc,
+        sisaPcs: sisa,
+        progressPct: pct,
+        target_selesai: targetDate,
+        isOverdue: late,
+        overdueDays: lateDays
+      });
+    }
+
+    // For other vendors (e.g. washing), add transfer items if not in activePOs
+    for (const t of activeTransfers) {
+      if (!activePOs.find(p => p.id === t.po_id)) {
+        const po = getPO(t.po_id);
+        const sisa = Math.max(0, (t.jumlah_kirim || 0) - (t.jumlah_diterima || 0));
+        const pct = t.jumlah_kirim > 0 ? Math.round(((t.jumlah_diterima || 0) / t.jumlah_kirim) * 100) : 0;
+        const targetDate = t.target_selesai || po?.target_selesai || null;
+        const late = isOverdue(targetDate);
+        const lateDays = overdueDays(targetDate);
+
+        totalPcsAssigned += t.jumlah_kirim || 0;
+        totalPcsUnfinished += sisa;
+
+        unfinishedPOs.push({
+          poId: t.po_id,
+          noPo: po?.noPo || `PO #${t.po_id}`,
+          model: po?.model || `Transfer ${t.ke}`,
+          jumlahTerbit: t.jumlah_kirim,
+          selesaiPcs: t.jumlah_diterima || 0,
+          sisaPcs: sisa,
+          progressPct: pct,
+          target_selesai: targetDate,
+          isOverdue: late,
+          overdueDays: lateDays
+        });
+      }
+    }
+
+    const overdueCount = unfinishedPOs.filter(p => p.isOverdue).length;
+    const hasOverdue = overdueCount > 0;
+    const maxOverdueDays = unfinishedPOs.reduce((max, p) => Math.max(max, p.overdueDays), 0);
+
+    // Determine capacity level & label
+    let capacityLevel: "safe" | "medium" | "overloaded" = "safe";
+    let capacityLabel = "🟢 Kapasitas Sangat Baik (Siap Terima)";
+    let capacityNote = "Vendor tidak memiliki tanggungan barang tertunda dan siap memproses pekerjaan baru.";
+
+    if (hasOverdue) {
+      capacityLevel = "overloaded";
+      capacityLabel = "🔴 Beban Tinggi / Ada Keterlambatan!";
+      capacityNote = `Perhatian: Ada ${overdueCount} PO yang terlambat hingga +${maxOverdueDays} hari. Pertimbangkan sebelum menambah order baru.`;
+    } else if (totalPcsUnfinished > 1500) {
+      capacityLevel = "overloaded";
+      capacityLabel = "🔴 Beban Sangat Padat";
+      capacityNote = `Vendor sedang mengerjakan ${totalPcsUnfinished} pcs barang. Kapasitas mendekati batas maksimum.`;
+    } else if (totalPcsUnfinished > 0) {
+      capacityLevel = "medium";
+      capacityLabel = "🟡 Beban Sedang";
+      capacityNote = `Sedang mengerjakan ${totalPcsUnfinished} pcs barang Anda (${unfinishedPOs.length} PO aktif) dengan progres berjalan.`;
+    }
+
+    return {
+      vendorId,
+      vendorNama: vendor.nama,
+      vendorTipe: vendor.tipe,
+      totalActivePO: unfinishedPOs.length,
+      totalPcsAssigned,
+      totalPcsUnfinished,
+      hasOverdue,
+      overdueCount,
+      maxOverdueDays,
+      unfinishedPOs,
+      capacityLevel,
+      capacityLabel,
+      capacityNote
+    };
   };
 
   // KPI Calculations
@@ -323,11 +460,18 @@ export default function AlurProduksiPage() {
     const curUrutan = currentStage?.urutan || 1;
     const nextSt = stages.find(s => s.urutan > curUrutan && s.aktif);
 
+    // Compute default target date (7 days from now, or PO deadline if available)
+    const defDate = new Date();
+    defDate.setDate(defDate.getDate() + 7);
+    const defDateStr = defDate.toISOString().split("T")[0];
+    const initialTargetDate = po.target_selesai ? String(po.target_selesai).split("T")[0] : defDateStr;
+
     setTransferModal({ po, currentStage });
     setTransferForm({
       ke_slug: nextSt?.slug || "",
       vendor_id: "",
       jumlah_kirim: String(po.jumlahTerbit || ""),
+      target_selesai: initialTargetDate,
       catatan: ""
     });
   };
@@ -350,6 +494,7 @@ export default function AlurProduksiPage() {
           dari: transferModal.currentStage?.slug || "potong_bahan",
           ke: transferForm.ke_slug,
           vendor_id: transferForm.vendor_id ? Number(transferForm.vendor_id) : null,
+          target_selesai: transferForm.target_selesai || null,
           jumlah_kirim: Number(transferForm.jumlah_kirim),
           catatan: transferForm.catatan
         })
@@ -996,6 +1141,46 @@ export default function AlurProduksiPage() {
                     </button>
                   </div>
 
+                  {/* PO Dateline / Target Selesai Banner */}
+                  {(() => {
+                    const poTargetDate = po.target_selesai || (dists.find(d => d.target_selesai)?.target_selesai) || null;
+                    const isPoLate = isOverdue(poTargetDate) && rawStatus !== "Selesai";
+                    const poLateDays = overdueDays(poTargetDate);
+                    const poDaysLeft = remainingDays(poTargetDate);
+
+                    return (
+                      <div style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "space-between", 
+                        background: isPoLate ? "#FEF2F2" : "#F8FAFC", 
+                        border: isPoLate ? "1px solid #FECACA" : "1px solid #E2E8F0", 
+                        borderRadius: 8, 
+                        padding: "7px 10px", 
+                        marginBottom: 10 
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                          <Calendar size={13} color={isPoLate ? "#DC2626" : "#64748B"} />
+                          <span style={{ color: "#64748B", fontWeight: 600 }}>Dateline Target:</span>
+                          <strong style={{ color: isPoLate ? "#DC2626" : "#0F172A" }}>
+                            {poTargetDate ? fmtDate(poTargetDate) : "Belum diatur"}
+                          </strong>
+                        </div>
+                        {poTargetDate ? (
+                          isPoLate ? (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#DC2626", background: "#FEE2E2", border: "1px solid #FCA5A5", padding: "2px 7px", borderRadius: 4 }}>
+                              🚨 Terlambat +{poLateDays} Hari
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#059669", background: "#DCFCE7", border: "1px solid #BBF7D0", padding: "2px 7px", borderRadius: 4 }}>
+                              ⏳ Sisa {poDaysLeft} Hari
+                            </span>
+                          )
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
                   {/* Context: Initial Cutting Ready Info */}
                   {isInitialCutting && (
                     <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
@@ -1027,7 +1212,12 @@ export default function AlurProduksiPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                     {dists.length === 0 ? (
                       <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "14px 10px", background: "#F8FAFC", borderRadius: 10, border: "1px dashed #CBD5E1" }}>
-                        Belum ada vendor / transfer di tahap ini.
+                        <div>Belum ada vendor / transfer di tahap ini.</div>
+                        {po.target_selesai && (
+                          <div style={{ fontSize: 11, color: isOverdue(po.target_selesai) ? "#DC2626" : "#2563EB", fontWeight: 700, marginTop: 4 }}>
+                            Target Selesai SPK: {fmtDate(po.target_selesai)} {isOverdue(po.target_selesai) ? `(Lewat ${overdueDays(po.target_selesai)} hari!)` : ""}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       dists.map((d, i) => {
@@ -1227,119 +1417,284 @@ export default function AlurProduksiPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmitTransfer}>
-              <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-                
-                {/* Target Stage Select */}
-                <div>
-                  <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                    Pilih Pos Tujuan Pengiriman <span style={{ color: "#EF4444" }}>*</span>
-                  </label>
-                  <select
-                    required
-                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", background: "#FFFFFF", color: "#0F172A" }}
-                    value={transferForm.ke_slug}
-                    onChange={e => setTransferForm({ ...transferForm, ke_slug: e.target.value })}
-                  >
-                    <option value="">-- Pilih Pos Tahap Selanjutnya --</option>
-                    {stages.filter(s => s.urutan > (transferModal.currentStage?.urutan || 0)).map(s => (
-                      <option key={s.id} value={s.slug}>Pos #{s.urutan}: {s.nama} ({s.slug})</option>
-                    ))}
-                  </select>
-                </div>
+            {(() => {
+              const selectedVendorWorkload = transferForm.vendor_id ? getVendorWorkload(Number(transferForm.vendor_id)) : null;
 
-                {/* Vendor Select */}
-                <div>
-                  <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                    Pilih Vendor Mitra Penerima
-                  </label>
-                  <select
-                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", background: "#FFFFFF", color: "#0F172A" }}
-                    value={transferForm.vendor_id}
-                    onChange={e => setTransferForm({ ...transferForm, vendor_id: e.target.value })}
-                  >
-                    <option value="">-- Pilih Vendor (Opsional / Internal) --</option>
-                    {vendors.map(v => (
-                      <option key={v.id} value={v.id}>{v.nama} ({v.tipe || "Vendor"})</option>
-                    ))}
-                  </select>
-                </div>
+              return (
+                <form onSubmit={handleSubmitTransfer}>
+                  <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+                    
+                    {/* Target Stage Select */}
+                    <div>
+                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        Pilih Pos Tujuan Pengiriman <span style={{ color: "#EF4444" }}>*</span>
+                      </label>
+                      <select
+                        required
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", background: "#FFFFFF", color: "#0F172A" }}
+                        value={transferForm.ke_slug}
+                        onChange={e => setTransferForm({ ...transferForm, ke_slug: e.target.value })}
+                      >
+                        <option value="">-- Pilih Pos Tahap Selanjutnya --</option>
+                        {stages.filter(s => s.urutan > (transferModal.currentStage?.urutan || 0)).map(s => (
+                          <option key={s.id} value={s.slug}>Pos #{s.urutan}: {s.nama} ({s.slug})</option>
+                        ))}
+                      </select>
+                    </div>
 
-                {/* Jumlah Kirim */}
-                <div>
-                  <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                    Jumlah Barang Dikirim (Pcs) <span style={{ color: "#EF4444" }}>*</span>
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 500"
-                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", boxSizing: "border-box", fontWeight: 800, color: "#2563EB" }}
-                    value={transferForm.jumlah_kirim}
-                    onChange={e => setTransferForm({ ...transferForm, jumlah_kirim: e.target.value })}
-                  />
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
-                    Maksimum kuota PO ini: {transferModal.po.jumlahTerbit} pcs
+                    {/* Vendor Select with Workload Preview */}
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <label style={{ fontSize: 12.5, fontWeight: 700, color: "#334155" }}>
+                          Pilih Vendor Mitra Penerima
+                        </label>
+                        <span style={{ fontSize: 11, color: "#64748B" }}>Pantau kapasitas & tanggungan barang</span>
+                      </div>
+                      <select
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", background: "#FFFFFF", color: "#0F172A" }}
+                        value={transferForm.vendor_id}
+                        onChange={e => setTransferForm({ ...transferForm, vendor_id: e.target.value })}
+                      >
+                        <option value="">-- Pilih Vendor (Opsional / Internal) --</option>
+                        {vendors.map(v => {
+                          const wl = getVendorWorkload(v.id);
+                          let tag = "🟢 Siap Terima (0 antrean)";
+                          if (wl?.hasOverdue) tag = `🔴 Ada ${wl.overdueCount} PO Terlambat (${wl.totalPcsUnfinished} pcs)`;
+                          else if ((wl?.totalPcsUnfinished || 0) > 0) tag = `🟡 Sedang Proses ${wl?.totalPcsUnfinished} pcs`;
+                          return (
+                            <option key={v.id} value={v.id}>
+                              {v.nama} ({v.tipe || "Vendor"}) — {tag}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* DEDICATED VENDOR WORKLOAD & UNFINISHED GOODS ANALYSIS CARD */}
+                    {selectedVendorWorkload && (
+                      <div style={{ 
+                        background: selectedVendorWorkload.capacityLevel === "safe" ? "#F0FDF4" : selectedVendorWorkload.capacityLevel === "medium" ? "#FFFBEB" : "#FEF2F2",
+                        border: `1.5px solid ${selectedVendorWorkload.capacityLevel === "safe" ? "#86EFAC" : selectedVendorWorkload.capacityLevel === "medium" ? "#FDE68A" : "#FCA5A5"}`,
+                        borderRadius: 12,
+                        padding: "14px 16px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10
+                      }}>
+                        {/* Status Header */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#64748B", letterSpacing: 0.5 }}>
+                              Analisis Kapasitas & Beban Kerja:
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: "#0F172A", marginTop: 2 }}>
+                              {selectedVendorWorkload.vendorNama} ({selectedVendorWorkload.vendorTipe})
+                            </div>
+                          </div>
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 800, 
+                            padding: "3px 9px", 
+                            borderRadius: 6,
+                            background: selectedVendorWorkload.capacityLevel === "safe" ? "#DCFCE7" : selectedVendorWorkload.capacityLevel === "medium" ? "#FEF3C7" : "#FEE2E2",
+                            color: selectedVendorWorkload.capacityLevel === "safe" ? "#166534" : selectedVendorWorkload.capacityLevel === "medium" ? "#92400E" : "#DC2626",
+                            border: `1px solid ${selectedVendorWorkload.capacityLevel === "safe" ? "#86EFAC" : selectedVendorWorkload.capacityLevel === "medium" ? "#FDE68A" : "#FCA5A5"}`
+                          }}>
+                            {selectedVendorWorkload.capacityLabel}
+                          </span>
+                        </div>
+
+                        {/* KPI Workload Mini Grid */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, textAlign: "center" }}>
+                          <div style={{ background: "white", padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+                            <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>PO Aktif Vendor</div>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: "#0F172A", marginTop: 2 }}>
+                              {selectedVendorWorkload.totalActivePO} PO
+                            </div>
+                          </div>
+                          <div style={{ background: "white", padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+                            <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>Barang Belum Selesai</div>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: selectedVendorWorkload.totalPcsUnfinished > 0 ? "#DC2626" : "#059669", marginTop: 2 }}>
+                              {selectedVendorWorkload.totalPcsUnfinished.toLocaleString("id-ID")} pcs
+                            </div>
+                          </div>
+                          <div style={{ background: "white", padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+                            <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>Status Dateline</div>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: selectedVendorWorkload.hasOverdue ? "#DC2626" : "#16A34A", marginTop: 2 }}>
+                              {selectedVendorWorkload.hasOverdue ? `🚨 ${selectedVendorWorkload.overdueCount} Lewat!` : "✅ Sesuai Target"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Barang Anda yang Masih Belum Selesai */}
+                        <div>
+                          {selectedVendorWorkload.totalPcsUnfinished > 0 ? (
+                            <div style={{ background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #FECACA" }}>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: "#991B1B", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                                <AlertTriangle size={13} color="#DC2626" />
+                                <span>Perhatian: Masih ada barang Anda yang BELUM SELESAI di vendor ini:</span>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {selectedVendorWorkload.unfinishedPOs.map((upo: any) => (
+                                  <div key={upo.poId} style={{ background: "#F8FAFC", borderRadius: 8, padding: "8px 10px", fontSize: 11.5, border: "1px solid #E2E8F0" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                      <div>
+                                        <strong style={{ color: "#1E293B" }}>{upo.noPo}</strong> ({upo.model}) &bull; Sisa: <strong style={{ color: "#DC2626" }}>{upo.sisaPcs} pcs</strong> ({upo.progressPct}% selesai)
+                                      </div>
+                                      {upo.isOverdue ? (
+                                        <span style={{ fontSize: 10, fontWeight: 800, color: "#DC2626", background: "#FEE2E2", padding: "1px 6px", borderRadius: 4 }}>
+                                          🚨 Lewat +{upo.overdueDays} Hari
+                                        </span>
+                                      ) : (
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: "#059669", background: "#DCFCE7", padding: "1px 6px", borderRadius: 4 }}>
+                                          Target: {fmtDate(upo.target_selesai)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Mini progress bar */}
+                                    <div style={{ height: 4, background: "#E2E8F0", borderRadius: 2, overflow: "hidden", marginTop: 5 }}>
+                                      <div style={{ width: `${upo.progressPct}%`, height: "100%", background: upo.isOverdue ? "#EF4444" : "#3B82F6" }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div style={{ fontSize: 11, color: "#7F1D1D", marginTop: 6, fontStyle: "italic" }}>
+                                {selectedVendorWorkload.capacityNote}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #BBF7D0", display: "flex", alignItems: "center", gap: 8 }}>
+                              <CheckCircle2 size={16} color="#16A34A" />
+                              <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>
+                                Tidak ada tanggungan barang Anda yang belum selesai di vendor ini. Vendor sangat mampu dan siap menerima order baru.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Target Selesai / Dateline di Pos Tujuan */}
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <label style={{ fontSize: 12.5, fontWeight: 700, color: "#334155" }}>
+                          Target Selesai / Dateline di Pos Tujuan <span style={{ color: "#EF4444" }}>*</span>
+                        </label>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {[3, 5, 7, 14].map(days => (
+                            <button
+                              type="button"
+                              key={days}
+                              onClick={() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() + days);
+                                setTransferForm({ ...transferForm, target_selesai: d.toISOString().split("T")[0] });
+                              }}
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                padding: "2px 7px",
+                                borderRadius: 4,
+                                border: "1px solid #CBD5E1",
+                                background: "#F8FAFC",
+                                color: "#475569",
+                                cursor: "pointer"
+                              }}
+                            >
+                              +{days} Hari
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <input
+                        required
+                        type="date"
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", boxSizing: "border-box", fontWeight: 700, color: "#0F172A" }}
+                        value={transferForm.target_selesai}
+                        onChange={e => setTransferForm({ ...transferForm, target_selesai: e.target.value })}
+                      />
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                        Batas waktu pengerjaan ini akan dipantau real-time pada pipeline & dashboard.
+                      </div>
+                    </div>
+
+                    {/* Jumlah Kirim */}
+                    <div>
+                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        Jumlah Barang Dikirim (Pcs) <span style={{ color: "#EF4444" }}>*</span>
+                      </label>
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 500"
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", boxSizing: "border-box", fontWeight: 800, color: "#2563EB" }}
+                        value={transferForm.jumlah_kirim}
+                        onChange={e => setTransferForm({ ...transferForm, jumlah_kirim: e.target.value })}
+                      />
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                        Maksimum kuota PO ini: {transferModal.po.jumlahTerbit} pcs
+                      </div>
+                    </div>
+
+                    {/* Catatan */}
+                    <div>
+                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        Catatan Pengiriman / Surat Jalan
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="e.g. Diantar supir truk pukul 14:00, target selesai hari Jumat..."
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 12.5, outline: "none", resize: "none", boxSizing: "border-box" }}
+                        value={transferForm.catatan}
+                        onChange={e => setTransferForm({ ...transferForm, catatan: e.target.value })}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Catatan */}
-                <div>
-                  <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                    Catatan Pengiriman / Surat Jalan
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="e.g. Diantar supir truk pukul 14:00, target selesai hari Jumat..."
-                    style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 12.5, outline: "none", resize: "none", boxSizing: "border-box" }}
-                    value={transferForm.catatan}
-                    onChange={e => setTransferForm({ ...transferForm, catatan: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div style={{ padding: "16px 24px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC" }}>
-                <button
-                  type="button"
-                  onClick={() => setTransferModal(null)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: "1px solid #CBD5E1",
-                    background: "#FFFFFF",
-                    color: "#475569",
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: "pointer"
-                  }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    padding: "9px 20px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: "linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)",
-                    color: "#FFFFFF",
-                    fontSize: 13,
-                    fontWeight: 800,
-                    cursor: isSubmitting ? "not-allowed" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    boxShadow: "0 2px 8px rgba(37,99,235,0.25)",
-                    opacity: isSubmitting ? 0.7 : 1
-                  }}
-                >
-                  <Send size={14} /> {isSubmitting ? "Mengirim..." : "Kirimkan Barang"}
-                </button>
-              </div>
-            </form>
+                  {/* Modal Footer */}
+                  <div style={{ padding: "16px 24px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC" }}>
+                    <button
+                      type="button"
+                      onClick={() => setTransferModal(null)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 8,
+                        border: "1px solid #CBD5E1",
+                        background: "#FFFFFF",
+                        color: "#475569",
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      style={{
+                        padding: "9px 20px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)",
+                        color: "#FFFFFF",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        cursor: isSubmitting ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        boxShadow: "0 2px 8px rgba(37,99,235,0.25)",
+                        opacity: isSubmitting ? 0.7 : 1
+                      }}
+                    >
+                      <Send size={14} /> {isSubmitting ? "Mengirim..." : "Kirimkan Barang"}
+                    </button>
+                  </div>
+                </form>
+              );
+            })()}
           </div>
         </div>
       )}
