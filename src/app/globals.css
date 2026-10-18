@@ -121,6 +121,16 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-md); 
   transition: margin-left 0.3s ease;
   width: calc(100vw - var(--sidebar-width));
   box-sizing: border-box;
+  background: #F1F5F9;
+}
+
+/* Universal bottom comfort spacing for all pages in owner layout to prevent content hugging the bottom */
+.app-content > div:not(.mobile-header),
+.app-content > main,
+.app-content > form,
+.app-content > section {
+  padding-bottom: 140px !important;
+  box-sizing: border-box;
 }
 
 /* ─── Sidebar Collapsed State ────────────────────────────────────────── */
@@ -814,7 +824,7 @@ tbody tr:hover { background: #F8FAFC; }
   /* Override inline paddings for page wrappers */
   .app-content > div:not(.mobile-header) {
     padding: 16px !important;
-    padding-bottom: max(24px, calc(env(safe-area-inset-bottom, 24px) + 16px)) !important;
+    padding-bottom: max(140px, calc(env(safe-area-inset-bottom, 34px) + 100px)) !important;
   }
   
   /* Fix page header squishing */

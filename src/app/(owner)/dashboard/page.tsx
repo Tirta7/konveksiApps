@@ -199,7 +199,7 @@ export default function DashboardPage() {
         .dash-main-scroll {
           display: flex;
           flex-direction: column;
-          padding: 22px 32px 56px;
+          padding: 22px 32px 140px;
           gap: 20px;
         }
         .dash-stats-grid {

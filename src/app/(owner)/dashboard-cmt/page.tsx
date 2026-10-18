@@ -226,7 +226,7 @@ export default function DashboardCMTPage() {
   }, [filteredVendors]);
 
   return (
-    <div style={{ padding: "26px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: "26px 32px 140px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes pulse2 { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.92); } }
@@ -846,6 +846,49 @@ export default function DashboardCMTPage() {
           );
         })
       )}
+
+      {/* BOTTOM COMFORT SPACER & STATUS BAR */}
+      <div style={{
+        marginTop: 36,
+        padding: "16px 22px",
+        background: "#FFFFFF",
+        borderRadius: 14,
+        border: "1px solid #E2E8F0",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 14,
+        color: "#64748B",
+        fontSize: 12
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 0 3px #DCFCE7" }} />
+          <span>Monitoring mitra CMT & Laundry aktif &bull; Menampilkan <strong>{filteredVendors.length} Vendor Mitra</strong></span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            style={{
+              background: "#F8FAFC",
+              border: "1px solid #CBD5E1",
+              borderRadius: 8,
+              padding: "6px 14px",
+              fontSize: 11.5,
+              fontWeight: 800,
+              color: "#334155",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              transition: "all 0.2s"
+            }}
+          >
+            ↑ Kembali ke Atas
+          </button>
+        </div>
+      </div>
 
       {/* MODERN MODAL TARIK BARANG */}
       {activePo && (() => {

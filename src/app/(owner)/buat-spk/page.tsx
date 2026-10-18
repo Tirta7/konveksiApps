@@ -443,7 +443,7 @@ export default function BuatPOProduksi() {
   // SUCCESS SCREEN AFTER ISSUING PO
   if (result) {
     return (
-      <div style={{ padding: 32, background: "var(--bg-app)", minHeight: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div style={{ padding: "32px 32px 140px 32px", background: "var(--bg-app)", minHeight: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
         <div className="card" style={{ maxWidth: 680, width: "100%", textAlign: "center", padding: "40px 36px", boxShadow: "0 20px 40px rgba(0,0,0,0.08)", borderRadius: 20 }}>
           <div style={{ display: "inline-flex", justifyContent: "center", alignItems: "center", width: 72, height: 72, borderRadius: "50%", background: "var(--color-success-bg)", color: "var(--color-success)", marginBottom: 20, boxShadow: "0 8px 20px rgba(16,185,129,0.2)" }}>
             <CheckCircle2 size={38} />
@@ -503,7 +503,7 @@ export default function BuatPOProduksi() {
   }
 
   return (
-    <div style={{ padding: 32, background: "var(--bg-app)", minHeight: "100%", overflowY: "auto", overflowX: "hidden" }}>
+    <div style={{ padding: "32px 32px 140px 32px", background: "var(--bg-app)", minHeight: "100%", overflowY: "auto", overflowX: "hidden" }}>
       
       {/* ─── PAGE HEADER ─────────────────────────────────────────────────── */}
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
