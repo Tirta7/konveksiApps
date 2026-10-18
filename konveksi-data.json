@@ -14767,10 +14767,10 @@
           "opsional": true,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
-          "status": "Menunggu",
-          "selesai_tgl": null,
-          "catatan": ""
+          "target_selesai": "2026-09-26",
+          "status": "Selesai",
+          "selesai_tgl": "2026-09-21",
+          "catatan": "Pemotongan kain selesai & SPK diterbitkan"
         },
         {
           "stage_id": 2,
@@ -14779,11 +14779,11 @@
           "warna": "#EF4444",
           "opsional": false,
           "aktif": true,
-          "vendor_id": null,
-          "target_selesai": null,
-          "status": "Menunggu",
+          "vendor_id": 1,
+          "target_selesai": "2026-09-26",
+          "status": "Proses",
           "selesai_tgl": null,
-          "catatan": ""
+          "catatan": "Pemenuhan request 1000 pcs dari CMT Gianto"
         },
         {
           "stage_id": 3,
@@ -14792,8 +14792,21 @@
           "warna": "#F59E0B",
           "opsional": false,
           "aktif": true,
+          "vendor_id": 3,
+          "target_selesai": "2026-09-26",
+          "status": "Proses",
+          "selesai_tgl": null,
+          "catatan": "4 transfer pengiriman"
+        },
+        {
+          "stage_id": 5,
+          "slug": "qc_bahan",
+          "nama": "Gudang",
+          "warna": "#6366F1",
+          "opsional": false,
+          "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
+          "target_selesai": "2026-09-26",
           "status": "Menunggu",
           "selesai_tgl": null,
           "catatan": ""
@@ -14806,20 +14819,7 @@
           "opsional": false,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
-          "status": "Menunggu",
-          "selesai_tgl": null,
-          "catatan": ""
-        },
-        {
-          "stage_id": 5,
-          "slug": "qc_bahan",
-          "nama": "QC Gudang",
-          "warna": "#6366F1",
-          "opsional": false,
-          "aktif": true,
-          "vendor_id": null,
-          "target_selesai": null,
+          "target_selesai": "2026-09-26",
           "status": "Menunggu",
           "selesai_tgl": null,
           "catatan": ""
@@ -14832,13 +14832,13 @@
           "opsional": true,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
+          "target_selesai": "2026-09-26",
           "status": "Menunggu",
           "selesai_tgl": null,
           "catatan": ""
         }
       ],
-      "updatedAt": "2026-09-21T05:02:09.433Z",
+      "updatedAt": "2026-10-18T10:53:52.963Z",
       "auto_synced": true
     },
     {
@@ -14852,10 +14852,10 @@
           "opsional": true,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
-          "status": "Menunggu",
-          "selesai_tgl": null,
-          "catatan": ""
+          "target_selesai": "2026-09-26",
+          "status": "Selesai",
+          "selesai_tgl": "2026-09-21",
+          "catatan": "Pemotongan kain selesai & SPK diterbitkan"
         },
         {
           "stage_id": 2,
@@ -14864,11 +14864,11 @@
           "warna": "#EF4444",
           "opsional": false,
           "aktif": true,
-          "vendor_id": null,
-          "target_selesai": null,
-          "status": "Menunggu",
+          "vendor_id": 2,
+          "target_selesai": "2026-09-26",
+          "status": "Proses",
           "selesai_tgl": null,
-          "catatan": ""
+          "catatan": "Pemenuhan request 500 pcs dari CMT Roni"
         },
         {
           "stage_id": 3,
@@ -14878,7 +14878,20 @@
           "opsional": false,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
+          "target_selesai": "2026-09-26",
+          "status": "Menunggu",
+          "selesai_tgl": null,
+          "catatan": ""
+        },
+        {
+          "stage_id": 5,
+          "slug": "qc_bahan",
+          "nama": "Gudang",
+          "warna": "#6366F1",
+          "opsional": false,
+          "aktif": true,
+          "vendor_id": null,
+          "target_selesai": "2026-09-26",
           "status": "Menunggu",
           "selesai_tgl": null,
           "catatan": ""
@@ -14891,20 +14904,7 @@
           "opsional": false,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
-          "status": "Menunggu",
-          "selesai_tgl": null,
-          "catatan": ""
-        },
-        {
-          "stage_id": 5,
-          "slug": "qc_bahan",
-          "nama": "QC Gudang",
-          "warna": "#6366F1",
-          "opsional": false,
-          "aktif": true,
-          "vendor_id": null,
-          "target_selesai": null,
+          "target_selesai": "2026-09-26",
           "status": "Menunggu",
           "selesai_tgl": null,
           "catatan": ""
@@ -14917,13 +14917,13 @@
           "opsional": true,
           "aktif": true,
           "vendor_id": null,
-          "target_selesai": null,
+          "target_selesai": "2026-09-26",
           "status": "Menunggu",
           "selesai_tgl": null,
           "catatan": ""
         }
       ],
-      "updatedAt": "2026-09-21T05:02:09.433Z",
+      "updatedAt": "2026-10-18T10:53:52.963Z",
       "auto_synced": true
     }
   ],

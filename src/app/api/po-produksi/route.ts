@@ -69,10 +69,18 @@ export async function GET() {
     else if (totalDisetujui > 0) currentStage = "siap_tarik";
     else if (totalDilaporkan > 0) currentStage = "dilaporkan";
 
+    // Vendor details lookup
+    const vendorObj = (data.vendors || []).find((v: any) => v.id === po.vendorId) || null;
+
     return {
       ...po,
       target_selesai: targetSelesai,
       pemotongan_target_selesai: pemotongan?.target_selesai || null,
+      vendor_nama: vendorObj?.nama || null,
+      vendor_kode: vendorObj?.kodeVendor || null,
+      vendor_tipe: vendorObj?.tipe || null,
+      vendor_kontak: vendorObj?.kontak || null,
+      vendor: vendorObj,
       totalDiambil,
       sisa,
       sizeProgress,

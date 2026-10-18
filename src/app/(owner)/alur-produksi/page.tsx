@@ -29,7 +29,9 @@ import {
   Workflow,
   Sparkles,
   Building2,
-  Check
+  Check,
+  ExternalLink,
+  MessageCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -61,6 +63,71 @@ const STATUS_STYLE: Record<string, { bg: string; border: string; dot: string; te
   Selesai:   { bg: "#ECFDF5", border: "#A7F3D0", dot: "#10B981", text: "#059669", label: "Selesai" },
   Terlambat: { bg: "#FEF2F2", border: "#FECACA", dot: "#EF4444", text: "#DC2626", label: "Terlambat" },
 };
+
+
+// Normalized stage slug helper
+const normalizeStage = (slug?: string) => {
+  const s = (slug || "").toLowerCase();
+  if (s.includes("wash") || s.includes("cuci")) return "washing";
+  if (s.includes("jahit") || s.includes("cmt")) return "cmt";
+  if (s.includes("potong")) return "potong";
+  if (s.includes("benang")) return "bersih_benang";
+  if (s.includes("qc") || s.includes("gudang")) return "gudang";
+  if (s.includes("pack") || s.includes("finishing")) return "finishing";
+  return s;
+};
+
+// Radial Progress component matching vendor portal
+function RadialProgress({
+  pct,
+  size = 54,
+  stroke = 5,
+  color = "#2563EB"
+}: {
+  pct: number;
+  size?: number;
+  stroke?: number;
+  color?: string;
+}) {
+  const r = (size - stroke * 2) / 2;
+  const circ = 2 * Math.PI * r;
+  const filled = circ * (1 - Math.min(Math.max(pct, 0), 100) / 100);
+  const isComplete = pct >= 100;
+  const c = isComplete ? "#10B981" : color;
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E2E8F0" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={c}
+          strokeWidth={stroke}
+          strokeDasharray={circ}
+          strokeDashoffset={filled}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+        />
+      </svg>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: size <= 56 ? 11 : 13,
+          fontWeight: 900,
+          color: isComplete ? "#059669" : "#0F172A"
+        }}
+      >
+        {pct}%
+      </div>
+    </div>
+  );
+}
 
 export default function AlurProduksiPage() {
   const [stages, setStages] = useState<any[]>([]);
@@ -131,6 +198,9 @@ export default function AlurProduksiPage() {
 
   useEffect(() => { 
     fetchAll(); 
+    const handleSync = () => { fetchAll(); };
+    window.addEventListener("konveksi-sync", handleSync);
+    return () => window.removeEventListener("konveksi-sync", handleSync);
   }, []);
 
   const getPO = (id: number) => poProduksi.find(p => p.id === id);
@@ -143,28 +213,34 @@ export default function AlurProduksiPage() {
 
   // Distributions for a stage & PO
   const getActiveDistributions = (poId: number, stageSlug?: string) => {
-    const sLower = (stageSlug || "").toLowerCase();
-    const isJahitStage = sLower.includes("jahit") || sLower.includes("cmt");
-    if (isJahitStage) {
-      const po = getPO(poId);
-      if (!po) return [];
-      const records = cmtProgres.filter(p => p.po_id === poId);
-      const lapor = records.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
-      const acc = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
-                         .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
-      return [{
-         vendor_id: po.vendorId, 
-         vendor_nama: getVendorName(po.vendorId),
-         target_selesai: po.target_selesai,
-         qty_total: po.jumlahTerbit,
-         qty_lapor: lapor,
-         qty_acc: acc,
-         type: "jahit"
-      }];
+    const sNorm = normalizeStage(stageSlug);
+    const isJahitStage = sNorm === "cmt";
+    const isPotongStage = sNorm === "potong";
+    const po = getPO(poId);
+    if (!po) return [];
+
+    if (isJahitStage || isPotongStage) {
+      if (po.vendorId) {
+        const records = cmtProgres.filter(p => p.po_id === poId);
+        const lapor = records.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDilaporkan || 0;
+        const acc = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
+                           .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDisetujui || 0;
+        return [{
+           vendor_id: po.vendorId, 
+           vendor_nama: getVendorName(po.vendorId),
+           target_selesai: po.target_selesai,
+           qty_total: po.jumlahTerbit,
+           qty_lapor: lapor,
+           qty_acc: acc,
+           type: isJahitStage ? "jahit" : "potong_alokasi",
+           status: acc >= po.jumlahTerbit ? "Selesai" : "Proses"
+        }];
+      }
+      return [];
     }
     
-    // Other stages: read from transfers
-    const relevantTf = transfers.filter(t => t.po_id === poId && t.ke === stageSlug);
+    // Other stages: read from transfers matching normalized slug
+    const relevantTf = transfers.filter(t => t.po_id === poId && normalizeStage(t.ke) === sNorm);
     return relevantTf.map(t => ({
       vendor_id: t.vendor_id,
       vendor_nama: getVendorName(t.vendor_id),
@@ -175,6 +251,61 @@ export default function AlurProduksiPage() {
       type: "transfer",
       status: t.status
     }));
+  };
+
+  // Live status summary for a PO (CMT, Washing, per size)
+  const getPoLiveStatus = (po: any) => {
+    if (!po) return null;
+    const vendorObj = vendors.find(v => v.id === po.vendorId) || po.vendor || null;
+    const vendorNama = vendorObj?.nama || getVendorName(po.vendorId);
+    const vendorKode = vendorObj?.kodeVendor || (po.vendorId ? "CMT-" + String(po.vendorId).padStart(3, "0") : "");
+    const vendorKontak = vendorObj?.kontak || "";
+
+    const totalTarget = Number(po.jumlahTerbit) || 0;
+    const records = cmtProgres.filter(p => p.po_id === po.id);
+    const totalLapor = records.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDilaporkan || 0;
+    const totalACC = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
+                            .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDisetujui || 0;
+    const sisaPcs = Math.max(0, totalTarget - totalLapor);
+    const pct = totalTarget > 0 ? Math.round((totalLapor / totalTarget) * 100) : 0;
+    const pctACC = totalTarget > 0 ? Math.round((totalACC / totalTarget) * 100) : 0;
+
+    const sizeList = (po.sizeBreakdown || []).map((sb: any) => {
+      const sizeName = sb.size;
+      const targetQty = Number(sb.jumlah || sb.sisa || 0);
+      const accQty = po.sizeProgress?.[sizeName] || 0;
+      const pendingQty = po.sizePending?.[sizeName] || 0;
+      const sDone = accQty;
+      const isComplete = targetQty > 0 && sDone >= targetQty;
+      const sPct = targetQty > 0 ? Math.round((sDone / targetQty) * 100) : 0;
+      return {
+        size: sizeName,
+        target: targetQty,
+        done: sDone,
+        pending: pendingQty,
+        pct: sPct,
+        isComplete
+      };
+    });
+
+    const washTransfers = transfers.filter(t => t.po_id === po.id && normalizeStage(t.ke) === "washing");
+    const totalWashKirim = washTransfers.reduce((s, t) => s + (Number(t.jumlah_kirim) || 0), 0);
+
+    return {
+      vendorObj,
+      vendorNama,
+      vendorKode,
+      vendorKontak,
+      totalTarget,
+      totalLapor,
+      totalACC,
+      sisaPcs,
+      pct,
+      pctACC,
+      sizeList,
+      washTransfers,
+      totalWashKirim
+    };
   };
 
   // Fixed Tertandon calculation (Tahap 1 / Potong tidak ada tahap sebelumnya!)
@@ -196,7 +327,7 @@ export default function AlurProduksiPage() {
     }
 
     // Untuk tahap setelah jahit (washing, bersih benang, dll)
-    const forwarded = transfers.filter(t => t.po_id === poId && t.ke === stageObj.slug).reduce((s, t) => s + Number(t.jumlah_kirim), 0);
+    const forwarded = transfers.filter(t => t.po_id === poId && normalizeStage(t.ke) === normalizeStage(stageObj.slug)).reduce((s, t) => s + Number(t.jumlah_kirim), 0);
     return Math.max(0, po.jumlahTerbit - forwarded);
   };
 
@@ -1141,6 +1272,13 @@ export default function AlurProduksiPage() {
             const dists = getActiveDistributions(po_id, activeStageObj?.slug);
             const tertandon = getTertandon(po_id, activeStageObj);
             const isInitialCutting = activeStageObj?.urutan === 1 || (activeStageObj?.slug || "").toLowerCase().includes("potong");
+            const isJahitStage = normalizeStage(activeStageObj?.slug) === "cmt";
+            const liveStatus = getPoLiveStatus(po);
+
+            const poTargetDate = po.target_selesai || (dists.find(d => d.target_selesai)?.target_selesai) || null;
+            const isPoLate = isOverdue(poTargetDate) && rawStatus !== "Selesai";
+            const poLateDays = overdueDays(poTargetDate);
+            const poDaysLeft = remainingDays(poTargetDate);
 
             return (
               <div 
@@ -1149,22 +1287,72 @@ export default function AlurProduksiPage() {
                 style={{ 
                   background: "white", 
                   borderRadius: 16, 
-                  border: "1px solid #E2E8F0", 
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)", 
+                  border: isPoLate ? "1.5px solid #FECACA" : "1px solid #E2E8F0", 
+                  boxShadow: isPoLate ? "0 4px 14px rgba(220,38,38,0.08)" : "0 2px 8px rgba(0,0,0,0.04)", 
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column"
                 }}
               >
-                {/* Top Colored Indicator Bar */}
-                <div style={{ height: 4, background: rawStatus === "Proses" ? (activeStageObj?.warna || "#2563EB") : rawStatus === "Selesai" ? "#10B981" : "#E2E8F0" }} />
+                {/* Overdue Alert Banner or Target Date Bar (Concept from CMT Portal) */}
+                {poTargetDate ? (
+                  isPoLate ? (
+                    <div style={{
+                      background: "linear-gradient(90deg, #991B1B 0%, #DC2626 100%)",
+                      color: "#FFFFFF",
+                      padding: "8px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: "0.02em"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <AlertTriangle size={14} color="#FECACA" />
+                        <span>PO MELEBIHI TARGET SELESAI ({poLateDays} HARI)</span>
+                        <span style={{ opacity: 0.85, fontWeight: 600 }}>• Target: {fmtDate(poTargetDate)}</span>
+                      </div>
+                      <span style={{
+                        background: "rgba(0,0,0,0.35)",
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        fontSize: 10.5,
+                        color: "#FEE2E2",
+                        border: "1px solid rgba(254,202,202,0.4)"
+                      }}>
+                        -{poLateDays}% Throttle
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{
+                      background: "#F0FDF4",
+                      borderBottom: "1px solid #BBF7D0",
+                      color: "#166534",
+                      padding: "7px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      fontWeight: 700
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Calendar size={13} color="#16A34A" />
+                        <span>Dateline Target: {fmtDate(poTargetDate)}</span>
+                      </div>
+                      <span style={{ background: "#DCFCE7", padding: "2px 8px", borderRadius: 4, color: "#15803D", fontWeight: 800 }}>
+                        ⏳ Sisa {poDaysLeft} Hari
+                      </span>
+                    </div>
+                  )
+                ) : null}
                 
-                <div style={{ padding: "18px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "16px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
 
-                  {/* Card Header: No PO, Model & Status Badge */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {/* Card Header: No PO, Model & Status Badge & Radial Progress */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div style={{ flex: 1, paddingRight: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span style={{ 
                           fontSize: 15, 
                           fontWeight: 900, 
@@ -1180,154 +1368,288 @@ export default function AlurProduksiPage() {
                         <span style={{ fontSize: 11, color: "#94A3B8", background: "#F1F5F9", padding: "2px 6px", borderRadius: 4 }}>
                           ID:#{po.id}
                         </span>
+                        
+                        <button
+                          onClick={() => setStatusModal({
+                            po_id,
+                            stage_id: activeStageObj.id,
+                            stageName: activeStageObj.nama,
+                            currentStatus: rawStatus,
+                            noPo: po.noPo
+                          })}
+                          style={{ 
+                            display: "inline-flex", 
+                            alignItems: "center", 
+                            gap: 4, 
+                            padding: "3px 8px", 
+                            borderRadius: 12, 
+                            background: sc.bg, 
+                            border: `1px solid ${sc.border}`,
+                            cursor: "pointer"
+                          }}
+                          title="Klik untuk mengubah status pos ini"
+                        >
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: sc.dot }} />
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: sc.text }}>{sc.label}</span>
+                          <Edit3 size={10} style={{ opacity: 0.6 }} />
+                        </button>
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginTop: 4 }}>
-                        Model: {po.model} &bull; <span style={{ color: "#2563EB" }}>Total {po.jumlahTerbit.toLocaleString("id-ID")} pcs</span>
+
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span>Model: <strong style={{ color: "#0F172A" }}>{po.model}</strong></span>
+                        <span style={{ color: "#94A3B8" }}>&bull;</span>
+                        <span style={{ color: "#2563EB", fontWeight: 800 }}>Total {po.jumlahTerbit.toLocaleString("id-ID")} pcs</span>
+                        {liveStatus && (
+                          <span style={{ 
+                            background: liveStatus.sisaPcs > 0 ? "#FEF3C7" : "#DCFCE7", 
+                            color: liveStatus.sisaPcs > 0 ? "#92400E" : "#166534", 
+                            border: liveStatus.sisaPcs > 0 ? "1px solid #FDE68A" : "1px solid #BBF7D0", 
+                            padding: "1px 7px", 
+                            borderRadius: 4, 
+                            fontSize: 10.5, 
+                            fontWeight: 800 
+                          }}>
+                            {liveStatus.sisaPcs > 0 ? `Sisa: ${liveStatus.sisaPcs.toLocaleString("id-ID")} pcs` : "Lengkap (100%)"}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setStatusModal({
-                        po_id,
-                        stage_id: activeStageObj.id,
-                        stageName: activeStageObj.nama,
-                        currentStatus: rawStatus,
-                        noPo: po.noPo
-                      })}
-                      style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: 5, 
-                        padding: "4px 10px", 
-                        borderRadius: 20, 
-                        background: sc.bg, 
-                        border: `1px solid ${sc.border}`,
-                        cursor: "pointer"
-                      }}
-                      title="Klik untuk mengubah status pengerjaan"
-                    >
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: sc.dot }} />
-                      <span style={{ fontSize: 11, fontWeight: 800, color: sc.text }}>{sc.label}</span>
-                      <Edit3 size={11} style={{ opacity: 0.6, marginLeft: 2 }} />
-                    </button>
+                    {/* Radial Progress Gauge */}
+                    {liveStatus && (
+                      <div style={{ flexShrink: 0 }}>
+                        <RadialProgress pct={liveStatus.pct} size={54} stroke={5} color="#2563EB" />
+                      </div>
+                    )}
                   </div>
 
-                  {/* PO Dateline / Target Selesai Banner */}
-                  {(() => {
-                    const poTargetDate = po.target_selesai || (dists.find(d => d.target_selesai)?.target_selesai) || null;
-                    const isPoLate = isOverdue(poTargetDate) && rawStatus !== "Selesai";
-                    const poLateDays = overdueDays(poTargetDate);
-                    const poDaysLeft = remainingDays(poTargetDate);
-
-                    return (
-                      <div style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "space-between", 
-                        background: isPoLate ? "#FEF2F2" : "#F8FAFC", 
-                        border: isPoLate ? "1px solid #FECACA" : "1px solid #E2E8F0", 
-                        borderRadius: 8, 
-                        padding: "7px 10px", 
-                        marginBottom: 10 
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                          <Calendar size={13} color={isPoLate ? "#DC2626" : "#64748B"} />
-                          <span style={{ color: "#64748B", fontWeight: 600 }}>Dateline Target:</span>
-                          <strong style={{ color: isPoLate ? "#DC2626" : "#0F172A" }}>
-                            {poTargetDate ? fmtDate(poTargetDate) : "Belum diatur"}
-                          </strong>
+                  {/* ACTIVE CMT / VENDOR PANEL (Consistent with CMT Portal Concept) */}
+                  {liveStatus && liveStatus.vendorNama && (
+                    <div style={{
+                      background: "#0F172A",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      marginBottom: 10,
+                      border: "1px solid #1E293B",
+                      color: "#F8FAFC"
+                    }}>
+                      {/* Vendor Identity Row */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: 8, background: "#1E293B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Building2 size={16} color="#38BDF8" />
+                          </div>
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 900, color: "#FFFFFF" }}>{liveStatus.vendorNama}</span>
+                              {liveStatus.vendorKode && (
+                                <span style={{ fontSize: 9.5, fontWeight: 800, color: "#38BDF8", background: "#0369A130", border: "1px solid #0284C750", padding: "1px 5px", borderRadius: 4 }}>
+                                  {liveStatus.vendorKode}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 10.5, color: "#94A3B8" }}>
+                              Mitra CMT Jahit {liveStatus.vendorKontak ? `• 0${liveStatus.vendorKontak.replace(/^0+/, '')}` : ""}
+                            </div>
+                          </div>
                         </div>
-                        {poTargetDate ? (
-                          isPoLate ? (
-                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#DC2626", background: "#FEE2E2", border: "1px solid #FCA5A5", padding: "2px 7px", borderRadius: 4 }}>
-                              🚨 Terlambat +{poLateDays} Hari
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#059669", background: "#DCFCE7", border: "1px solid #BBF7D0", padding: "2px 7px", borderRadius: 4 }}>
-                              ⏳ Sisa {poDaysLeft} Hari
-                            </span>
-                          )
-                        ) : null}
-                      </div>
-                    );
-                  })()}
 
-                  {/* Context: Initial Cutting Ready Info */}
+                        {/* Quick Vendor Action Links */}
+                        <div style={{ display: "flex", gap: 5 }}>
+                          {po.vendorId && (
+                            <Link
+                              href={`/cmt/${po.vendorId}`}
+                              target="_blank"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                background: "#1E293B",
+                                border: "1px solid #334155",
+                                color: "#38BDF8",
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                textDecoration: "none"
+                              }}
+                              title="Buka portal live CMT ini di tab baru"
+                            >
+                              <ExternalLink size={11} /> Portal CMT
+                            </Link>
+                          )}
+                          {liveStatus.vendorKontak && (
+                            <a
+                              href={waLink(
+                                liveStatus.vendorKontak,
+                                `Halo ${liveStatus.vendorNama}, kami konfirmasi pengerjaan SPK ${po.noPo} (${po.model}). Dari total ${po.jumlahTerbit} pcs, telah dilaporkan ${liveStatus.totalLapor} pcs (ACC ${liveStatus.totalACC} pcs), sisa ${liveStatus.sisaPcs} pcs. Target dateline: ${fmtDate(poTargetDate)}${isPoLate ? ` (Terlambat ${poLateDays} hari!)` : ''}. Mohon informasinya, terima kasih.`
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                padding: "4px 8px",
+                                borderRadius: 6,
+                                background: "#065F46",
+                                border: "1px solid #059669",
+                                color: "#A7F3D0",
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                textDecoration: "none"
+                              }}
+                              title="Kirim pesan penagihan via WhatsApp"
+                            >
+                              <MessageCircle size={11} /> WA
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Progress Bar (Diserahkan / Dilaporkan) */}
+                      <div style={{ background: "#1E293B", borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <span style={{ fontSize: 9.5, color: "#94A3B8", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                            Progres Diserahkan
+                          </span>
+                          <span style={{ fontSize: 11.5, fontWeight: 900, color: liveStatus.pct >= 100 ? "#10B981" : "#38BDF8" }}>
+                            {liveStatus.totalLapor.toLocaleString("id-ID")} / {liveStatus.totalTarget.toLocaleString("id-ID")} pcs ({liveStatus.pct}%)
+                          </span>
+                        </div>
+                        <div style={{ width: "100%", background: "#0F172A", height: 7, borderRadius: 4, overflow: "hidden" }}>
+                          <div
+                            style={{
+                              background: liveStatus.pct >= 100 ? "#10B981" : "linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)",
+                              height: "100%",
+                              width: `${Math.min(liveStatus.pct, 100)}%`,
+                              borderRadius: 4,
+                              transition: "width 0.6s ease"
+                            }}
+                          />
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8", marginTop: 4 }}>
+                          <span style={{ color: "#34D399", fontWeight: 700 }}>✓ {liveStatus.totalACC} pcs Diverifikasi (ACC)</span>
+                          <span style={{ color: liveStatus.sisaPcs > 0 ? "#FCA5A5" : "#94A3B8", fontWeight: 700 }}>
+                            {liveStatus.sisaPcs > 0 ? `📦 ${liveStatus.sisaPcs} pcs Belum Diserahkan` : "Selesai"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Rincian per Size Breakdown (Matching CMT Portal Screenshot) */}
+                      {liveStatus.sizeList && liveStatus.sizeList.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 9.5, color: "#64748B", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>
+                            Rincian per Size:
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(liveStatus.sizeList.length, 5)}, 1fr)`, gap: 5 }}>
+                            {liveStatus.sizeList.map((s: any, idx: number) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  background: "#1E293B",
+                                  padding: "6px 4px",
+                                  borderRadius: 6,
+                                  border: s.isComplete ? "1px solid #10B981" : s.pending > 0 ? "1px solid #F59E0B" : "1px solid #334155",
+                                  textAlign: "center"
+                                }}
+                              >
+                                <div style={{ fontSize: 11, fontWeight: 900, color: "#FFFFFF" }}>{s.size}</div>
+                                <div style={{ fontSize: 10, fontWeight: 800, color: s.isComplete ? "#10B981" : "#94A3B8", marginTop: 1 }}>
+                                  {s.done}/{s.target}
+                                </div>
+                                {s.pending > 0 && (
+                                  <div style={{ fontSize: 8.5, fontWeight: 800, color: "#F59E0B" }}>+{s.pending}</div>
+                                )}
+                                <div style={{ width: "100%", background: "#0F172A", height: 3, borderRadius: 2, marginTop: 3, overflow: "hidden" }}>
+                                  <div style={{ width: `${Math.min(s.pct, 100)}%`, height: "100%", background: s.isComplete ? "#10B981" : "#38BDF8" }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Context: Initial Cutting Done & Assigned Info */}
                   {isInitialCutting && (
-                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 8, background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "9px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <Scissors size={15} color="#16A34A" />
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>
-                          Kain Siap Diproses / Sudah Dipotong
+                      <div style={{ flex: 1, fontSize: 11.5 }}>
+                        <div style={{ fontWeight: 800, color: "#166534" }}>
+                          Kain Selesai Dipotong & Sudah Dialokasikan
                         </div>
-                        <div style={{ fontSize: 11, color: "#475569" }}>
-                          Total {po.jumlahTerbit} pcs siap didistribusikan ke CMT Penjahit.
+                        <div style={{ color: "#475569", marginTop: 1 }}>
+                          Total {po.jumlahTerbit.toLocaleString("id-ID")} pcs telah dipotong dan diserahkan ke <strong>{liveStatus?.vendorNama || "CMT"}</strong> untuk proses jahit.
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Context: Forwarded to Washing (Transfers) */}
+                  {liveStatus && liveStatus.washTransfers.length > 0 && (
+                    <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: "#0F172A" }}>
+                          <Droplets size={13} color="#2563EB" />
+                          <span>Dialihkan ke Pos Washing</span>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB" }}>
+                          {liveStatus.totalWashKirim.toLocaleString("id-ID")} pcs
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {liveStatus.washTransfers.map((tf: any, i: number) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#475569", background: "#FFFFFF", padding: "4px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                            <span>&bull; {getVendorName(tf.vendor_id)}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <strong style={{ color: "#0F172A" }}>{tf.jumlah_kirim} pcs</strong>
+                              <span style={{ fontSize: 9.5, padding: "1px 5px", borderRadius: 4, background: tf.status === "Dikerjakan" ? "#EFF6FF" : "#F1F5F9", color: tf.status === "Dikerjakan" ? "#1D4ED8" : "#64748B", fontWeight: 700 }}>
+                                {tf.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stage-specific Distributions (e.g. at Washing stage) */}
+                  {!isInitialCutting && !isJahitStage && (
+                    <div style={{ marginBottom: 10 }}>
+                      {dists.length === 0 ? (
+                        <div style={{ fontSize: 11.5, color: "#64748B", textAlign: "center", padding: "12px 10px", background: "#F8FAFC", borderRadius: 10, border: "1px dashed #CBD5E1" }}>
+                          Belum ada transfer pengiriman di tahap ini
+                        </div>
+                      ) : (
+                        dists.map((d, i) => (
+                          <div key={i} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 10, marginBottom: 6 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 800, color: "#0F172A" }}>{d.vendor_nama}</span>
+                              <span style={{ fontSize: 12, fontWeight: 900, color: "#2563EB" }}>{d.qty_total} pcs</span>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748B" }}>
+                              <span>Target: {fmtDate(d.target_selesai)}</span>
+                              <span style={{ fontWeight: 700, color: d.status === "Dikerjakan" ? "#2563EB" : "#10B981" }}>{d.status}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
 
                   {/* Tertandon Warning (Only for subsequent stages if pending) */}
                   {!isInitialCutting && tertandon > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA", marginBottom: 12 }}>
-                      <AlertTriangle size={15} color="#DC2626" />
-                      <span style={{ fontSize: 12, color: "#991B1B", fontWeight: 700 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA", marginBottom: 10 }}>
+                      <AlertTriangle size={14} color="#DC2626" />
+                      <span style={{ fontSize: 11.5, color: "#991B1B", fontWeight: 700 }}>
                         {tertandon} pcs masih menunggu ditransfer ke pos ini
                       </span>
                     </div>
                   )}
-
-                  {/* Distributions / Vendor Processing Breakdown */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
-                    {dists.length === 0 ? (
-                      <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "14px 10px", background: "#F8FAFC", borderRadius: 10, border: "1px dashed #CBD5E1" }}>
-                        <div>Belum ada vendor / transfer di tahap ini.</div>
-                        {po.target_selesai && (
-                          <div style={{ fontSize: 11, color: isOverdue(po.target_selesai) ? "#DC2626" : "#2563EB", fontWeight: 700, marginTop: 4 }}>
-                            Target Selesai SPK: {fmtDate(po.target_selesai)} {isOverdue(po.target_selesai) ? `(Lewat ${overdueDays(po.target_selesai)} hari!)` : ""}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      dists.map((d, i) => {
-                        const overdue = isOverdue(d.target_selesai) && rawStatus !== "Selesai";
-                        const days = overdueDays(d.target_selesai);
-                        const pct = d.qty_total > 0 ? Math.round((d.qty_acc / d.qty_total) * 100) : 0;
-
-                        return (
-                          <div key={i} style={{ background: "#F8FAFC", border: overdue ? "1.5px solid #FECACA" : "1px solid #E2E8F0", borderRadius: 10, padding: 12 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <User size={13} color="#64748B" />
-                                <span style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{d.vendor_nama}</span>
-                              </div>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: activeStageObj?.warna || "#2563EB" }}>
-                                {d.qty_total.toLocaleString("id-ID")} pcs
-                              </div>
-                            </div>
-                            
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#64748B" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, color: overdue ? "#DC2626" : "#64748B" }}>
-                                <Calendar size={12} />
-                                <span>{d.target_selesai ? new Date(d.target_selesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Tanpa Dateline"}</span>
-                                {overdue && <span style={{ fontWeight: 800, color: "#DC2626" }}>({days} hari lewat!)</span>}
-                              </div>
-                              <div style={{ fontWeight: 700, color: pct === 100 ? "#059669" : "#334155" }}>
-                                {pct}% Selesai (ACC)
-                              </div>
-                            </div>
-
-                            {/* Progress bar */}
-                            <div style={{ height: 6, background: "#E2E8F0", borderRadius: 3, overflow: "hidden", marginTop: 8 }}>
-                              <div style={{ width: pct + "%", height: "100%", background: pct === 100 ? "#10B981" : activeStageObj?.warna || "#2563EB", transition: "width 0.4s" }} />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
 
                   {/* Card Action Buttons */}
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9", display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
