@@ -42,16 +42,23 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard", { cache: "no-store" });
+      if (!res.ok) throw new Error(`Server merespons ${res.status}`);
       const d = await res.json();
       const ser = JSON.stringify(d);
       if (ser !== prevRef.current) { setPulse(true); setTimeout(() => setPulse(false), 800); prevRef.current = ser; }
       setData(d);
       setLastUpdated(new Date());
+      setLoadError(null);
+    } catch (e: any) {
+      setLoadError(e?.message || "Gagal terhubung ke server");
+    } finally {
       setLoading(false);
-    } catch {}
+    }
   }, []);
 
   useEffect(() => { load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, [load]);
@@ -69,6 +76,18 @@ export default function DashboardPage() {
       <div style={{ textAlign: "center", color: "#94A3B8" }}>
         <RefreshCw size={32} style={{ animation: "spin 1s linear infinite", display: "block", margin: "0 auto 12px" }} />
         <p style={{ fontSize: 15, fontWeight: 600 }}>Memuat Dashboard...</p>
+      </div>
+    </div>
+  );
+
+  if (!data && loadError) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "70dvh", background: "#F1F5F9", padding: 20 }}>
+      <div style={{ textAlign: "center", background: "white", padding: 28, borderRadius: 16, border: "1px solid #E2E8F0", maxWidth: 360 }}>
+        <p style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>Data dashboard gagal dimuat</p>
+        <p style={{ fontSize: 13, color: "#64748B", marginBottom: 16 }}>{loadError}</p>
+        <button onClick={() => { setLoading(true); load(); }} style={{ padding: "10px 20px", background: "#3B82F6", color: "white", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14 }}>
+          Coba Lagi
+        </button>
       </div>
     </div>
   );
