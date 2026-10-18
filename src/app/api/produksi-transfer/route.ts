@@ -67,28 +67,51 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Mark the incoming transfer to Gudang as forwarded so it disappears from the "Siap Dikirim" list
+  // Is the destination the Gudang stage? (slug "gudang" or pipeline stage slug like "qc_bahan")
+  const keLower = String(ke).toLowerCase();
+  const isKeGudang = keLower === "gudang" || keLower.includes("gudang") || keLower.includes("qc");
+
+  // Mark the origin transfer as forwarded so it disappears from "Siap Dikirim" / "Di Vendor" lists
+  let originVendorId: any = null;
   if (transfer_id_asal) {
     const originIdx = data.produksi_transfers.findIndex((t: any) => String(t.id) === String(transfer_id_asal));
     if (originIdx !== -1) {
-      data.produksi_transfers[originIdx].is_forwarded = true;
+      const origin = data.produksi_transfers[originIdx];
+      origin.is_forwarded = true;
+      originVendorId = origin.vendor_id;
+      if (isKeGudang && origin.status !== "Diverifikasi") {
+        origin.status = "Kembali ke Gudang";
+        origin.tanggal_kembali = transfer.tanggal_kirim;
+      }
     }
   }
 
   // Sync to po_ledgers so Dashboard CMT reflects the physical balance
   if (!data.po_ledgers) data.po_ledgers = [];
-  data.po_ledgers.push({
-    id: nextId(data, "po_ledgers"),
-    poId: Number(po_id),
-    dari_vendor_id: "GUDANG",
-    ke_vendor_id: String(vendor_id),
-    jumlah: Number(jumlah_kirim),
-    tanggal: transfer.tanggal_kirim,
-    catatan: catatan || `Dikirim dari Gudang ke ${ke}`
-  });
+  data.po_ledgers.push(
+    isKeGudang
+      ? {
+          id: nextId(data, "po_ledgers"),
+          poId: Number(po_id),
+          dari_vendor_id: originVendorId ? String(originVendorId) : "SISTEM",
+          ke_vendor_id: "GUDANG",
+          jumlah: Number(jumlah_kirim),
+          tanggal: transfer.tanggal_kirim,
+          catatan: catatan || `Ditarik dari ${dari} kembali ke Gudang`
+        }
+      : {
+          id: nextId(data, "po_ledgers"),
+          poId: Number(po_id),
+          dari_vendor_id: "GUDANG",
+          ke_vendor_id: vendor_id ? String(vendor_id) : "GUDANG",
+          jumlah: Number(jumlah_kirim),
+          tanggal: transfer.tanggal_kirim,
+          catatan: catatan || `Dikirim dari Gudang ke ${ke}`
+        }
+  );
 
   // Sync barcode status if moving to washing, benang, finishing
-  if (data.barcode_item) {
+  if (data.barcode_item && !isKeGudang) {
     let updated = 0;
     for (let i = 0; i < data.barcode_item.length && updated < Number(jumlah_kirim); i++) {
       const b = data.barcode_item[i];
