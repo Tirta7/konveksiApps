@@ -175,11 +175,13 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
   }, [id]);
 
   // 3. Scroll unlocker for standalone portal (Top-level Hook)
+  // Hanya <html> yang menjadi scroll container. Body TIDAK boleh overflow:auto,
+  // karena body ikut jadi scroll container dan "menjebak" scroll mouse/touch.
   useEffect(() => {
     const origBodyOverflow = document.body.style.overflow;
     const origHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "auto";
-    document.documentElement.style.overflow = "auto";
+    document.body.style.overflow = "visible";
+    document.documentElement.style.overflow = "";
     return () => {
       document.body.style.overflow = origBodyOverflow;
       document.documentElement.style.overflow = origHtmlOverflow;
@@ -411,32 +413,36 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
         paddingBottom: "max(120px, calc(env(safe-area-inset-bottom, 24px) + 90px))",
         width: "100%",
         WebkitFontSmoothing: "antialiased",
-        overflowX: "hidden"
+        overflowX: "clip"
       }}
     >
       {/* ── RESPONSIVE STYLES FOR MOBILE & IOS ── */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            html, body {
+            html {
               overflow-x: hidden !important;
               overflow-y: auto !important;
               min-height: 100vh !important;
               min-height: 100dvh !important;
-              -webkit-overflow-scrolling: touch !important;
               background-color: #0F172A !important;
-              overscroll-behavior: none !important;
               overscroll-behavior-y: none !important;
-              -webkit-overscroll-behavior-y: none !important;
+            }
+            body {
+              overflow: visible !important;
+              overflow-x: clip !important;
+              min-height: 100vh !important;
+              min-height: 100dvh !important;
+              background-color: #0F172A !important;
+              overscroll-behavior: auto !important;
             }
             #vendor-portal-page {
               width: 100% !important;
               min-height: 100vh !important;
               min-height: 100dvh !important;
-              overflow-x: hidden !important;
+              overflow: visible !important;
+              overflow-x: clip !important;
               background-color: #0F172A !important;
-              overscroll-behavior: none !important;
-              overscroll-behavior-y: none !important;
             }
             @keyframes pulse {
               0%, 100% { opacity: 1; }
