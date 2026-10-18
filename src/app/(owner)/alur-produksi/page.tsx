@@ -90,6 +90,9 @@ export default function AlurProduksiPage() {
     catatan: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [riskAck, setRiskAck] = useState(false);
+  const [showAllVendors, setShowAllVendors] = useState(false);
+  const [expandedVendorId, setExpandedVendorId] = useState<number | null>(null);
 
   const doSync = async () => {
     setSyncing(true);
@@ -237,116 +240,170 @@ export default function AlurProduksiPage() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
+  const daysSince = (t?: string) => {
+    if (!t) return null;
+    const d = new Date(t); d.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.floor((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)));
+  };
+
+  // Map pipeline stage slug -> vendor tipe yang cocok
+  const stageVendorType = (slug?: string): string | null => {
+    const s = (slug || "").toLowerCase();
+    if (s.includes("wash") || s.includes("wahing") || s.includes("cuci")) return "washing";
+    if (s.includes("jahit") || s.includes("cmt")) return "cmt";
+    if (s.includes("benang")) return "benang";
+    if (s.includes("finish") || s.includes("qc") || s.includes("pack")) return "finishing";
+    return null;
+  };
+  const stageNameBySlug = (slug?: string) => stages.find(s => s.slug === slug)?.nama || slug || "-";
+
   // Vendor Workload & Capacity Analysis (Kapasitas & Status Barang Belum Selesai)
   const getVendorWorkload = (vendorId: number) => {
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) return null;
 
-    // Check all active POs assigned to this vendor
-    const activePOs = poProduksi.filter(p => p.vendorId === vendorId && p.status !== "Selesai" && p.status !== "Pipeline Selesai");
-    
-    // Also check transfers sent to this vendor that haven't been completed
+    // PO jahit yang ditugaskan langsung ke vendor ini (CMT)
+    const activePOs = poProduksi.filter(p => p.vendorId === vendorId && p.status !== "Selesai" && p.status !== "Pipeline Selesai" && p.status !== "Closed");
+    // Transfer ke vendor ini yang belum diverifikasi selesai (washing, benang, dll)
     const activeTransfers = transfers.filter(t => t.vendor_id === vendorId && t.status !== "Diverifikasi");
 
-    const unfinishedPOs: any[] = [];
-    let totalPcsAssigned = 0;
-    let totalPcsUnfinished = 0;
+    const items: any[] = [];
 
     for (const po of activePOs) {
-      // Find progress
       const records = cmtProgres.filter(p => p.po_id === po.id);
-      const acc = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
-                         .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
+      const sumItems = (arr: any[]) => arr.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
+      const acc = sumItems(records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima"));
+      const lapor = sumItems(records);
+      const lastReport = records.map(r => r.tanggal || r.createdAt).filter(Boolean).sort().pop();
       const sisa = Math.max(0, (po.jumlahTerbit || 0) - acc);
-      const pct = po.jumlahTerbit > 0 ? Math.round((acc / po.jumlahTerbit) * 100) : 0;
-      
+      if (sisa <= 0) continue;
       const targetDate = po.target_selesai || null;
-      const late = isOverdue(targetDate);
-      const lateDays = overdueDays(targetDate);
-
-      totalPcsAssigned += po.jumlahTerbit || 0;
-      totalPcsUnfinished += sisa;
-
-      unfinishedPOs.push({
+      items.push({
+        key: `po-${po.id}`,
         poId: po.id,
         noPo: po.noPo,
         model: po.model,
-        jumlahTerbit: po.jumlahTerbit,
+        tahap: "Jahit / CMT",
+        tanggal_kirim: po.tanggalTerbit,
+        lamaHari: daysSince(po.tanggalTerbit),
+        lastReport,
+        lastReportDays: daysSince(lastReport),
+        totalPcs: po.jumlahTerbit,
         selesaiPcs: acc,
+        dilaporPcs: lapor,
         sisaPcs: sisa,
-        progressPct: pct,
+        progressPct: po.jumlahTerbit > 0 ? Math.round((acc / po.jumlahTerbit) * 100) : 0,
         target_selesai: targetDate,
-        isOverdue: late,
-        overdueDays: lateDays
+        isOverdue: isOverdue(targetDate),
+        overdueDays: overdueDays(targetDate),
+        sisaHari: targetDate ? remainingDays(targetDate) : null,
+        status: lapor > acc ? "Menunggu ACC laporan" : acc > 0 ? "Sedang dijahit" : "Belum ada laporan progres",
       });
     }
 
-    // For other vendors (e.g. washing), add transfer items if not in activePOs
     for (const t of activeTransfers) {
-      if (!activePOs.find(p => p.id === t.po_id)) {
-        const po = getPO(t.po_id);
-        const sisa = Math.max(0, (t.jumlah_kirim || 0) - (t.jumlah_diterima || 0));
-        const pct = t.jumlah_kirim > 0 ? Math.round(((t.jumlah_diterima || 0) / t.jumlah_kirim) * 100) : 0;
-        const targetDate = t.target_selesai || po?.target_selesai || null;
-        const late = isOverdue(targetDate);
-        const lateDays = overdueDays(targetDate);
-
-        totalPcsAssigned += t.jumlah_kirim || 0;
-        totalPcsUnfinished += sisa;
-
-        unfinishedPOs.push({
-          poId: t.po_id,
-          noPo: po?.noPo || `PO #${t.po_id}`,
-          model: po?.model || `Transfer ${t.ke}`,
-          jumlahTerbit: t.jumlah_kirim,
-          selesaiPcs: t.jumlah_diterima || 0,
-          sisaPcs: sisa,
-          progressPct: pct,
-          target_selesai: targetDate,
-          isOverdue: late,
-          overdueDays: lateDays
-        });
-      }
+      if (activePOs.find(p => p.id === t.po_id) && stageVendorType(t.ke) === "cmt") continue;
+      const po = getPO(t.po_id);
+      const diterima = Number(t.jumlah_diterima || 0);
+      const sisa = Math.max(0, (t.jumlah_kirim || 0) - diterima);
+      if (sisa <= 0) continue;
+      const targetDate = t.target_selesai || po?.target_selesai || null;
+      items.push({
+        key: `tf-${t.id}`,
+        poId: t.po_id,
+        noPo: po?.noPo || `PO #${t.po_id}`,
+        model: po?.model || "-",
+        tahap: stageNameBySlug(t.ke),
+        tanggal_kirim: t.tanggal_kirim,
+        lamaHari: daysSince(t.tanggal_kirim),
+        lastReport: t.tanggal_terima || null,
+        lastReportDays: daysSince(t.tanggal_terima),
+        totalPcs: t.jumlah_kirim,
+        selesaiPcs: diterima,
+        dilaporPcs: diterima,
+        sisaPcs: sisa,
+        progressPct: t.jumlah_kirim > 0 ? Math.round((diterima / t.jumlah_kirim) * 100) : 0,
+        target_selesai: targetDate,
+        isOverdue: isOverdue(targetDate),
+        overdueDays: overdueDays(targetDate),
+        sisaHari: targetDate ? remainingDays(targetDate) : null,
+        status: t.status === "Kirim" ? "Dikirim, belum dikonfirmasi vendor" : t.status === "Dikerjakan" ? "Sedang dikerjakan" : (t.status || "Proses"),
+      });
     }
 
-    const overdueCount = unfinishedPOs.filter(p => p.isOverdue).length;
+    items.sort((a, b) => (b.overdueDays - a.overdueDays) || (b.sisaPcs - a.sisaPcs));
+
+    const totalPcsAssigned = items.reduce((s, i) => s + (i.totalPcs || 0), 0);
+    const totalPcsUnfinished = items.reduce((s, i) => s + i.sisaPcs, 0);
+    const overdueItems = items.filter(i => i.isOverdue);
+    const overdueCount = overdueItems.length;
+    const overduePcs = overdueItems.reduce((s, i) => s + i.sisaPcs, 0);
     const hasOverdue = overdueCount > 0;
-    const maxOverdueDays = unfinishedPOs.reduce((max, p) => Math.max(max, p.overdueDays), 0);
+    const maxOverdueDays = items.reduce((max, p) => Math.max(max, p.overdueDays), 0);
+    const avgProgress = items.length ? Math.round(items.reduce((s, i) => s + i.progressPct, 0) / items.length) : 100;
+    const nearDeadline = items.filter(i => !i.isOverdue && i.sisaHari !== null && i.sisaHari <= 3).length;
 
-    // Determine capacity level & label
+    // Skor kelayakan 0 - 100
+    let score = 100;
+    score -= overdueCount * 15;
+    score -= Math.min(40, maxOverdueDays);
+    score -= Math.min(25, Math.floor(totalPcsUnfinished / 80));
+    score -= nearDeadline * 5;
+    score = Math.max(0, Math.min(100, score));
+
     let capacityLevel: "safe" | "medium" | "overloaded" = "safe";
-    let capacityLabel = "🟢 Kapasitas Sangat Baik (Siap Terima)";
-    let capacityNote = "Vendor tidak memiliki tanggungan barang tertunda dan siap memproses pekerjaan baru.";
+    let capacityLabel = "Siap Terima Order";
+    let recommendation = "Direkomendasikan";
+    const reasons: string[] = [];
 
-    if (hasOverdue) {
-      capacityLevel = "overloaded";
-      capacityLabel = "🔴 Beban Tinggi / Ada Keterlambatan!";
-      capacityNote = `Perhatian: Ada ${overdueCount} PO yang terlambat hingga +${maxOverdueDays} hari. Pertimbangkan sebelum menambah order baru.`;
-    } else if (totalPcsUnfinished > 1500) {
-      capacityLevel = "overloaded";
-      capacityLabel = "🔴 Beban Sangat Padat";
-      capacityNote = `Vendor sedang mengerjakan ${totalPcsUnfinished} pcs barang. Kapasitas mendekati batas maksimum.`;
-    } else if (totalPcsUnfinished > 0) {
-      capacityLevel = "medium";
-      capacityLabel = "🟡 Beban Sedang";
-      capacityNote = `Sedang mengerjakan ${totalPcsUnfinished} pcs barang Anda (${unfinishedPOs.length} PO aktif) dengan progres berjalan.`;
+    if (hasOverdue) reasons.push(`${overdueCount} pekerjaan lewat target (terparah +${maxOverdueDays} hari, ${overduePcs.toLocaleString("id-ID")} pcs tertahan)`);
+    if (nearDeadline > 0) reasons.push(`${nearDeadline} pekerjaan mendekati dateline (≤ 3 hari)`);
+    if (totalPcsUnfinished > 0) reasons.push(`Masih memegang ${totalPcsUnfinished.toLocaleString("id-ID")} pcs barang Anda yang belum selesai`);
+    const stale = items.filter(i => i.lastReportDays === null || (i.lastReportDays ?? 0) > 7);
+    if (stale.length > 0) reasons.push(`${stale.length} pekerjaan tanpa update progres > 7 hari`);
+
+    if (score < 50) {
+      capacityLevel = "overloaded"; capacityLabel = "Beban Berat / Bermasalah"; recommendation = "Tidak Disarankan";
+    } else if (score < 80 || totalPcsUnfinished > 0) {
+      capacityLevel = "medium"; capacityLabel = "Beban Sedang"; recommendation = "Bisa, dengan Catatan";
     }
+
+    const capacityNote = capacityLevel === "safe"
+      ? "Vendor tidak memiliki tanggungan barang tertunda dan siap memproses pekerjaan baru."
+      : capacityLevel === "medium"
+        ? "Vendor masih mampu menerima order, namun pantau progres pekerjaan yang sedang berjalan."
+        : "Vendor sedang bermasalah. Selesaikan / tagih pekerjaan yang terlambat sebelum menambah order baru.";
 
     return {
       vendorId,
       vendorNama: vendor.nama,
       vendorTipe: vendor.tipe,
-      totalActivePO: unfinishedPOs.length,
+      kontak: vendor.kontak || vendor.no_hp || "",
+      totalActivePO: items.length,
       totalPcsAssigned,
       totalPcsUnfinished,
       hasOverdue,
       overdueCount,
+      overduePcs,
       maxOverdueDays,
-      unfinishedPOs,
+      avgProgress,
+      nearDeadline,
+      unfinishedPOs: items,
+      score,
+      recommendation,
+      reasons,
       capacityLevel,
       capacityLabel,
       capacityNote
     };
+  };
+
+  const waLink = (phone?: string, text?: string) => {
+    if (!phone) return "";
+    let c = phone.replace(/[^0-9]/g, "");
+    if (c.startsWith("0")) c = "62" + c.slice(1);
+    else if (c.startsWith("8")) c = "62" + c;
+    return `https://wa.me/${c}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
   };
 
   // KPI Calculations
@@ -466,6 +523,9 @@ export default function AlurProduksiPage() {
     const defDateStr = defDate.toISOString().split("T")[0];
     const initialTargetDate = po.target_selesai ? String(po.target_selesai).split("T")[0] : defDateStr;
 
+    setRiskAck(false);
+    setShowAllVendors(false);
+    setExpandedVendorId(null);
     setTransferModal({ po, currentStage });
     setTransferForm({
       ke_slug: nextSt?.slug || "",
@@ -482,6 +542,17 @@ export default function AlurProduksiPage() {
     if (!transferModal || !transferForm.ke_slug || !transferForm.jumlah_kirim) {
       toast.error("Harap lengkapi tujuan tahap dan jumlah kirim");
       return;
+    }
+    if (Number(transferForm.jumlah_kirim) > Number(transferModal.po.jumlahTerbit || 0)) {
+      toast.error(`Jumlah kirim melebihi kuota PO (${transferModal.po.jumlahTerbit} pcs)`);
+      return;
+    }
+    if (transferForm.vendor_id) {
+      const wl = getVendorWorkload(Number(transferForm.vendor_id));
+      if (wl && wl.capacityLevel === "overloaded" && !riskAck) {
+        toast.error(`${wl.vendorNama} sedang bermasalah (${wl.overdueCount} pekerjaan terlambat). Centang konfirmasi risiko untuk tetap mengirim.`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -1396,7 +1467,7 @@ export default function AlurProduksiPage() {
       {/* MODAL TRANSFER BARANG KE POS BERIKUTNYA */}
       {transferModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-          <div style={{ background: "white", width: "100%", maxWidth: 540, borderRadius: 18, overflow: "hidden", boxShadow: "0 25px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column" }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 720, maxHeight: "92vh", borderRadius: 18, overflow: "hidden", boxShadow: "0 25px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column" }}>
             
             {/* Modal Header */}
             <div style={{ padding: "18px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(135deg, #F8FAFC, #EFF6FF)" }}>
@@ -1421,8 +1492,8 @@ export default function AlurProduksiPage() {
               const selectedVendorWorkload = transferForm.vendor_id ? getVendorWorkload(Number(transferForm.vendor_id)) : null;
 
               return (
-                <form onSubmit={handleSubmitTransfer}>
-                  <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+                <form onSubmit={handleSubmitTransfer} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                  <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, overflowY: "auto", flex: 1, minHeight: 0 }}>
                     
                     {/* Target Stage Select */}
                     <div>
@@ -1442,137 +1513,242 @@ export default function AlurProduksiPage() {
                       </select>
                     </div>
 
-                    {/* Vendor Select with Workload Preview */}
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <label style={{ fontSize: 12.5, fontWeight: 700, color: "#334155" }}>
-                          Pilih Vendor Mitra Penerima
-                        </label>
-                        <span style={{ fontSize: 11, color: "#64748B" }}>Pantau kapasitas & tanggungan barang</span>
-                      </div>
-                      <select
-                        style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", background: "#FFFFFF", color: "#0F172A" }}
-                        value={transferForm.vendor_id}
-                        onChange={e => setTransferForm({ ...transferForm, vendor_id: e.target.value })}
-                      >
-                        <option value="">-- Pilih Vendor (Opsional / Internal) --</option>
-                        {vendors.map(v => {
-                          const wl = getVendorWorkload(v.id);
-                          let tag = "🟢 Siap Terima (0 antrean)";
-                          if (wl?.hasOverdue) tag = `🔴 Ada ${wl.overdueCount} PO Terlambat (${wl.totalPcsUnfinished} pcs)`;
-                          else if ((wl?.totalPcsUnfinished || 0) > 0) tag = `🟡 Sedang Proses ${wl?.totalPcsUnfinished} pcs`;
-                          return (
-                            <option key={v.id} value={v.id}>
-                              {v.nama} ({v.tipe || "Vendor"}) — {tag}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
+                    {/* ===== VENDOR PICKER: DETAIL KAPASITAS, TUNGGAKAN & KETERLAMBATAN ===== */}
+                    {(() => {
+                      const targetType = stageVendorType(transferForm.ke_slug);
+                      const targetStageName = stageNameBySlug(transferForm.ke_slug);
+                      const allWl = vendors
+                        .map(v => getVendorWorkload(v.id))
+                        .filter(Boolean) as any[];
+                      const matching = targetType ? allWl.filter(w => (w.vendorTipe || "").toLowerCase() === targetType) : allWl;
+                      const others = targetType ? allWl.filter(w => (w.vendorTipe || "").toLowerCase() !== targetType) : [];
+                      const sortWl = (a: any, b: any) => b.score - a.score;
+                      matching.sort(sortWl); others.sort(sortWl);
+                      const list = showAllVendors ? [...matching, ...others] : matching;
+                      const bestId = matching.length ? matching[0].vendorId : null;
+                      const problemCount = matching.filter(w => w.hasOverdue).length;
 
-                    {/* DEDICATED VENDOR WORKLOAD & UNFINISHED GOODS ANALYSIS CARD */}
-                    {selectedVendorWorkload && (
-                      <div style={{ 
-                        background: selectedVendorWorkload.capacityLevel === "safe" ? "#F0FDF4" : selectedVendorWorkload.capacityLevel === "medium" ? "#FFFBEB" : "#FEF2F2",
-                        border: `1.5px solid ${selectedVendorWorkload.capacityLevel === "safe" ? "#86EFAC" : selectedVendorWorkload.capacityLevel === "medium" ? "#FDE68A" : "#FCA5A5"}`,
-                        borderRadius: 12,
-                        padding: "14px 16px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10
-                      }}>
-                        {/* Status Header */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#64748B", letterSpacing: 0.5 }}>
-                              Analisis Kapasitas & Beban Kerja:
-                            </div>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: "#0F172A", marginTop: 2 }}>
-                              {selectedVendorWorkload.vendorNama} ({selectedVendorWorkload.vendorTipe})
-                            </div>
-                          </div>
-                          <span style={{ 
-                            fontSize: 11, 
-                            fontWeight: 800, 
-                            padding: "3px 9px", 
-                            borderRadius: 6,
-                            background: selectedVendorWorkload.capacityLevel === "safe" ? "#DCFCE7" : selectedVendorWorkload.capacityLevel === "medium" ? "#FEF3C7" : "#FEE2E2",
-                            color: selectedVendorWorkload.capacityLevel === "safe" ? "#166534" : selectedVendorWorkload.capacityLevel === "medium" ? "#92400E" : "#DC2626",
-                            border: `1px solid ${selectedVendorWorkload.capacityLevel === "safe" ? "#86EFAC" : selectedVendorWorkload.capacityLevel === "medium" ? "#FDE68A" : "#FCA5A5"}`
-                          }}>
-                            {selectedVendorWorkload.capacityLabel}
-                          </span>
-                        </div>
+                      const lvl = (w: any) => w.capacityLevel === "safe"
+                        ? { bg: "#F0FDF4", bd: "#86EFAC", fg: "#166534", chip: "#DCFCE7", dot: "#16A34A", icon: "🟢" }
+                        : w.capacityLevel === "medium"
+                          ? { bg: "#FFFBEB", bd: "#FCD34D", fg: "#92400E", chip: "#FEF3C7", dot: "#D97706", icon: "🟡" }
+                          : { bg: "#FEF2F2", bd: "#FCA5A5", fg: "#991B1B", chip: "#FEE2E2", dot: "#DC2626", icon: "🔴" };
 
-                        {/* KPI Workload Mini Grid */}
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, textAlign: "center" }}>
-                          <div style={{ background: "white", padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
-                            <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>PO Aktif Vendor</div>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: "#0F172A", marginTop: 2 }}>
-                              {selectedVendorWorkload.totalActivePO} PO
-                            </div>
-                          </div>
-                          <div style={{ background: "white", padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
-                            <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>Barang Belum Selesai</div>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: selectedVendorWorkload.totalPcsUnfinished > 0 ? "#DC2626" : "#059669", marginTop: 2 }}>
-                              {selectedVendorWorkload.totalPcsUnfinished.toLocaleString("id-ID")} pcs
-                            </div>
-                          </div>
-                          <div style={{ background: "white", padding: "8px 6px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
-                            <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>Status Dateline</div>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: selectedVendorWorkload.hasOverdue ? "#DC2626" : "#16A34A", marginTop: 2 }}>
-                              {selectedVendorWorkload.hasOverdue ? `🚨 ${selectedVendorWorkload.overdueCount} Lewat!` : "✅ Sesuai Target"}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Status Barang Anda yang Masih Belum Selesai */}
+                      return (
                         <div>
-                          {selectedVendorWorkload.totalPcsUnfinished > 0 ? (
-                            <div style={{ background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #FECACA" }}>
-                              <div style={{ fontSize: 12, fontWeight: 800, color: "#991B1B", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-                                <AlertTriangle size={13} color="#DC2626" />
-                                <span>Perhatian: Masih ada barang Anda yang BELUM SELESAI di vendor ini:</span>
-                              </div>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                {selectedVendorWorkload.unfinishedPOs.map((upo: any) => (
-                                  <div key={upo.poId} style={{ background: "#F8FAFC", borderRadius: 8, padding: "8px 10px", fontSize: 11.5, border: "1px solid #E2E8F0" }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                      <div>
-                                        <strong style={{ color: "#1E293B" }}>{upo.noPo}</strong> ({upo.model}) &bull; Sisa: <strong style={{ color: "#DC2626" }}>{upo.sisaPcs} pcs</strong> ({upo.progressPct}% selesai)
-                                      </div>
-                                      {upo.isOverdue ? (
-                                        <span style={{ fontSize: 10, fontWeight: 800, color: "#DC2626", background: "#FEE2E2", padding: "1px 6px", borderRadius: 4 }}>
-                                          🚨 Lewat +{upo.overdueDays} Hari
-                                        </span>
-                                      ) : (
-                                        <span style={{ fontSize: 10, fontWeight: 700, color: "#059669", background: "#DCFCE7", padding: "1px 6px", borderRadius: 4 }}>
-                                          Target: {fmtDate(upo.target_selesai)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {/* Mini progress bar */}
-                                    <div style={{ height: 4, background: "#E2E8F0", borderRadius: 2, overflow: "hidden", marginTop: 5 }}>
-                                      <div style={{ width: `${upo.progressPct}%`, height: "100%", background: upo.isOverdue ? "#EF4444" : "#3B82F6" }} />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                              <div style={{ fontSize: 11, color: "#7F1D1D", marginTop: 6, fontStyle: "italic" }}>
-                                {selectedVendorWorkload.capacityNote}
-                              </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+                            <div>
+                              <label style={{ fontSize: 12.5, fontWeight: 800, color: "#334155", display: "block" }}>
+                                Pilih Vendor Mitra Penerima
+                              </label>
+                              <span style={{ fontSize: 11, color: "#64748B" }}>
+                                {targetType
+                                  ? <>Menampilkan vendor <b>{targetType.toUpperCase()}</b> yang cocok untuk tahap <b>{targetStageName}</b> — diurutkan dari yang paling layak</>
+                                  : "Diurutkan dari vendor dengan skor kelayakan tertinggi"}
+                              </span>
                             </div>
-                          ) : (
-                            <div style={{ background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #BBF7D0", display: "flex", alignItems: "center", gap: 8 }}>
-                              <CheckCircle2 size={16} color="#16A34A" />
-                              <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>
-                                Tidak ada tanggungan barang Anda yang belum selesai di vendor ini. Vendor sangat mampu dan siap menerima order baru.
+                            {others.length > 0 && (
+                              <button type="button" onClick={() => setShowAllVendors(!showAllVendors)}
+                                style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>
+                                {showAllVendors ? "Hanya vendor yang cocok" : `+ Tampilkan ${others.length} vendor lain`}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Ringkasan masalah vendor di tahap ini */}
+                          {problemCount > 0 && (
+                            <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
+                              <AlertTriangle size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: 1 }} />
+                              <div style={{ fontSize: 11.5, color: "#7F1D1D", lineHeight: 1.45 }}>
+                                <b>{problemCount} dari {matching.length} vendor {targetType ? targetType : ""}</b> sedang memiliki pekerjaan yang <b>terlambat</b>. Periksa rincian tunggakan di bawah sebelum memilih agar barang tidak semakin menumpuk.
                               </div>
                             </div>
                           )}
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {/* Opsi internal */}
+                            <button type="button" onClick={() => { setTransferForm({ ...transferForm, vendor_id: "" }); setRiskAck(false); }}
+                              style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                                border: !transferForm.vendor_id ? "2px solid #2563EB" : "1px solid #E2E8F0",
+                                background: !transferForm.vendor_id ? "#EFF6FF" : "#FFFFFF", display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${!transferForm.vendor_id ? "#2563EB" : "#CBD5E1"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {!transferForm.vendor_id && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563EB" }} />}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0F172A" }}>Internal / Tanpa Vendor</div>
+                                <div style={{ fontSize: 11, color: "#64748B" }}>Dikerjakan tim sendiri (gudang / produksi internal)</div>
+                              </div>
+                            </button>
+
+                            {list.length === 0 && (
+                              <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: 14, border: "1px dashed #CBD5E1", borderRadius: 10 }}>
+                                Belum ada vendor bertipe <b>{targetType}</b>. Klik "Tampilkan vendor lain" atau tambahkan di menu Atur Vendor.
+                              </div>
+                            )}
+
+                            {list.map((w: any) => {
+                              const c = lvl(w);
+                              const selected = String(transferForm.vendor_id) === String(w.vendorId);
+                              const expanded = selected || expandedVendorId === w.vendorId;
+                              const isMatch = !targetType || (w.vendorTipe || "").toLowerCase() === targetType;
+                              const overdueList = w.unfinishedPOs.filter((u: any) => u.isOverdue);
+                              const waText = overdueList.length
+                                ? `Halo ${w.vendorNama}, mohon update progres pekerjaan berikut yang sudah melewati target:\n` +
+                                  overdueList.map((u: any) => `- ${u.noPo} (${u.model}) sisa ${u.sisaPcs} pcs, target ${fmtDate(u.target_selesai)} (+${u.overdueDays} hari)`).join("\n") +
+                                  `\nKapan bisa diselesaikan? Terima kasih.`
+                                : `Halo ${w.vendorNama}, kami berencana mengirim barang baru. Apakah kapasitas Anda tersedia?`;
+                              const wa = waLink(w.kontak, waText);
+
+                              return (
+                                <div key={w.vendorId} style={{ borderRadius: 12, border: selected ? `2px solid ${c.dot}` : `1px solid ${w.hasOverdue ? "#FECACA" : "#E2E8F0"}`, background: selected ? c.bg : "#FFFFFF", overflow: "hidden", boxShadow: selected ? `0 4px 14px ${c.dot}22` : "none" }}>
+                                  {/* Header vendor (klik untuk pilih) */}
+                                  <div role="button" onClick={() => { setTransferForm({ ...transferForm, vendor_id: String(w.vendorId) }); setRiskAck(false); }}
+                                    style={{ padding: "10px 12px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                    <div style={{ width: 16, height: 16, marginTop: 2, borderRadius: "50%", border: `2px solid ${selected ? c.dot : "#CBD5E1"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                      {selected && <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot }} />}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                        <span style={{ fontSize: 13, fontWeight: 900, color: "#0F172A" }}>{w.vendorNama}</span>
+                                        <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "#F1F5F9", color: "#475569", textTransform: "uppercase" }}>{w.vendorTipe}</span>
+                                        {!isMatch && <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "#FFF7ED", color: "#C2410C" }}>Bukan tipe {targetType}</span>}
+                                        {w.vendorId === bestId && w.capacityLevel !== "overloaded" && (
+                                          <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "#DBEAFE", color: "#1D4ED8" }}>⭐ Paling Layak</span>
+                                        )}
+                                      </div>
+                                      <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                                        <span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 7px", borderRadius: 5, background: c.chip, color: c.fg }}>{c.icon} {w.capacityLabel}</span>
+                                        <span style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: "#F8FAFC", color: "#334155", border: "1px solid #E2E8F0" }}>{w.totalActivePO} pekerjaan aktif</span>
+                                        <span style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 5, background: "#F8FAFC", color: w.totalPcsUnfinished ? "#B91C1C" : "#166534", border: "1px solid #E2E8F0" }}>{w.totalPcsUnfinished.toLocaleString("id-ID")} pcs belum selesai</span>
+                                        {w.hasOverdue && (
+                                          <span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 7px", borderRadius: 5, background: "#FEE2E2", color: "#DC2626", border: "1px solid #FCA5A5" }}>🚨 {w.overdueCount} terlambat · maks +{w.maxOverdueDays} hr</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {/* Skor */}
+                                    <div style={{ textAlign: "center", flexShrink: 0 }}>
+                                      <div style={{ width: 46, height: 46, borderRadius: "50%", background: `conic-gradient(${c.dot} ${w.score * 3.6}deg, #E2E8F0 0deg)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: c.fg }}>{w.score}</div>
+                                      </div>
+                                      <div style={{ fontSize: 9, fontWeight: 700, color: c.fg, marginTop: 2, maxWidth: 70, lineHeight: 1.1 }}>{w.recommendation}</div>
+                                    </div>
+                                  </div>
+
+                                  {/* Toggle rincian untuk vendor yang belum dipilih */}
+                                  {!selected && w.totalActivePO > 0 && (
+                                    <button type="button" onClick={() => setExpandedVendorId(expandedVendorId === w.vendorId ? null : w.vendorId)}
+                                      style={{ width: "100%", border: "none", borderTop: "1px solid #F1F5F9", background: "#FAFAFA", padding: "5px", fontSize: 11, fontWeight: 700, color: "#475569", cursor: "pointer" }}>
+                                      {expanded ? "Sembunyikan rincian ▲" : `Lihat rincian ${w.totalActivePO} pekerjaan ▼`}
+                                    </button>
+                                  )}
+
+                                  {/* Rincian lengkap */}
+                                  {expanded && (
+                                    <div style={{ borderTop: `1px solid ${c.bd}`, background: "#FFFFFF", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                                      {/* Alasan / temuan */}
+                                      {w.reasons.length > 0 ? (
+                                        <div style={{ background: c.bg, border: `1px solid ${c.bd}`, borderRadius: 8, padding: "8px 10px" }}>
+                                          <div style={{ fontSize: 11, fontWeight: 800, color: c.fg, marginBottom: 4 }}>Temuan Analisis:</div>
+                                          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: "#334155", lineHeight: 1.5 }}>
+                                            {w.reasons.map((r: string, i: number) => <li key={i}>{r}</li>)}
+                                          </ul>
+                                          <div style={{ fontSize: 11, color: c.fg, marginTop: 4, fontStyle: "italic" }}>{w.capacityNote}</div>
+                                        </div>
+                                      ) : (
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#166534", fontWeight: 700 }}>
+                                          <CheckCircle2 size={15} /> Tidak ada barang Anda yang tertahan di vendor ini. Siap menerima order baru.
+                                        </div>
+                                      )}
+
+                                      {/* Ringkasan angka */}
+                                      {w.totalActivePO > 0 && (
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, textAlign: "center" }}>
+                                          {[
+                                            { l: "Total Dipegang", v: `${w.totalPcsAssigned.toLocaleString("id-ID")} pcs`, col: "#0F172A" },
+                                            { l: "Belum Selesai", v: `${w.totalPcsUnfinished.toLocaleString("id-ID")} pcs`, col: "#B91C1C" },
+                                            { l: "Tertahan Lewat Target", v: `${w.overduePcs.toLocaleString("id-ID")} pcs`, col: w.overduePcs ? "#DC2626" : "#16A34A" },
+                                            { l: "Rata² Progres", v: `${w.avgProgress}%`, col: "#2563EB" },
+                                          ].map((m, i) => (
+                                            <div key={i} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "6px 4px" }}>
+                                              <div style={{ fontSize: 9.5, color: "#64748B", fontWeight: 700 }}>{m.l}</div>
+                                              <div style={{ fontSize: 12.5, fontWeight: 900, color: m.col, marginTop: 1 }}>{m.v}</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Daftar pekerjaan per PO */}
+                                      {w.unfinishedPOs.map((u: any) => (
+                                        <div key={u.key} style={{ border: `1px solid ${u.isOverdue ? "#FCA5A5" : "#E2E8F0"}`, borderLeft: `4px solid ${u.isOverdue ? "#DC2626" : (u.sisaHari !== null && u.sisaHari <= 3) ? "#F59E0B" : "#3B82F6"}`, borderRadius: 8, padding: "8px 10px", background: u.isOverdue ? "#FFFBFB" : "#FFFFFF" }}>
+                                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                            <div style={{ minWidth: 0 }}>
+                                              <div style={{ fontSize: 12, fontWeight: 900, color: "#0F172A" }}>
+                                                <span style={{ fontFamily: "monospace", color: "#1D4ED8" }}>{u.noPo}</span> · {u.model}
+                                              </div>
+                                              <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 1 }}>
+                                                Tahap: <b>{u.tahap}</b> · Status: <b>{u.status}</b>
+                                              </div>
+                                            </div>
+                                            {u.isOverdue ? (
+                                              <span style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", background: "#DC2626", padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>TERLAMBAT +{u.overdueDays} HARI</span>
+                                            ) : u.sisaHari !== null ? (
+                                              <span style={{ fontSize: 10, fontWeight: 800, color: u.sisaHari <= 3 ? "#92400E" : "#166534", background: u.sisaHari <= 3 ? "#FEF3C7" : "#DCFCE7", padding: "2px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>{u.sisaHari <= 0 ? "Jatuh tempo hari ini" : `Sisa ${u.sisaHari} hari`}</span>
+                                            ) : (
+                                              <span style={{ fontSize: 10, fontWeight: 700, color: "#64748B", background: "#F1F5F9", padding: "2px 7px", borderRadius: 4 }}>Tanpa dateline</span>
+                                            )}
+                                          </div>
+
+                                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginTop: 6, fontSize: 10.5, color: "#475569" }}>
+                                            <div>📦 Dikirim: <b>{fmtDate(u.tanggal_kirim)}</b>{u.lamaHari !== null && <> ({u.lamaHari} hr lalu)</>}</div>
+                                            <div>🎯 Target: <b style={{ color: u.isOverdue ? "#DC2626" : "#0F172A" }}>{fmtDate(u.target_selesai)}</b></div>
+                                            <div>🕒 Update: <b style={{ color: (u.lastReportDays === null || u.lastReportDays > 7) ? "#DC2626" : "#0F172A" }}>{u.lastReport ? `${u.lastReportDays} hr lalu` : "Belum pernah"}</b></div>
+                                          </div>
+
+                                          <div style={{ marginTop: 6 }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 3 }}>
+                                              <span style={{ color: "#475569" }}>Selesai <b>{u.selesaiPcs}</b>{u.dilaporPcs > u.selesaiPcs && <> (+{u.dilaporPcs - u.selesaiPcs} menunggu ACC)</>} / {u.totalPcs} pcs</span>
+                                              <span style={{ fontWeight: 800, color: u.isOverdue ? "#DC2626" : "#0F172A" }}>Sisa {u.sisaPcs} pcs · {u.progressPct}%</span>
+                                            </div>
+                                            <div style={{ height: 6, background: "#E2E8F0", borderRadius: 3, overflow: "hidden", position: "relative" }}>
+                                              <div style={{ position: "absolute", inset: 0, width: `${Math.min(100, u.totalPcs ? (u.dilaporPcs / u.totalPcs) * 100 : 0)}%`, background: "#FCD34D" }} />
+                                              <div style={{ position: "absolute", inset: 0, width: `${u.progressPct}%`, background: u.isOverdue ? "#EF4444" : "#10B981" }} />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+
+                                      {/* Aksi cepat */}
+                                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                                        <Link href={`/cmt/${w.vendorId}`} target="_blank" style={{ fontSize: 11, fontWeight: 700, color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 6, padding: "5px 10px", textDecoration: "none" }}>
+                                          Buka Portal Vendor ↗
+                                        </Link>
+                                        {wa ? (
+                                          <a href={wa} target="_blank" rel="noreferrer" style={{ fontSize: 11, fontWeight: 700, color: "#FFFFFF", background: "#16A34A", borderRadius: 6, padding: "5px 10px", textDecoration: "none" }}>
+                                            {overdueList.length ? `Tagih ${overdueList.length} PO Terlambat via WA` : "Tanya Kapasitas via WA"}
+                                          </a>
+                                        ) : (
+                                          <span style={{ fontSize: 11, color: "#94A3B8", padding: "5px 4px" }}>No. WA belum diisi</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Konfirmasi risiko jika vendor bermasalah */}
+                          {selectedVendorWorkload && selectedVendorWorkload.capacityLevel === "overloaded" && (
+                            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 10, background: "#FEF2F2", border: "1.5px solid #FCA5A5", borderRadius: 10, padding: "10px 12px", cursor: "pointer" }}>
+                              <input type="checkbox" checked={riskAck} onChange={e => setRiskAck(e.target.checked)} style={{ marginTop: 2, accentColor: "#DC2626" }} />
+                              <span style={{ fontSize: 11.5, color: "#7F1D1D", lineHeight: 1.45 }}>
+                                Saya memahami <b>{selectedVendorWorkload.vendorNama}</b> masih memiliki <b>{selectedVendorWorkload.overdueCount} pekerjaan terlambat</b> ({selectedVendorWorkload.overduePcs.toLocaleString("id-ID")} pcs) dan tetap ingin mengirim barang ke vendor ini.
+                              </span>
+                            </label>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Target Selesai / Dateline di Pos Tujuan */}
                     <div>
