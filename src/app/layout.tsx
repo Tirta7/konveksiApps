@@ -71,6 +71,42 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Prevent iOS Safari rubber-band overscroll when at top boundary
+              (function() {
+                var startY = 0;
+                window.addEventListener('touchstart', function(e) {
+                  if (e.touches && e.touches.length === 1) {
+                    startY = e.touches[0].clientY;
+                  }
+                }, { passive: true });
+
+                window.addEventListener('touchmove', function(e) {
+                  if (!e.touches || e.touches.length !== 1) return;
+                  var currentY = e.touches[0].clientY;
+                  var deltaY = currentY - startY;
+
+                  // Check if touch target is within an active inner scrollable element
+                  var target = e.target;
+                  var hasScrollableParent = false;
+                  while (target && target !== document.body && target !== document.documentElement) {
+                    if (target.scrollHeight > target.clientHeight && (target.scrollTop > 0 || (deltaY < 0 && target.scrollTop + target.clientHeight < target.scrollHeight))) {
+                      hasScrollableParent = true;
+                      break;
+                    }
+                    target = target.parentElement;
+                  }
+                  if (hasScrollableParent) return;
+
+                  var scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+                  // If already at top and pulling DOWN, cancel bounce firmly
+                  if (scrollTop <= 0 && deltaY > 0) {
+                    if (e.cancelable) {
+                      e.preventDefault();
+                    }
+                  }
+                }, { passive: false });
+              })();
+
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(

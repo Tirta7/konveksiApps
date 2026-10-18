@@ -455,12 +455,19 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
               min-height: 100vh !important;
               min-height: 100dvh !important;
               -webkit-overflow-scrolling: touch !important;
+              background-color: #0F172A !important;
+              overscroll-behavior: none !important;
+              overscroll-behavior-y: none !important;
+              -webkit-overscroll-behavior-y: none !important;
             }
             #vendor-portal-page {
               width: 100% !important;
               min-height: 100vh !important;
               min-height: 100dvh !important;
               overflow-x: hidden !important;
+              background-color: #0F172A !important;
+              overscroll-behavior: none !important;
+              overscroll-behavior-y: none !important;
             }
             @keyframes pulse {
               0%, 100% { opacity: 1; }
