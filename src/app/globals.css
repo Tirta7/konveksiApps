@@ -679,9 +679,33 @@ tbody tr:hover { background: #F8FAFC; }
 
 .timeline-connector.done { background: var(--color-success); }
 
-/* ─── Responsive ─────────────────────────────────────────────────────── */
+/* ─── Responsive & Hide Scrollbars on Mobile / Touch Devices ───────── */
 .mobile-header { display: none; }
 .sidebar-overlay { display: none; }
+
+@media (max-width: 768px), (pointer: coarse) {
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  *::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  *::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+  }
+  *::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-track {
+    display: none !important;
+    background: transparent !important;
+  }
+}
 
 @media (max-width: 768px) {
   .app-layout {

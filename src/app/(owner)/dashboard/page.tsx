@@ -99,10 +99,11 @@ export default function DashboardPage() {
     <>
       <style>{`
         @keyframes pulseSoft { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+        @media (min-width: 769px) {
+          ::-webkit-scrollbar { width: 4px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+          ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+        }
         .dash-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08)!important; transform: translateY(-1px); }
 
         .dash-outer-container {
@@ -150,6 +151,17 @@ export default function DashboardPage() {
         }
 
         @media (max-width: 960px) {
+          * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+          }
+          *::-webkit-scrollbar,
+          ::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            background: transparent !important;
+          }
           .dash-outer-container {
             height: auto !important;
             min-height: 100vh;

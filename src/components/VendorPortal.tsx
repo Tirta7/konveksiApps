@@ -510,6 +510,27 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                 gap: 10px !important;
                 box-sizing: border-box !important;
               }
+              * {
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+              }
+              *::-webkit-scrollbar,
+              ::-webkit-scrollbar {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                background: transparent !important;
+              }
+              *::-webkit-scrollbar-thumb,
+              ::-webkit-scrollbar-thumb {
+                display: none !important;
+                background: transparent !important;
+              }
+              *::-webkit-scrollbar-track,
+              ::-webkit-scrollbar-track {
+                display: none !important;
+                background: transparent !important;
+              }
               .vendor-header-right {
                 display: flex !important;
                 flex-direction: row !important;
