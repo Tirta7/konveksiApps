@@ -727,7 +727,7 @@ export default function AlurProduksiPage() {
   }
 
   return (
-    <div style={{ padding: "28px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: "28px 32px 140px 32px", background: "#F1F5F9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .flow-card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -1276,9 +1276,12 @@ export default function AlurProduksiPage() {
             const liveStatus = getPoLiveStatus(po);
 
             const poTargetDate = po.target_selesai || (dists.find(d => d.target_selesai)?.target_selesai) || null;
-            const isPoLate = isOverdue(poTargetDate) && rawStatus !== "Selesai";
+            const isOverdueOverall = isOverdue(poTargetDate);
             const poLateDays = overdueDays(poTargetDate);
             const poDaysLeft = remainingDays(poTargetDate);
+            const isPoComplete = po.status === "Closed" || po.status === "Pipeline Selesai" || (liveStatus?.sisaPcs === 0 && rawStatus === "Selesai");
+            const isPoLate = (isOverdueOverall || poDaysLeft < 0) && !isPoComplete;
+            const displayLateDays = poLateDays > 0 ? poLateDays : Math.abs(poDaysLeft);
 
             return (
               <div 
@@ -1310,7 +1313,7 @@ export default function AlurProduksiPage() {
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                         <AlertTriangle size={14} color="#FECACA" />
-                        <span>PO MELEBIHI TARGET SELESAI ({poLateDays} HARI)</span>
+                        <span>PO MELEBIHI TARGET SELESAI ({displayLateDays} HARI)</span>
                         <span style={{ opacity: 0.85, fontWeight: 600 }}>• Target: {fmtDate(poTargetDate)}</span>
                       </div>
                       <span style={{
@@ -1321,7 +1324,7 @@ export default function AlurProduksiPage() {
                         color: "#FEE2E2",
                         border: "1px solid rgba(254,202,202,0.4)"
                       }}>
-                        -{poLateDays}% Throttle
+                        -{displayLateDays}% Throttle
                       </span>
                     </div>
                   ) : (
@@ -1341,7 +1344,7 @@ export default function AlurProduksiPage() {
                         <span>Dateline Target: {fmtDate(poTargetDate)}</span>
                       </div>
                       <span style={{ background: "#DCFCE7", padding: "2px 8px", borderRadius: 4, color: "#15803D", fontWeight: 800 }}>
-                        ⏳ Sisa {poDaysLeft} Hari
+                        ⏳ Sisa {Math.max(0, poDaysLeft)} Hari
                       </span>
                     </div>
                   )
@@ -1590,32 +1593,38 @@ export default function AlurProduksiPage() {
                   )}
 
                   {/* Context: Forwarded to Washing (Transfers) */}
-                  {liveStatus && liveStatus.washTransfers.length > 0 && (
-                    <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: "#0F172A" }}>
-                          <Droplets size={13} color="#2563EB" />
-                          <span>Dialihkan ke Pos Washing</span>
-                        </div>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB" }}>
-                          {liveStatus.totalWashKirim.toLocaleString("id-ID")} pcs
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        {liveStatus.washTransfers.map((tf: any, i: number) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#475569", background: "#FFFFFF", padding: "4px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
-                            <span>&bull; {getVendorName(tf.vendor_id)}</span>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <strong style={{ color: "#0F172A" }}>{tf.jumlah_kirim} pcs</strong>
-                              <span style={{ fontSize: 9.5, padding: "1px 5px", borderRadius: 4, background: tf.status === "Dikerjakan" ? "#EFF6FF" : "#F1F5F9", color: tf.status === "Dikerjakan" ? "#1D4ED8" : "#64748B", fontWeight: 700 }}>
-                                {tf.status}
-                              </span>
-                            </div>
+                  {(() => {
+                    const validWash = (liveStatus?.washTransfers || []).filter((tf: any) => Number(tf.jumlah_kirim) > 0 && tf.status !== "Ditarik Penuh");
+                    if (validWash.length === 0) return null;
+                    const totalWash = validWash.reduce((s: number, t: any) => s + Number(t.jumlah_kirim || 0), 0);
+
+                    return (
+                      <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: "#0F172A" }}>
+                            <Droplets size={13} color="#2563EB" />
+                            <span>Dialihkan ke Pos Washing</span>
                           </div>
-                        ))}
+                          <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB" }}>
+                            {totalWash.toLocaleString("id-ID")} pcs
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {validWash.map((tf: any, i: number) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#475569", background: "#FFFFFF", padding: "4px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                              <span>&bull; {getVendorName(tf.vendor_id)}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <strong style={{ color: "#0F172A" }}>{tf.jumlah_kirim} pcs</strong>
+                                <span style={{ fontSize: 9.5, padding: "1px 5px", borderRadius: 4, background: tf.status === "Dikerjakan" ? "#EFF6FF" : "#F1F5F9", color: tf.status === "Dikerjakan" ? "#1D4ED8" : "#64748B", fontWeight: 700 }}>
+                                  {tf.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Stage-specific Distributions (e.g. at Washing stage) */}
                   {!isInitialCutting && !isJahitStage && (
@@ -1652,7 +1661,7 @@ export default function AlurProduksiPage() {
                   )}
 
                   {/* Card Action Buttons */}
-                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9", display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid #F1F5F9", display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
                     <Link
                       href={`/cetak-po/${po.id}`}
                       style={{
@@ -1702,6 +1711,52 @@ export default function AlurProduksiPage() {
           })}
         </div>
       )}
+
+      {/* BOTTOM COMFORT SPACER & STATUS BAR */}
+      <div style={{
+        marginTop: 36,
+        padding: "16px 22px",
+        background: "#FFFFFF",
+        borderRadius: 14,
+        border: "1px solid #E2E8F0",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 14,
+        color: "#64748B",
+        fontSize: 12
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 0 3px #DCFCE7" }} />
+          <span>Pipeline produksi aktif &bull; Menampilkan <strong>{filteredActivePoItems.length} SPK</strong> dalam tahap <strong>{activeStageObj?.nama}</strong></span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 12 }}>
+            Total Produksi: <strong style={{ color: "#0F172A" }}>{filteredActivePoItems.reduce((s, p) => s + (getPO(p.po_id)?.jumlahTerbit || 0), 0).toLocaleString("id-ID")} pcs</strong>
+          </span>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            style={{
+              background: "#F8FAFC",
+              border: "1px solid #CBD5E1",
+              borderRadius: 8,
+              padding: "6px 14px",
+              fontSize: 11.5,
+              fontWeight: 800,
+              color: "#334155",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              transition: "all 0.2s"
+            }}
+          >
+            ↑ Kembali ke Atas
+          </button>
+        </div>
+      </div>
 
       {/* MODAL UPDATE STATUS TAHAP */}
       {statusModal && (
