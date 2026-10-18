@@ -216,7 +216,10 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           catatan: progresCatatan
         })
       });
-      if (!res.ok) throw new Error("Gagal mengirim laporan progres");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Gagal mengirim laporan progres");
+      }
 
       toast.success("Laporan progres berhasil dikirim ke Admin!");
       setJustSubmittedPo(showProgresModal.id);
@@ -1005,6 +1008,12 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                   <li>
                     <strong>Dispensasi:</strong> Jika butuh kain sebelum target tercapai, ajukan lewat tombol <em>"Minta Kerjaan"</em> untuk ditinjau Admin.
                   </li>
+                  <li>
+                    <strong>Setelah semua dilaporkan:</strong> hitungan keterlambatan langsung <em>berhenti</em> (dibekukan) walau masih menunggu ACC Admin.
+                  </li>
+                  <li>
+                    <strong>Setelah di-ACC penuh:</strong> PO pindah ke <em>Riwayat Kinerja</em> dengan catatan tepat waktu / terlambat X hari, penalti dihapus, dan Anda bisa langsung minta kerjaan baru.
+                  </li>
                 </ul>
               </div>
             )}
@@ -1300,6 +1309,31 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                       boxShadow: "0 4px 16px rgba(0,0,0,0.2)"
                     }}
                   >
+                    {/* Waiting ACC strip: semua sudah dilaporkan → hitungan terlambat berhenti */}
+                    {!isOverdue && po.waitingAcc && (
+                      <div
+                        style={{
+                          background: "linear-gradient(135deg, #78350F 0%, #92400E 100%)",
+                          padding: "8px 16px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: 8
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Clock size={15} color="#FCD34D" />
+                          <span style={{ fontWeight: 800, fontSize: 11, color: "#FDE68A" }}>
+                            SEMUA SUDAH DILAPORKAN • MENUNGGU ACC ADMIN
+                          </span>
+                        </div>
+                        <span style={{ background: "rgba(0,0,0,0.25)", color: "#FDE68A", fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 12 }}>
+                          {overdueDays > 0 ? `Terlambat ${overdueDays} hari (hitungan dihentikan)` : "Tepat waktu"}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Overdue Strip */}
                     {isOverdue && (
                       <div
@@ -1755,6 +1789,13 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
               <div style={{ fontSize: 11, color: "#94A3B8" }}>
                 Total: <strong style={{ color: "white" }}>{historiPOs.length} PO</strong> (
                 {totalSelesaiPcs.toLocaleString("id-ID")} pcs)
+                {data.kinerja && historiPOs.length > 0 && (
+                  <>
+                    {" · "}<strong style={{ color: "#34D399" }}>{data.kinerja.tepatWaktu} tepat waktu</strong>
+                    {" · "}<strong style={{ color: "#FDBA74" }}>{data.kinerja.terlambat} terlambat</strong>
+                    {" · "}Ketepatan <strong style={{ color: "white" }}>{data.kinerja.pctTepatWaktu}%</strong>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1779,7 +1820,7 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                     <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: 500 }}>
                       <thead>
                         <tr style={{ background: "#0F172A", borderBottom: "1px solid #334155" }}>
-                          {["NO PO", "MODEL", "TOTAL PCS", "TANGGAL", "STATUS", "AKSI"].map((h) => (
+                          {["NO PO", "MODEL", "TOTAL PCS", "TANGGAL SELESAI", "KETEPATAN", "STATUS", "AKSI"].map((h) => (
                             <th
                               key={h}
                               style={{
@@ -1809,8 +1850,19 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                             </td>
                             <td style={{ padding: "10px 14px", color: "#94A3B8", fontSize: 11 }}>
                               {po.tanggalSelesai
-                                ? new Date(po.tanggalSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                                ? new Date(po.tanggalSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
                                 : "Selesai"}
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              {po.terlambatHari > 0 ? (
+                                <span style={{ background: "#431407", color: "#FDBA74", border: "1px solid #9A3412", padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>
+                                  Terlambat {po.terlambatHari} hari
+                                </span>
+                              ) : (
+                                <span style={{ background: "#064E3B", color: "#34D399", padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>
+                                  Tepat waktu
+                                </span>
+                              )}
                             </td>
                             <td style={{ padding: "10px 14px" }}>
                               <span

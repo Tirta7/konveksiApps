@@ -330,7 +330,15 @@ export default function BuatPOProduksi() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success("Laporan berhasil diverifikasi & masuk ke stok siap tarik!");
+      if (data.pekerjaanSelesai) {
+        toast.success(
+          data.terlambatHari > 0
+            ? `Laporan di-ACC. Pekerjaan vendor SELESAI (terlambat ${data.terlambatHari} hari — tercatat di riwayat kinerja, penalti dicabut).`
+            : "Laporan di-ACC. Pekerjaan vendor SELESAI tepat waktu!"
+        );
+      } else {
+        toast.success(`Laporan berhasil diverifikasi & masuk ke stok siap tarik!${data.sisa != null ? ` Sisa ${data.sisa} pcs.` : ""}`);
+      }
       fetchAll();
     } catch (e: any) {
       toast.error(e.message);

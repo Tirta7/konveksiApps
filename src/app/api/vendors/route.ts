@@ -1,57 +1,42 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
+import { getCmtCompletion, getTransferCompletion, isVendorTransferActive } from "@/lib/po-lifecycle";
 
 export async function GET() {
   const data = readData();
   const vendors = data.vendors || [];
   
-  // Calculate global throttle for all vendors
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  // Calculate global throttle for all vendors (aturan terpusat: lib/po-lifecycle)
 
   const enrichedVendors = vendors.map((v: any) => {
     let maxOverdueDays = 0;
 
-    // Check overdue from PO Jahit (CMT)
-    const activePOs = (data.po_produksi || []).filter((p: any) => p.vendorId === v.id && p.status !== "Selesai");
-    activePOs.forEach((po: any) => {
-      if (po.target_selesai) {
-        const graceDate = new Date(po.target_selesai);
-        graceDate.setDate(graceDate.getDate() + 1);
-        graceDate.setHours(0, 0, 0, 0);
-        if (today > graceDate) {
-          // Has the PO been 100% ACC'd in cmt_progres?
-          const records = (data.cmt_progres || []).filter((p: any) => p.po_id === po.id && (p.status === "Diverifikasi" || p.status === "Diterima"));
-          const acc = records.reduce((s: number, r: any) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
-          if (acc < po.jumlahTerbit) {
-            const overdue = Math.floor((today.getTime() - graceDate.getTime()) / (1000 * 60 * 60 * 24));
-            if (overdue > maxOverdueDays) maxOverdueDays = overdue;
-          }
-        }
-      }
-    });
+    // Overdue dari PO Jahit (CMT) — hanya yang hitungan terlambatnya masih berjalan
+    const myPOs = (data.po_produksi || []).filter((p: any) => p.vendorId === v.id);
+    let activePoCount = 0;
+    for (const po of myPOs) {
+      const c = getCmtCompletion(data, po);
+      if (c.done) continue;
+      activePoCount++;
+      if (c.isOverdue) maxOverdueDays = Math.max(maxOverdueDays, c.lateDays);
+    }
 
-    // Check overdue from produksi_transfers (Washing, Finishing, etc)
-    const activeTransfers = (data.produksi_transfers || []).filter((t: any) => t.vendor_id === v.id && t.status !== "Diterima");
-    activeTransfers.forEach((t: any) => {
-      if (t.target_selesai) {
-        const graceDate = new Date(t.target_selesai);
-        graceDate.setDate(graceDate.getDate() + 1);
-        graceDate.setHours(0, 0, 0, 0);
-        if (today > graceDate) {
-          const overdue = Math.floor((today.getTime() - graceDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (overdue > maxOverdueDays) maxOverdueDays = overdue;
-        }
-      }
-    });
+    // Overdue dari produksi_transfers (Washing, Finishing, dll)
+    let activeTransferCount = 0;
+    for (const t of (data.produksi_transfers || [])) {
+      if (t.vendor_id !== v.id || !isVendorTransferActive(t)) continue;
+      activeTransferCount++;
+      const c = getTransferCompletion(data, t);
+      if (c.isOverdue) maxOverdueDays = Math.max(maxOverdueDays, c.lateDays);
+    }
 
     // Calculate throttle
     let currentThrottle = 100;
     currentThrottle -= maxOverdueDays;
     if (currentThrottle < 0) currentThrottle = 0;
 
-    return { ...v, throttle: currentThrottle };
+    return { ...v, throttle: currentThrottle, maxOverdueDays, activeJobCount: activePoCount + activeTransferCount };
   });
 
   return NextResponse.json(enrichedVendors);

@@ -404,14 +404,14 @@ export default function AlurProduksiPage() {
     if (!vendor) return null;
 
     // PO jahit yang ditugaskan langsung ke vendor ini (CMT)
-    const activePOs = poProduksi.filter(p => p.vendorId === vendorId && p.status !== "Selesai" && p.status !== "Pipeline Selesai" && p.status !== "Closed");
-    // Transfer ke vendor ini yang belum diverifikasi selesai (washing, benang, dll)
-    const activeTransfers = transfers.filter(t => t.vendor_id === vendorId && t.status !== "Diverifikasi");
+    const activePOs = poProduksi.filter(p => p.vendorId === vendorId && !p.cmt_selesai && p.status !== "Selesai" && p.status !== "Pipeline Selesai" && p.status !== "Closed");
+    // Transfer ke vendor ini yang masih dikerjakan (washing, benang, dll)
+    const activeTransfers = transfers.filter(t => t.vendor_id === vendorId && (t.status === "Proses" || t.status === "Dikerjakan"));
 
     const items: any[] = [];
 
     for (const po of activePOs) {
-      const records = cmtProgres.filter(p => p.po_id === po.id);
+      const records = cmtProgres.filter(p => p.po_id === po.id && !p.transfer_id && (!po.vendorId || p.vendor_id === po.vendorId) && p.status !== "Ditolak");
       const sumItems = (arr: any[]) => arr.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0);
       const acc = sumItems(records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima"));
       const lapor = sumItems(records);
@@ -435,8 +435,8 @@ export default function AlurProduksiPage() {
         sisaPcs: sisa,
         progressPct: po.jumlahTerbit > 0 ? Math.round((acc / po.jumlahTerbit) * 100) : 0,
         target_selesai: targetDate,
-        isOverdue: isOverdue(targetDate),
-        overdueDays: overdueDays(targetDate),
+        isOverdue: po.cmt_is_overdue ?? isOverdue(targetDate),
+        overdueDays: po.cmt_late_days ?? overdueDays(targetDate),
         sisaHari: targetDate ? remainingDays(targetDate) : null,
         status: lapor > acc ? "Menunggu ACC laporan" : acc > 0 ? "Sedang dijahit" : "Belum ada laporan progres",
       });
@@ -1285,13 +1285,23 @@ export default function AlurProduksiPage() {
             const isJahitStage = normalizeStage(activeStageObj?.slug) === "cmt";
             const liveStatus = getPoLiveStatus(po);
 
-            const poTargetDate = po.target_selesai || (dists.find(d => d.target_selesai)?.target_selesai) || null;
+            const isCmtLens = isJahitStage || isInitialCutting;
+            const distTarget = dists.find(d => d.target_selesai)?.target_selesai || null;
+            // Tahap CMT/potong → target PO; tahap lanjutan → target transfer vendor tahap itu
+            const poTargetDate = isCmtLens ? (po.target_selesai || distTarget || null) : (distTarget || null);
             const isOverdueOverall = isOverdue(poTargetDate);
             const poLateDays = overdueDays(poTargetDate);
             const poDaysLeft = remainingDays(poTargetDate);
             const isPoComplete = po.status === "Closed" || po.status === "Pipeline Selesai" || (liveStatus?.sisaPcs === 0 && rawStatus === "Selesai");
-            const isPoLate = (isOverdueOverall || poDaysLeft < 0) && !isPoComplete;
-            const displayLateDays = poLateDays > 0 ? poLateDays : Math.abs(poDaysLeft);
+            // CMT sudah selesai / sudah lapor penuh → hitungan terlambat berhenti (dibekukan)
+            const cmtFinished = isCmtLens && (po.cmt_selesai || po.cmt_menunggu_acc);
+            const cmtFinalLate = Number(po.cmt_terlambat_hari || 0);
+            const isPoLate = !cmtFinished && (isCmtLens && typeof po.cmt_is_overdue === "boolean"
+              ? po.cmt_is_overdue
+              : (isOverdueOverall || poDaysLeft < 0)) && !isPoComplete;
+            const displayLateDays = isCmtLens && typeof po.cmt_late_days === "number" && po.cmt_late_days > 0
+              ? po.cmt_late_days
+              : (poLateDays > 0 ? poLateDays : Math.abs(poDaysLeft));
 
             return (
               <div 
@@ -1309,7 +1319,38 @@ export default function AlurProduksiPage() {
               >
                 {/* Overdue Alert Banner or Target Date Bar (Concept from CMT Portal) */}
                 {poTargetDate ? (
-                  isPoLate ? (
+                  cmtFinished ? (
+                    <div style={{
+                      background: cmtFinalLate > 0 ? "#FFF7ED" : "#F0FDF4",
+                      borderBottom: `1px solid ${cmtFinalLate > 0 ? "#FED7AA" : "#BBF7D0"}`,
+                      color: cmtFinalLate > 0 ? "#9A3412" : "#166534",
+                      padding: "7px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      flexWrap: "wrap",
+                      fontSize: 11,
+                      fontWeight: 700
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <CheckCircle2 size={13} color={cmtFinalLate > 0 ? "#EA580C" : "#16A34A"} />
+                        <span>
+                          {po.cmt_selesai ? "CMT SELESAI" : "CMT LAPOR PENUH • MENUNGGU ACC"}
+                          {po.cmt_selesai_at ? ` • ${fmtDate(po.cmt_selesai_at)}` : ""}
+                        </span>
+                        <span style={{ opacity: 0.8, fontWeight: 600 }}>• Target: {fmtDate(poTargetDate)}</span>
+                      </div>
+                      <span style={{
+                        background: cmtFinalLate > 0 ? "#FFEDD5" : "#DCFCE7",
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        fontWeight: 800
+                      }}>
+                        {cmtFinalLate > 0 ? `Terlambat ${cmtFinalLate} hari (dibekukan)` : "Tepat waktu"}
+                      </span>
+                    </div>
+                  ) : isPoLate ? (
                     <div style={{
                       background: "linear-gradient(90deg, #991B1B 0%, #DC2626 100%)",
                       color: "#FFFFFF",

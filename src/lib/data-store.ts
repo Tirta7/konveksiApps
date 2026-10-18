@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { broadcast } from "./sse";
 import { getCached, setCache, publishChange, isRedisReady } from "./redis";
+import { reconcileProduction } from "./po-lifecycle";
 
 const DATA_PATH = path.join(process.cwd(), "konveksi-data.json");
 const TEMP_PATH = DATA_PATH + ".tmp";
@@ -174,6 +175,9 @@ function flushToDisk(): void {
 }
 
 export function writeData(data: DataStore): void {
+  // Auto-reconcile: vendor selesai, keterlambatan dibekukan, pipeline PO tersinkron
+  try { reconcileProduction(data); } catch (e) { console.error("[data-store] Reconcile error:", e); }
+
   // Update in-memory cache immediately (so reads after write are instant)
   setMemCache(data);
 

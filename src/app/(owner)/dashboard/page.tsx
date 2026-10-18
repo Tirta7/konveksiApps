@@ -372,14 +372,14 @@ export default function DashboardPage() {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
                       <span style={{ fontSize: 15, fontWeight: 900, color: "#991B1B" }}>
-                        Peringatan Real-Time: {totalPoTerlambat} PO CMT Melebihi Target Waktu Selesai!
+                        Peringatan Real-Time: {totalPoTerlambat} PO Melebihi Target Waktu Selesai!
                       </span>
                       <span style={{ fontSize: 10, fontWeight: 800, background: "#EF4444", color: "white", padding: "2px 8px", borderRadius: 99, letterSpacing: 0.5 }}>
                         OVERDUE
                       </span>
                     </div>
                     <p style={{ fontSize: 12, color: "#7F1D1D", margin: 0, lineHeight: 1.4 }}>
-                      Pengerjaan oleh vendor CMT terlambat beberapa hari dari estimasi selesai. Segera lakukan koordinasi dan follow-up.
+                      Pengerjaan vendor (CMT / washing / tahap lanjutan) terlambat dari estimasi selesai. Peringatan hilang otomatis begitu vendor melaporkan seluruh jumlah.
                     </p>
                   </div>
                 </div>
@@ -416,7 +416,7 @@ export default function DashboardPage() {
                     const waNum = cleanWaNumber(po.vendor_kontak);
                     return (
                       <div 
-                        key={po.id} 
+                        key={po.alertKey || po.id} 
                         style={{ 
                           background: "white", 
                           borderRadius: 14, 
@@ -436,6 +436,11 @@ export default function DashboardPage() {
                             </div>
                             <div style={{ fontSize: 12, fontWeight: 800, color: "#1E293B", marginTop: 2 }}>
                               Vendor: <span style={{ color: "#2563EB" }}>{po.vendor_nama || "CMT"}</span>
+                              {po.tahap && (
+                                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: "#7C3AED", background: "#F5F3FF", border: "1px solid #DDD6FE", padding: "1px 6px", borderRadius: 6 }}>
+                                  {po.tahap}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <span style={{ 
@@ -479,7 +484,7 @@ export default function DashboardPage() {
                                 textDecoration: "none" 
                               }}
                             >
-                              Portal CMT <ExternalLink size={12} />
+                              Portal Vendor <ExternalLink size={12} />
                             </Link>
                           )}
                           {waNum ? (
@@ -757,6 +762,21 @@ export default function DashboardPage() {
                                 gap: 3 
                               }}>
                                 <Clock size={10} /> Terlambat +{po.overdueDays} Hari
+                              </span>
+                            )}
+                            {!isLate && po.cmtMenungguAcc && (
+                              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: "#FEF3C7", color: "#B45309", border: "1px solid #FCD34D", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                <Clock size={10} /> CMT lapor penuh · menunggu ACC{po.cmtTerlambatHari > 0 ? ` (+${po.cmtTerlambatHari} hari)` : ""}
+                              </span>
+                            )}
+                            {po.cmtSelesai && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 3,
+                                background: po.cmtTerlambatHari > 0 ? "#FFF7ED" : "#ECFDF5",
+                                color: po.cmtTerlambatHari > 0 ? "#C2410C" : "#047857",
+                                border: `1px solid ${po.cmtTerlambatHari > 0 ? "#FDBA74" : "#6EE7B7"}`
+                              }}>
+                                {po.cmtTerlambatHari > 0 ? `CMT selesai · terlambat ${po.cmtTerlambatHari} hari` : "CMT selesai tepat waktu"}
                               </span>
                             )}
                           </div>

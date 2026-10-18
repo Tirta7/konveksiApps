@@ -209,7 +209,7 @@ export default function AturVendorPage() {
 
   // Active PO lookup per vendor
   const getActivePOCount = (vendorId: number) => {
-    return poList.filter((p: any) => p.vendorId === vendorId && p.status !== "Closed" && p.status !== "Selesai").length;
+    return poList.filter((p: any) => p.vendorId === vendorId && !p.cmt_selesai && p.cmt_status !== "Selesai" && p.status !== "Closed" && p.status !== "Selesai").length;
   };
 
   const openAddVendor = () => {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
+import { getCmtCompletion, getTransferCompletion, cmtReports, transferReports, isVendorTransferActive } from "@/lib/po-lifecycle";
 
 // GET portal data for a specific CMT vendor
 export async function GET(req: Request, context: { params: Promise<{ id: string }> | { id: string } }) {
@@ -12,117 +13,104 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     return NextResponse.json({ error: "CMT tidak ditemukan" }, { status: 404 });
   }
 
-  // PO aktif: po_produksi atau produksi_transfers yang masih berjalan
+  const now = new Date();
+  const sumSizes = (records: any[]) => {
+    const out: Record<string, number> = {};
+    for (const rec of records) {
+      for (const item of (rec.items || [])) {
+        out[item.size] = (out[item.size] || 0) + Number(item.jumlah || 0);
+      }
+    }
+    return out;
+  };
+  const isApproved = (p: any) => p.status === "Diverifikasi" || p.status === "selesai" || p.status === "Diterima";
+  const isPending = (p: any) => p.status === "Menunggu" || p.status === "Pending";
+
+  // PO aktif: po_produksi (CMT) atau produksi_transfers (vendor lanjutan) yang masih berjalan
   let activePO: any[] = [];
-  
-  if (vendor.tipe === "cmt" || vendor.tipe === "jahit") {
-    activePO = (data.po_produksi || [])
-      .filter((po: any) => po.vendorId === vendorId && po.status !== "Selesai")
-      .map((po: any) => {
-      const pengambilans = (data.po_pengambilan || []).filter((p: any) => p.poId === po.id);
-      const totalDiambil = pengambilans.reduce((sum: number, p: any) => sum + (p.jumlahDiambil || 0), 0);
-      const pct = po.jumlahTerbit > 0 ? Math.round((totalDiambil / po.jumlahTerbit) * 100) : 0;
-      
-      // Compute per-size progress from verified cmt_progres records
-      const sizeProgress: Record<string, number> = {};
-      const progresRecords = (data.cmt_progres || []).filter((p: any) => 
-        p.po_id === po.id && (p.status === "Diverifikasi" || p.status === "selesai" || p.status === "Diterima")
-      );
-      for (const rec of progresRecords) {
-        for (const item of (rec.items || [])) {
-          sizeProgress[item.size] = (sizeProgress[item.size] || 0) + Number(item.jumlah || 0);
-        }
-      }
-      // Also count from pending reports (Menunggu/Pending, not Ditolak or Diterima)
-      const pendingProgres = (data.cmt_progres || []).filter((p: any) => 
-        p.po_id === po.id && p.vendor_id === vendorId && 
-        (p.status === "Menunggu" || p.status === "Pending")
-      );
-      const pendingSizeProgress: Record<string, number> = {};
-      for (const rec of pendingProgres) {
-        for (const item of (rec.items || [])) {
-          pendingSizeProgress[item.size] = (pendingSizeProgress[item.size] || 0) + Number(item.jumlah || 0);
-        }
-      }
-      
-      return {
+  let historiPO: any[] = [];
+  const isCmtVendor = vendor.tipe === "cmt" || vendor.tipe === "jahit";
+
+  if (isCmtVendor) {
+    const myPOs = (data.po_produksi || []).filter((po: any) => po.vendorId === vendorId);
+    for (const po of myPOs) {
+      const c = getCmtCompletion(data, po, now);
+      const reports = cmtReports(data, po);
+      const base = {
         ...po,
         no_po: po.noPo,          // alias for frontend
         jumlah_terbit: po.jumlahTerbit,
-        totalDiambil,
-        pct,
-        sizeProgress,
-        pendingSizeProgress,
+        totalDiambil: c.approved,
+        totalPending: c.pending,
+        pct: po.jumlahTerbit > 0 ? Math.round((c.approved / po.jumlahTerbit) * 100) : 0,
+        sizeProgress: sumSizes(reports.filter(isApproved)),
+        pendingSizeProgress: sumSizes(reports.filter(isPending)),
         progres: (data.spk_progres || []).filter((p: any) => p.po_id === po.id),
-        transfer_status: po.status
+        transfer_status: po.status,
+        targetSelesai: c.target,
+        overdueDays: c.lateDays,
+        isOverdue: c.isOverdue,
+        waitingAcc: c.waitingAcc,
+        reportedAt: c.reportedAt,
       };
-    });
+      if (c.done) {
+        historiPO.push({
+          ...base,
+          tanggalSelesai: c.selesaiAt,
+          terlambatHari: c.lateDays,
+          tepatWaktu: c.lateDays === 0,
+        });
+      } else {
+        activePO.push(base);
+      }
+    }
   } else {
-    // Vendor downstream (Washing, Finishing, dll) mencari active job di produksi_transfers
-    activePO = (data.produksi_transfers || [])
-      .filter((t: any) => t.vendor_id === vendorId && (t.status === "Proses" || t.status === "Dikerjakan"))
-      .map((t: any) => {
-        const po = (data.po_produksi || []).find((p: any) => p.id === t.po_id);
-        
-        // Progress record dicari berdasarkan transfer_id (dan po_id as fallback)
-        const sizeProgress: Record<string, number> = {};
-        const progresRecords = (data.cmt_progres || []).filter((p: any) => 
-          (p.transfer_id === t.id || (p.po_id === t.po_id && p.vendor_id === vendorId)) && 
-          (p.status === "Diverifikasi" || p.status === "selesai" || p.status === "Diterima")
-        );
-        for (const rec of progresRecords) {
-          for (const item of (rec.items || [])) {
-            sizeProgress[item.size] = (sizeProgress[item.size] || 0) + Number(item.jumlah || 0);
-          }
-        }
-        
-        const pendingProgres = (data.cmt_progres || []).filter((p: any) => 
-          (p.transfer_id === t.id || (p.po_id === t.po_id && p.vendor_id === vendorId)) && 
-          (p.status === "Menunggu" || p.status === "Pending")
-        );
-        const pendingSizeProgress: Record<string, number> = {};
-        for (const rec of pendingProgres) {
-          for (const item of (rec.items || [])) {
-            pendingSizeProgress[item.size] = (pendingSizeProgress[item.size] || 0) + Number(item.jumlah || 0);
-          }
-        }
-
-        const totalSelesai = Object.values(sizeProgress).reduce((sum: number, val) => sum + (val as number), 0);
-        const totalPending = Object.values(pendingSizeProgress).reduce((sum: number, val) => sum + (val as number), 0);
-        const pct = t.jumlah_kirim > 0 ? Math.round((totalSelesai / t.jumlah_kirim) * 100) : 0;
-
-        return {
-          id: t.id,
-          po_id: t.po_id,
-          is_transfer: true,
-          no_po: po ? po.noPo : "Unknown",
-          model: po ? po.model : "Unknown",
-          jumlah_terbit: t.jumlah_kirim, // Total yang ditugaskan ke vendor ini
-          totalDiambil: totalSelesai,    // Hanya yang sudah Diterima/ACC admin
-          totalPending,
-          pct,
-          sizeBreakdown: (t.sizeBreakdown || []).map((s: any) => ({
-            size: s.size,
-            jumlah: Number(s.jumlah || s.max || 0),
-            sisa: Number(s.jumlah || s.max || 0), // alias for display
-          })),
-          sizeProgress,
-          pendingSizeProgress,
-          progres: [],
-          transfer_status: t.status
-        };
-      });
+    // Vendor downstream (Washing, Finishing, dll) — job di produksi_transfers
+    const myTransfers = (data.produksi_transfers || []).filter((t: any) =>
+      t.vendor_id === vendorId && (isVendorTransferActive(t) || t.status === "Selesai")
+    );
+    for (const t of myTransfers) {
+      const po = (data.po_produksi || []).find((p: any) => p.id === t.po_id);
+      const c = getTransferCompletion(data, t, now);
+      const reports = transferReports(data, t);
+      const base = {
+        id: t.id,
+        po_id: t.po_id,
+        is_transfer: true,
+        no_po: po ? po.noPo : "Unknown",
+        noPo: po ? po.noPo : "Unknown",
+        model: po ? po.model : "Unknown",
+        jumlah_terbit: t.jumlah_kirim, // Total yang ditugaskan ke vendor ini
+        totalDiambil: c.approved,      // Hanya yang sudah Diterima/ACC admin
+        totalPending: c.pending,
+        pct: t.jumlah_kirim > 0 ? Math.round((c.approved / t.jumlah_kirim) * 100) : 0,
+        sizeBreakdown: (t.sizeBreakdown || []).map((s: any) => ({
+          size: s.size,
+          jumlah: Number(s.jumlah || s.max || 0),
+          sisa: Number(s.jumlah || s.max || 0), // alias for display
+        })),
+        sizeProgress: sumSizes(reports.filter(isApproved)),
+        pendingSizeProgress: sumSizes(reports.filter(isPending)),
+        progres: [],
+        transfer_status: t.status,
+        targetSelesai: c.target,
+        overdueDays: c.lateDays,
+        isOverdue: c.isOverdue,
+        waitingAcc: c.waitingAcc,
+        reportedAt: c.reportedAt,
+      };
+      if (c.done) {
+        historiPO.push({ ...base, tanggalSelesai: c.selesaiAt, terlambatHari: c.lateDays, tepatWaktu: c.lateDays === 0 });
+      } else {
+        activePO.push(base);
+      }
+    }
   }
 
-  // Riwayat selesai
-  const historiPO = (data.po_produksi || [])
-    .filter((po: any) => po.vendorId === vendorId && po.status === "Selesai")
-    .map((po: any) => {
-      const pengambilans = (data.po_pengambilan || []).filter((p: any) => p.poId === po.id);
-      const totalDiambil = pengambilans.reduce((sum: number, p: any) => sum + (p.jumlahDiambil || 0), 0);
-      return { ...po, no_po: po.noPo, jumlah_terbit: po.jumlahTerbit, totalDiambil };
-    })
-    .slice().reverse().slice(0, 20);
+  // Riwayat selesai (terbaru dulu)
+  historiPO = historiPO
+    .sort((a: any, b: any) => new Date(b.tanggalSelesai || 0).getTime() - new Date(a.tanggalSelesai || 0).getTime())
+    .slice(0, 50);
 
   // Gaji / Tagihan
   const gaji = (data.gaji_cmt || [])
@@ -223,50 +211,28 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       .sort((a: any, b: any) => b.sisa_total - a.sisa_total);
   }
 
-  // === SMART TRACKING: Hitung progress keseluruhan CMT ini ===
+  // === SMART TRACKING: Hitung progress keseluruhan vendor ini ===
+  // Hanya pekerjaan yang MASIH BERJALAN. Pekerjaan yang sudah selesai (walau terlambat)
+  // tidak lagi menambah penalti — keterlambatannya tercatat permanen di Riwayat Kinerja.
   const allActivePOs = activePO;
-  
+
   let totalJumlahTerbit = 0;
   let totalApprovedDone = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Calculate overdue info per PO
   let maxOverdueDays = 0;
   const overduePoList: { noPo: string; model: string; targetSelesai: string; overdueDays: number }[] = [];
 
   for (const po of allActivePOs) {
-    totalJumlahTerbit += Number(po.jumlahTerbit || 0);
-    // Hitung yang sudah di-ACC admin (Diterima/Diverifikasi)
-    const approvedRecs = (data.cmt_progres || []).filter((p: any) =>
-      (p.transfer_id === po.id || (p.po_id === (po.po_id || po.id) && p.vendor_id === vendorId)) && 
-      (p.status === "Diterima" || p.status === "Diverifikasi")
-    );
-    for (const rec of approvedRecs) {
-      for (const item of (rec.items || [])) {
-        totalApprovedDone += Number(item.jumlah || 0);
-      }
-    }
-
-    // Check overdue from pemotongan target_selesai
-    if (po.pemotongan_id) {
-      const pemo = (data.pemotongan_kain || []).find((p: any) => String(p.id) === String(po.pemotongan_id));
-      if (pemo?.target_selesai) {
-        const targetDate = new Date(pemo.target_selesai);
-        targetDate.setHours(0, 0, 0, 0);
-        const graceDate = new Date(targetDate);
-        graceDate.setDate(graceDate.getDate() + 1); // 1 day grace
-        if (today > graceDate) {
-          const overdueDays = Math.floor((today.getTime() - graceDate.getTime()) / (1000 * 60 * 60 * 24));
-          maxOverdueDays = Math.max(maxOverdueDays, overdueDays);
-          overduePoList.push({
-            noPo: po.noPo,
-            model: po.model,
-            targetSelesai: pemo.target_selesai,
-            overdueDays
-          });
-        }
-      }
+    totalJumlahTerbit += Number(po.jumlah_terbit ?? po.jumlahTerbit ?? 0);
+    totalApprovedDone += Number(po.totalDiambil || 0);
+    // Throttle hanya untuk yang hitungan terlambatnya masih berjalan (belum semua dilaporkan)
+    if (po.isOverdue) {
+      maxOverdueDays = Math.max(maxOverdueDays, po.overdueDays);
+      overduePoList.push({
+        noPo: po.no_po || po.noPo,
+        model: po.model,
+        targetSelesai: po.targetSelesai,
+        overdueDays: po.overdueDays,
+      });
     }
   }
 
@@ -276,8 +242,21 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
   const throttlePenalty = maxOverdueDays; // 1% per day
   const effectiveMinPct = Math.min(100, baseMinPct + throttlePenalty);
   const hasActivePO = allActivePOs.length > 0;
-  
+
   const canRequest = !hasActivePO || effectiveMinPct === 0 || overallPct >= effectiveMinPct;
+
+  // Ringkasan kinerja ketepatan waktu (dari riwayat selesai)
+  const selesaiTepat = historiPO.filter((h: any) => h.tepatWaktu).length;
+  const selesaiTerlambat = historiPO.length - selesaiTepat;
+  const kinerja = {
+    totalSelesai: historiPO.length,
+    tepatWaktu: selesaiTepat,
+    terlambat: selesaiTerlambat,
+    pctTepatWaktu: historiPO.length > 0 ? Math.round((selesaiTepat / historiPO.length) * 100) : 100,
+    rataTerlambatHari: selesaiTerlambat > 0
+      ? Math.round(historiPO.filter((h: any) => !h.tepatWaktu).reduce((s: number, h: any) => s + (h.terlambatHari || 0), 0) / selesaiTerlambat)
+      : 0,
+  };
 
   const blockInfo = {
     blocked: !canRequest,
@@ -289,29 +268,8 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     overduePoList,
     totalJumlahTerbit,
     totalApprovedDone,
-    neededPcs: !canRequest ? Math.ceil((effectiveMinPct / 100) * totalJumlahTerbit) - totalApprovedDone : 0,
+    neededPcs: !canRequest ? Math.max(0, Math.ceil((effectiveMinPct / 100) * totalJumlahTerbit) - totalApprovedDone) : 0,
   };
-
-  // Also attach overdue info per active PO
-  const activePOWithOverdue = activePO.map((po: any) => {
-    const pemo = po.pemotongan_id
-      ? (data.pemotongan_kain || []).find((p: any) => String(p.id) === String(po.pemotongan_id))
-      : null;
-    let overdueDays = 0;
-    let isOverdue = false;
-    let targetSelesai = pemo?.target_selesai || null;
-    if (targetSelesai) {
-      const targetDate = new Date(targetSelesai);
-      targetDate.setHours(0, 0, 0, 0);
-      const graceDate = new Date(targetDate);
-      graceDate.setDate(graceDate.getDate() + 1);
-      if (today > graceDate) {
-        overdueDays = Math.floor((today.getTime() - graceDate.getTime()) / (1000 * 60 * 60 * 24));
-        isOverdue = true;
-      }
-    }
-    return { ...po, targetSelesai, overdueDays, isOverdue };
-  });
 
   const cmt_progres = (data.cmt_progres || [])
     .filter((p: any) => String(p.vendor_id) === String(vendorId))
@@ -319,7 +277,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 
   return NextResponse.json({
     vendor,
-    activePO: activePOWithOverdue,
+    activePO,
     historiPO,
     gaji,
     totalTertunggak,
@@ -327,7 +285,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     pemotonganReady,
     canRequest,
     blockInfo,
+    kinerja,
     cmt_progres
   });
 }
-

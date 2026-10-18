@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
+import { getCmtCompletion, cmtReports } from "@/lib/po-lifecycle";
 import crypto from "crypto";
 import QRCode from "qrcode";
 
@@ -19,12 +20,18 @@ export async function GET() {
 
   // Calculate saldo for each PO
   const poList = data.po_produksi.map((po: any) => {
-    const pengambilans = data.po_pengambilan.filter((p: any) => p.poId === po.id);
+    // Hanya laporan CMT pemegang PO (laporan washing/vendor lanjutan tidak dihitung sebagai jahit)
+    const myCmtReports = cmtReports(data, po);
+    const cmtReportIds = new Set(myCmtReports.map((r: any) => r.id));
+    const pengambilans = data.po_pengambilan.filter((p: any) =>
+      p.poId === po.id && (p.laporanId == null || cmtReportIds.has(p.laporanId))
+    );
     const totalDiambil = pengambilans.reduce((sum: number, p: any) => sum + p.jumlahDiambil, 0);
     const sisa = po.jumlahTerbit - totalDiambil;
+    const cmt = getCmtCompletion(data, po);
 
     // CMT progress
-    const progresRecords = (data.cmt_progres || []).filter((p: any) => p.po_id === po.id);
+    const progresRecords = myCmtReports;
     const approvedRecords = progresRecords.filter((p: any) => p.status === "Diverifikasi" || p.status === "Diterima");
     const pendingRecords = progresRecords.filter((p: any) => p.status === "Menunggu" || p.status === "Pending");
 
@@ -96,6 +103,13 @@ export async function GET() {
       pctWashing,
       pctWashingACC,
       currentStage,
+      // Lifecycle CMT (aturan terpusat: lib/po-lifecycle)
+      cmt_selesai: cmt.done,
+      cmt_selesai_at: cmt.selesaiAt,
+      cmt_menunggu_acc: cmt.waitingAcc,
+      cmt_is_overdue: cmt.isOverdue,
+      cmt_late_days: cmt.lateDays,
+      cmt_terlambat_hari: cmt.done || cmt.waitingAcc ? cmt.lateDays : 0,
       status: sisa <= 0 ? "Closed" : po.status
     };
   }).reverse();

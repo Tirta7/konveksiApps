@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
+import { getCmtCompletion, getTransferCompletion } from "@/lib/po-lifecycle";
 
 // ─────────────────────────────────────────────
 // GET — Ambil daftar laporan progres
@@ -65,6 +66,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Validasi: tidak boleh melapor melebihi sisa / melapor pekerjaan yang sudah selesai
+    if (totalJumlah <= 0) {
+      return NextResponse.json({ error: "Jumlah laporan harus lebih dari 0" }, { status: 400 });
+    }
+    {
+      let c: any = null;
+      if (transferId != null) {
+        const t = (data.produksi_transfers || []).find((x: any) => String(x.id) === String(transferId));
+        if (t) c = getTransferCompletion(data, t);
+      } else {
+        const po = (data.po_produksi || []).find((p: any) => String(p.id) === String(realPoId));
+        if (po) c = getCmtCompletion(data, po);
+      }
+      if (c) {
+        if (c.done) {
+          return NextResponse.json({ error: "Pekerjaan ini sudah selesai & di-ACC penuh. Tidak perlu lapor lagi." }, { status: 400 });
+        }
+        const sisaBolehLapor = Math.max(0, c.jumlah - c.approved - c.pending);
+        if (totalJumlah > sisaBolehLapor) {
+          return NextResponse.json({
+            error: `Jumlah melebihi sisa. Maksimal ${sisaBolehLapor} pcs lagi (sudah ACC ${c.approved}, menunggu ACC ${c.pending} dari ${c.jumlah}).`
+          }, { status: 400 });
+        }
+      }
+    }
+
     data.cmt_progres.push({
       id: newId,
       po_id: realPoId,
@@ -91,7 +118,7 @@ export async function POST(req: NextRequest) {
   const laporan = data.cmt_progres[idx];
 
   // ── TOLAK ──
-  if (action === "reject") {
+  if (action === "reject" || action === "tolak") {
     if (laporan.status !== "Menunggu" && laporan.status !== "Pending") {
       return NextResponse.json({ error: "Hanya laporan pending yang bisa ditolak" }, { status: 400 });
     }
@@ -102,8 +129,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ── TERIMA (ACC) ──
+  const ACCEPT_ACTIONS = ["terima", "accept", "acc", "approve", "verifikasi"];
+  if (action && !ACCEPT_ACTIONS.includes(String(action).toLowerCase())) {
+    return NextResponse.json({ error: `Aksi tidak dikenal: ${action}` }, { status: 400 });
+  }
   if (laporan.status === "Diterima") {
     return NextResponse.json({ error: "Laporan sudah diterima" }, { status: 400 });
+  }
+  if (laporan.status === "Ditolak") {
+    return NextResponse.json({ error: "Laporan sudah ditolak. Minta vendor mengirim laporan baru." }, { status: 400 });
   }
   data.cmt_progres[idx].status = "Diterima";
   data.cmt_progres[idx].diterimaPada = new Date().toISOString();
@@ -225,7 +259,23 @@ export async function POST(req: NextRequest) {
   }
 
   writeData(data);
-  return NextResponse.json({ success: true, status: "Diterima" });
+
+  // Info penyelesaian (writeData sudah menjalankan rekonsiliasi otomatis)
+  let completion: any = null;
+  if (laporan.transfer_id != null) {
+    const t = (data.produksi_transfers || []).find((x: any) => String(x.id) === String(laporan.transfer_id));
+    if (t) completion = getTransferCompletion(data, t);
+  } else {
+    const po = (data.po_produksi || []).find((p: any) => String(p.id) === String(laporan.po_id));
+    if (po) completion = getCmtCompletion(data, po);
+  }
+  return NextResponse.json({
+    success: true,
+    status: "Diterima",
+    pekerjaanSelesai: !!completion?.done,
+    terlambatHari: completion?.done ? completion.lateDays : 0,
+    sisa: completion?.sisa ?? null,
+  });
 }
 
 export const PATCH = POST;

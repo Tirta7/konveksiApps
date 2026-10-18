@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
+import { getCmtCompletion, getTransferCompletion, cmtReports, isVendorTransferActive } from "@/lib/po-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,12 @@ export async function GET() {
       const vendor = vendors.find((v: any) => v.id === po.vendorId);
       const pemotongan = pemotongan_kain.find((p: any) => p.id === po.pemotongan_id);
 
-      // CMT Progress
-      const cmtRecords = cmt_progres.filter((p: any) => String(p.po_id) === String(po.id));
-      const approvedCMT = cmtRecords.filter((p: any) => p.status === "Diverifikasi" || p.status === "Diterima");
+      // CMT Progress (hanya laporan CMT pemegang PO, bukan laporan washing/vendor lanjutan)
+      const cmt = getCmtCompletion(data, po);
+      const cmtRecords = cmtReports(data, po).filter((p: any) => p.status !== "Ditolak");
       const totalDilaporkan = cmtRecords.reduce((s: number, r: any) =>
         s + (r.items || []).reduce((s2: number, i: any) => s2 + Number(i.jumlah || 0), 0), 0);
-      const totalDisetujui = approvedCMT.reduce((s: number, r: any) =>
-        s + (r.items || []).reduce((s2: number, i: any) => s2 + Number(i.jumlah || 0), 0), 0);
+      const totalDisetujui = cmt.approved;
 
       // Washing
       const washingT = produksi_transfers.filter((t: any) => String(t.po_id) === String(po.id) && t.ke === "washing");
@@ -55,23 +55,12 @@ export async function GET() {
       else if (totalDisetujui > 0) stage = "siap-tarik";
       else if (totalDilaporkan > 0) stage = "dijahit";
 
-      // Target Selesai & Overdue Check
-      const targetSelesai = po.target_selesai || pemotongan?.target_selesai || null;
-      let overdueDays = 0;
-      let isOverdue = false;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (targetSelesai && stage !== "selesai") {
-        const targetDate = new Date(targetSelesai);
-        targetDate.setHours(0, 0, 0, 0);
-        const graceDate = new Date(targetDate);
-        graceDate.setDate(graceDate.getDate() + 1); // 1 hari toleransi
-        if (today > graceDate) {
-          overdueDays = Math.floor((today.getTime() - graceDate.getTime()) / (1000 * 60 * 60 * 24));
-          isOverdue = true;
-        }
-      }
+      // Target Selesai & Overdue Check (aturan terpusat di lib/po-lifecycle)
+      //  - isOverdue  : CMT masih mengerjakan & melewati target (hitungan berjalan)
+      //  - CMT selesai/terlapor penuh → hitungan berhenti, keterlambatan dibekukan
+      const targetSelesai = cmt.target;
+      const isOverdue = stage !== "selesai" && cmt.isOverdue;
+      const overdueDays = cmt.lateDays;
 
       return {
         id: po.id,
@@ -88,6 +77,11 @@ export async function GET() {
         target_selesai: targetSelesai,
         overdueDays,
         isOverdue,
+        cmtSelesai: cmt.done,
+        cmtSelesaiAt: cmt.selesaiAt,
+        cmtMenungguAcc: cmt.waitingAcc,
+        cmtTerlambatHari: cmt.done || cmt.waitingAcc ? cmt.lateDays : 0,
+        cmtTepatWaktu: cmt.onTime,
         totalDilaporkan,
         totalDisetujui,
         totalWashing,
@@ -109,10 +103,41 @@ export async function GET() {
     const totalPCS = poList.reduce((s: any, p: any) => s + p.jumlahTerbit, 0);
 
     // Keterlambatan PO & Vendor
-    const overdueList = poList
+    // 1) CMT yang masih mengerjakan & lewat target
+    const cmtOverdue = poList
       .filter((p: any) => p.isOverdue)
+      .map((p: any) => ({ ...p, alertKey: `po-${p.id}`, tahap: "CMT / Jahit" }));
+
+    // 2) Vendor lanjutan (washing, finishing, dll) yang lewat target transfer-nya
+    const downstreamOverdue = produksi_transfers
+      .filter((t: any) => isVendorTransferActive(t))
+      .map((t: any) => {
+        const c = getTransferCompletion(data, t);
+        if (!c.isOverdue) return null;
+        const po = po_produksi.find((p: any) => p.id === t.po_id);
+        const v = vendors.find((x: any) => x.id === t.vendor_id);
+        return {
+          id: po?.id ?? t.po_id,
+          alertKey: `tf-${t.id}`,
+          tahap: v?.tipe ? String(v.tipe).replace(/^\w/, (m: string) => m.toUpperCase()) : (t.ke || "Vendor"),
+          noPo: po?.noPo || "-",
+          model: po?.model || "-",
+          vendorId: t.vendor_id,
+          vendor_nama: v?.nama || "Vendor",
+          vendor_tipe: v?.tipe || t.ke,
+          vendor_kontak: v?.kontak || v?.no_hp || "",
+          target_selesai: c.target,
+          overdueDays: c.lateDays,
+          isOverdue: true,
+          sisaPcs: c.sisa,
+          pctGudang: c.jumlah > 0 ? Math.round((c.approved / c.jumlah) * 100) : 0,
+        };
+      })
+      .filter(Boolean) as any[];
+
+    const overdueList = [...cmtOverdue, ...downstreamOverdue]
       .sort((a: any, b: any) => b.overdueDays - a.overdueDays);
-    const totalPoTerlambat = overdueList.length;
+    const totalPoTerlambat = new Set(overdueList.map((o: any) => o.id)).size;
 
     // Vendor aktif dengan PO & status keterlambatan
     const vendorAktifIds = new Set(po_produksi.filter((po: any) => {
