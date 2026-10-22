@@ -195,7 +195,8 @@ cat <<EOF >> "${BRANCH_DIR}/docker-compose.yml"
     depends_on:
       - app
 EOF
-# 10. Buat Script Kontrol di dalam folder cabang
+# 10. Buat Script Kontrol di dalam folder cabang (Mendukung macOS & Windows)
+# --- Script macOS (.command) ---
 cat <<EOF > "${BRANCH_DIR}/START_CABANG.command"
 #!/usr/bin/env bash
 cd "\$(dirname "\$0")"
@@ -225,7 +226,61 @@ else
 fi
 chmod +x "${BRANCH_DIR}/BUKA_APLIKASI.command"
 
-# 11. Jalankan Kontainer Cabang
+# --- Script Windows (.bat) agar folder cabang ini bisa langsung dipakai di Windows ---
+cat <<EOF > "${BRANCH_DIR}/START_CABANG.bat"
+@echo off
+title Menjalankan Cabang ${STORE_INPUT}
+cd /d "%~dp0"
+docker compose pull
+docker compose up -d
+timeout /t 5 /nobreak >nul
+start http://localhost:${PORT_INPUT}
+EOF
+
+cat <<EOF > "${BRANCH_DIR}/STOP_CABANG.bat"
+@echo off
+title Hentikan Cabang ${STORE_INPUT}
+cd /d "%~dp0"
+docker compose down
+echo Cabang ${STORE_INPUT} telah dihentikan.
+pause
+EOF
+
+cat <<EOF > "${BRANCH_DIR}/BUKA_APLIKASI.bat"
+@echo off
+EOF
+if [ -n "$TUNNEL_INPUT" ]; then
+    echo "start https://${FULL_DOMAIN}" >> "${BRANCH_DIR}/BUKA_APLIKASI.bat"
+else
+    echo "start http://localhost:${PORT_INPUT}" >> "${BRANCH_DIR}/BUKA_APLIKASI.bat"
+fi
+
+if [ -f "get-machine-id.ps1" ]; then
+    cp "get-machine-id.ps1" "${BRANCH_DIR}/" 2>/dev/null || true
+fi
+
+# 11. Konfirmasi Jalankan Kontainer di Mac Ini
+echo ""
+echo -e "${YELLOW}Folder cabang '${BRANCH_DIR}' berhasil disiapkan lengkap untuk macOS & Windows.${NC}"
+read -p "Apakah Anda ingin langsung menjalankan kontainer cabang ini di Mac sekarang? (y/t) [y]: " START_NOW
+START_NOW=${START_NOW:-y}
+
+if [[ "$START_NOW" =~ ^[TtNn]$ ]]; then
+    echo ""
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "${BOLD}  FOLDER CABANG BERHASIL DIBUAT!${NC}"
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "  Folder Siap Pakai : ${CYAN}${BRANCH_DIR}/${NC}"
+    echo -e "  Untuk Windows     : Kirim folder ini ke komputer Windows klien,"
+    echo -e "                      klien cukup klik 2x ${BOLD}START_CABANG.bat${NC}."
+    echo -e "  Untuk macOS       : Jalankan ${BOLD}START_CABANG.command${NC}."
+    echo -e "${GREEN}============================================================${NC}"
+    echo ""
+    read -p "Tekan [Enter] untuk selesai..."
+    exit 0
+fi
+
+# 12. Jalankan Kontainer Cabang di Mac
 echo ""
 echo -e "${BOLD}[4/4] Menjalankan server cabang ${STORE_INPUT}...${NC}"
 (
@@ -238,7 +293,7 @@ echo -e "${BOLD}[4/4] Menjalankan server cabang ${STORE_INPUT}...${NC}"
 echo "Menunggu inisialisasi server (10 detik)..."
 sleep 10
 
-# 11. Selesai
+# 13. Selesai
 echo ""
 echo -e "${GREEN}============================================================${NC}"
 echo -e "${BOLD}  CABANG BARU BERHASIL DIBUAT & BERJALAN!${NC}"
