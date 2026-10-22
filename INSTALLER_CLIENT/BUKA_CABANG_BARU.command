@@ -222,10 +222,9 @@ echo -e "  Machine ID   : ${YELLOW}${MACHINE_ID}${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo -e "${BOLD}INFO AKTIVASI LISENSI:${NC}"
-echo -e "1. Cabang ini SUDAH OTOMATIS TERDAFTAR ke dashboard VOC ML pusat."
-echo -e "2. Buka dashboard VOC ML Anda pada menu 'Machine ID Masuk'."
-echo -e "3. Klik 'Cetak key' / 'Aktivasi' untuk menyetujui."
-echo -e "4. Begitu disetujui, cabang ini otomatis terbuka dalam 5 detik!"
+echo -e "1. Cabang ini SUDAH OTOMATIS TERDAFTAR ke server lisensi pusat."
+echo -e "2. Hubungi administrator / penyedia software Anda untuk aktivasi lisensi."
+echo -e "3. Begitu disetujui, cabang ini otomatis terbuka dalam 5 detik!"
 echo ""
 
 # Buka browser

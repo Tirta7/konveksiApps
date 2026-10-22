@@ -154,11 +154,10 @@ echo   Aplikasi Konveksi : http://localhost:3001
 echo   Machine ID Anda   : %MACHINE_ID%
 echo.
 echo   PENTING:
-echo   - Machine ID di atas SUDAH OTOMATIS TERDAFTAR ke server VOC ML.
-echo   - Buka Dashboard VOC ML Anda pada menu "Machine ID Masuk".
-echo   - Klik "Cetak key" / "Aktivasi" untuk menyetujui.
+echo   - Machine ID di atas SUDAH OTOMATIS TERDAFTAR ke server lisensi pusat.
+echo   - Hubungi Admin / Penyedia Sistem untuk persetujuan aktivasi lisensi.
 echo   - Begitu diaktifkan dari pusat, aplikasi otomatis terbuka
-echo     dalam 5 detik tanpa perlu disalin manual!
+echo     dalam 5 detik tanpa perlu memasukkan kode manual!
 echo ============================================================
 echo.
 

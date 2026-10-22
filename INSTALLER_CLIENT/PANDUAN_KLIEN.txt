@@ -19,8 +19,8 @@ PANDUAN INSTALASI & PENGGUNAAN APLIKASI KONVEKSI (CLIENT / PABRIK)
      g. Otomatis membuka aplikasi di browser web: http://localhost:3001
 
 3. AKTIVASI LISENSI (JIKA MUNCUL LAYAR MERAH "APLIKASI TERKUNCI"):
-   - Salin "Machine ID" yang tertera di layar merah tersebut.
-   - Kirimkan Machine ID ke pengembang / daftarkan di Dashboard VOC ML pusat.
+   - Machine ID komputer Anda otomatis terdaftar ke server lisensi pusat.
+   - Informasikan nama usaha Anda kepada penyedia software untuk persetujuan aktivasi.
    - Begitu diaktifkan dari pusat, aplikasi otomatis terbuka sendiri dalam 
      5 detik tanpa perlu me-restart komputer.
 

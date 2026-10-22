@@ -216,9 +216,10 @@ start http://localhost:%PORT_INPUT%
 echo.
 echo ============================================================
 echo   CABANG TELAH AKTIF!
-echo   Bila muncul Layar Merah (Terkunci), aktifkan Machine ID:
+echo   Bila muncul Layar Aktivasi (Terkunci), hubungi Admin /
+echo   Penyedia Sistem untuk mengaktifkan Machine ID:
 echo   %MACHINE_ID%
-echo   pada Dashboard VOC ML Anda untuk cabang "%STORE_INPUT%".
+echo   untuk lisensi cabang "%STORE_INPUT%".
 echo ============================================================
 echo.
 pause

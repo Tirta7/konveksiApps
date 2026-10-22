@@ -132,10 +132,9 @@ echo -e "  Machine ID   : ${YELLOW}${MACHINE_ID}${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo -e "${BOLD}PETUNJUK AKTIVASI LISENSI:${NC}"
-echo "1. Komputer ini SUDAH OTOMATIS TERDAFTAR ke dashboard VOC ML Anda."
-echo "2. Buka dashboard VOC ML (menu 'Machine ID Masuk')."
-echo "3. Klik 'Cetak key' / 'Aktivasi' untuk toko '${STORE_INPUT}'."
-echo "4. Layar merah akan otomatis terbuka dalam 5 detik!"
+echo "1. Komputer ini SUDAH OTOMATIS TERDAFTAR ke Server Pusat."
+echo "2. Hubungi Admin / Penyedia Sistem untuk persetujuan aktivasi '${STORE_INPUT}'."
+echo "3. Begitu lisensi disetujui dari pusat, aplikasi otomatis terbuka dalam 5 detik!"
 echo ""
 
 if [ -n "$TUNNEL_INPUT" ]; then

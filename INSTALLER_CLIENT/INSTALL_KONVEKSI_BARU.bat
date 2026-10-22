@@ -205,11 +205,11 @@ echo   Machine ID Klien   : %MACHINE_ID%
 echo ============================================================
 echo.
 echo   PETUNJUK AKTIVASI LISENSI:
-echo   1. Machine ID (%MACHINE_ID%) SUDAH OTOMATIS TERDAFTAR ke server VOC ML.
-echo   2. Buka Dashboard VOC ML Anda (https://vocml.vocpos.id) menu "Machine ID Masuk".
-echo   3. Klik tombol "Cetak key" / "Aktivasi" untuk toko "%STORE_INPUT%".
-echo   4. Layar merah di komputer pembeli akan otomatis terbuka
-echo      dalam 5 detik setelah disetujui (tidak perlu disalin manual)!
+echo   1. Machine ID (%MACHINE_ID%) SUDAH OTOMATIS TERDAFTAR ke Server Pusat.
+echo   2. Hubungi Admin / Penyedia Sistem untuk aktivasi lisensi "%STORE_INPUT%".
+echo   3. Setelah lisensi disetujui oleh pusat:
+echo   4. Layar aplikasi di komputer ini akan otomatis terbuka langsung
+echo      dalam 5 detik (tanpa perlu input lisensi manual)!
 echo ============================================================
 echo.
 
