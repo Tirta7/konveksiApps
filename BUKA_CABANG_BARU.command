@@ -25,35 +25,19 @@ echo -e "  Subdomain Terintegrasi: [namacabang].vocpos.id"
 echo -e "${CYAN}============================================================${NC}"
 echo ""
 
-# 1. Cek Apakah Docker Desktop Aktif
-echo -e "${BOLD}[1/4] Memeriksa status Docker Desktop...${NC}"
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}[ERROR] Docker belum terinstall pada Mac ini!${NC}"
-    echo "Silakan unduh dan install Docker Desktop untuk Mac dari:"
-    echo "  https://www.docker.com/products/docker-desktop/"
-    echo ""
-    read -p "Tekan [Enter] untuk keluar..."
-    exit 1
-fi
+# 1. Cek Status Docker Desktop (Opsional - Tidak Wajib jika hanya membuat file installer)
+echo -e "${BOLD}[1/4] Memeriksa status lingkungan...${NC}"
+DOCKER_AVAILABLE=false
 
-if ! docker info &> /dev/null; then
-    echo -e "${YELLOW}[WARNING] Docker Desktop belum aktif. Mencoba membuka Docker...${NC}"
-    open -a Docker || true
-    echo "Menunggu Docker Desktop siap (maksimal 45 detik)..."
-    attempt=0
-    until docker info &> /dev/null || [ $attempt -ge 9 ]; do
-        sleep 5
-        attempt=$((attempt+1))
-        echo "  ...menunggu Docker siap ($attempt/9)..."
-    done
-
-    if ! docker info &> /dev/null; then
-        echo -e "${RED}[ERROR] Docker Desktop belum siap. Pastikan icon paus di menu bar atas sudah aktif/running.${NC}"
-        read -p "Tekan [Enter] untuk keluar..."
-        exit 1
-    fi
+if command -v docker &> /dev/null && docker info &> /dev/null; then
+    DOCKER_AVAILABLE=true
+    echo -e "${GREEN}[OK] Docker Desktop aktif di Mac ini.${NC}"
+else
+    echo -e "${YELLOW}[INFO] Docker tidak terdeteksi aktif di Mac ini.${NC}"
+    echo -e "${CYAN}Mode Pembuat Installer Aktif:${NC}"
+    echo "  Anda tetap dapat membuat seluruh file cabang baru (.env, docker-compose, dan script Windows .bat)"
+    echo "  tanpa perlu menginstall Docker di Mac ini."
 fi
-echo -e "${GREEN}[OK] Docker Desktop aktif dan siap.${NC}"
 echo ""
 
 # 2. Input Subdomain Cabang
@@ -84,7 +68,7 @@ fi
 
 # 4. Input Port Lokal
 echo ""
-echo -e "${BOLD}3. Masukkan Port Lokal di Mac ini:${NC}"
+echo -e "${BOLD}3. Masukkan Port Lokal Cabang ini:${NC}"
 echo "   (Default: 3002. Cabang 1: 3001, Cabang 2: 3002, Cabang 3: 3003, dst)"
 read -p "   Port lokal [3002]: " PORT_INPUT
 if [ -z "$PORT_INPUT" ]; then
@@ -100,27 +84,19 @@ echo "Masukkan TUNNEL_TOKEN dari Cloudflare Zero Trust (atau kosongkan jika hany
 echo -e "${CYAN}============================================================${NC}"
 read -p "Token Cloudflare (opsional): " TUNNEL_INPUT
 
-# 6. Deteksi Hardware Machine ID Mac
+# 6. Deteksi Hardware Machine ID (Fallback cerdas jika di Mac)
 echo ""
-echo -e "${BOLD}[2/4] Membaca Machine ID hardware Mac...${NC}"
+echo -e "${BOLD}[2/4] Menyiapkan identitas Machine ID...${NC}"
 MACHINE_ID=""
-if [ -f "client-sdk/get-machine-id.ps1" ]; then
-    # Jika powershell tersedia di mac, atau fallback ke ioreg
-    if command -v pwsh &> /dev/null; then
-        MACHINE_ID=$(pwsh -NoProfile -File client-sdk/get-machine-id.ps1 2>/dev/null || true)
-    fi
+UUID=$(ioreg -d2 -c IOPlatformExpertDevice | awk -F\" '/IOPlatformUUID/{print $(NF-1)}' || true)
+if [ -n "$UUID" ]; then
+    HEX=$(echo -n "$UUID" | tr '[:lower:]' '[:upper:]' | shasum -a 256 | awk '{print toupper($1)}')
+    MACHINE_ID="MID-${HEX:0:4}-${HEX:4:4}-${HEX:8:4}"
+else
+    RAND_HEX=$(date +%s%N | shasum -a 256 | awk '{print toupper($1)}')
+    MACHINE_ID="MID-${RAND_HEX:0:4}-${RAND_HEX:4:4}-${RAND_HEX:8:4}"
 fi
-
-if [ -z "$MACHINE_ID" ]; then
-    UUID=$(ioreg -d2 -c IOPlatformExpertDevice | awk -F\" '/IOPlatformUUID/{print $(NF-1)}' || true)
-    if [ -n "$UUID" ]; then
-        HEX=$(echo -n "$UUID" | tr '[:lower:]' '[:upper:]' | shasum -a 256 | awk '{print toupper($1)}')
-        MACHINE_ID="MID-${HEX:0:4}-${HEX:4:4}-${HEX:8:4}"
-    else
-        MACHINE_ID="MID-$(date +%s | cut -c6-9)-$(jot -r 1 1000 9999 2>/dev/null || echo 5521)-$(jot -r 1 1000 9999 2>/dev/null || echo 9928)"
-    fi
-fi
-echo -e "${GREEN}[OK] Machine ID terdeteksi: ${MACHINE_ID}${NC}"
+echo -e "${GREEN}[OK] Machine ID terdaftar: ${MACHINE_ID}${NC}"
 
 # 7. Buat Folder Khusus Cabang Baru
 BRANCH_DIR="CABANG_${SUB_CLEAN}"
@@ -141,7 +117,7 @@ APP_URL=https://${FULL_DOMAIN}
 # Kunci Sesi & Keamanan
 AUTH_SECRET=konveksi_${SUB_CLEAN}_secret_session_2026
 
-# Sistem Lisensi Pengunci VOC ML
+# Sistem Lisensi Pengunci
 VOCML_SERVER_URL=https://vocml.vocpos.id
 VOCML_PRODUCT=pos
 VOCML_MACHINE_ID=${MACHINE_ID}
@@ -197,7 +173,117 @@ cat <<EOF >> "${BRANCH_DIR}/docker-compose.yml"
 EOF
 fi
 
-# 10. Jalankan Kontainer Cabang
+# 10. Buat Script Kontrol di dalam folder cabang (Mendukung macOS & Windows)
+# --- Script macOS (.command) ---
+cat <<EOF > "${BRANCH_DIR}/START_CABANG.command"
+#!/usr/bin/env bash
+cd "\$(dirname "\$0")"
+docker compose pull || true
+docker compose up -d
+sleep 3
+open "http://localhost:${PORT_INPUT}"
+EOF
+chmod +x "${BRANCH_DIR}/START_CABANG.command"
+
+cat <<EOF > "${BRANCH_DIR}/STOP_CABANG.command"
+#!/usr/bin/env bash
+cd "\$(dirname "\$0")"
+docker compose down
+echo "Cabang ${STORE_INPUT} telah dimatikan."
+read -p "Tekan [Enter] untuk keluar..."
+EOF
+chmod +x "${BRANCH_DIR}/STOP_CABANG.command"
+
+cat <<EOF > "${BRANCH_DIR}/BUKA_APLIKASI.command"
+#!/usr/bin/env bash
+EOF
+if [ -n "$TUNNEL_INPUT" ]; then
+    echo "open \"https://${FULL_DOMAIN}\"" >> "${BRANCH_DIR}/BUKA_APLIKASI.command"
+else
+    echo "open \"http://localhost:${PORT_INPUT}\"" >> "${BRANCH_DIR}/BUKA_APLIKASI.command"
+fi
+chmod +x "${BRANCH_DIR}/BUKA_APLIKASI.command"
+
+# --- Script Windows (.bat) agar folder cabang ini bisa langsung dipakai di Windows ---
+cat <<EOF > "${BRANCH_DIR}/START_CABANG.bat"
+@echo off
+title Menjalankan Cabang ${STORE_INPUT}
+cd /d "%~dp0"
+
+if exist "get-machine-id.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 >nul 2>&1
+)
+
+docker compose pull
+docker compose up -d
+timeout /t 5 /nobreak >nul
+start http://localhost:${PORT_INPUT}
+EOF
+
+cat <<EOF > "${BRANCH_DIR}/STOP_CABANG.bat"
+@echo off
+title Hentikan Cabang ${STORE_INPUT}
+cd /d "%~dp0"
+docker compose down
+echo Cabang ${STORE_INPUT} telah dihentikan.
+pause
+EOF
+
+cat <<EOF > "${BRANCH_DIR}/BUKA_APLIKASI.bat"
+@echo off
+EOF
+if [ -n "$TUNNEL_INPUT" ]; then
+    echo "start https://${FULL_DOMAIN}" >> "${BRANCH_DIR}/BUKA_APLIKASI.bat"
+else
+    echo "start http://localhost:${PORT_INPUT}" >> "${BRANCH_DIR}/BUKA_APLIKASI.bat"
+fi
+
+if [ -f "get-machine-id.ps1" ]; then
+    cp "get-machine-id.ps1" "${BRANCH_DIR}/" 2>/dev/null || true
+fi
+
+# 11. Cek Eksekusi Kontainer
+if [ "$DOCKER_AVAILABLE" = false ]; then
+    echo ""
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "${BOLD}  FOLDER CABANG BERHASIL DIBUAT! (SIAP UNTUK CLIENT WINDOWS)${NC}"
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "  Nama Cabang       : ${BOLD}${STORE_INPUT}${NC}"
+    echo -e "  Folder Siap Kirim : ${CYAN}${BRANCH_DIR}/${NC}"
+    echo -e "  Port Lokal        : ${BOLD}${PORT_INPUT}${NC}"
+    echo -e "  Domain Online     : ${CYAN}https://${FULL_DOMAIN}${NC}"
+    echo -e "${GREEN}============================================================${NC}"
+    echo ""
+    echo -e "${BOLD}PETUNJUK DISTRIBUSI KE KLIEN WINDOWS:${NC}"
+    echo -e "1. Salin atau Zip folder '${BOLD}${BRANCH_DIR}${NC}' ini ke komputer Windows klien."
+    echo "2. Pastikan Docker Desktop sudah terpasang dan aktif di komputer Windows klien."
+    echo -e "3. Klien cukup mengklik 2x file: ${CYAN}START_CABANG.bat${NC}"
+    echo ""
+    read -p "Tekan [Enter] untuk selesai..."
+    exit 0
+fi
+
+# Jika Docker tersedia di Mac, tawarkan opsi menjalankan lokal
+echo ""
+echo -e "${YELLOW}Folder cabang '${BRANCH_DIR}' berhasil disiapkan.${NC}"
+read -p "Apakah Anda ingin langsung menjalankan kontainer cabang ini di Mac sekarang? (y/t) [y]: " START_NOW
+START_NOW=${START_NOW:-y}
+
+if [[ "$START_NOW" =~ ^[TtNn]$ ]]; then
+    echo ""
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "${BOLD}  FOLDER CABANG BERHASIL DISIAPKAN!${NC}"
+    echo -e "${GREEN}============================================================${NC}"
+    echo -e "  Folder Siap Pakai : ${CYAN}${BRANCH_DIR}/${NC}"
+    echo -e "  Untuk Windows     : Kirim folder ini ke komputer Windows klien (klik START_CABANG.bat)."
+    echo -e "  Untuk Mac         : Jalankan START_CABANG.command jika ingin dibuka nanti."
+    echo -e "${GREEN}============================================================${NC}"
+    echo ""
+    read -p "Tekan [Enter] untuk selesai..."
+    exit 0
+fi
+
+# 12. Jalankan Kontainer Cabang di Mac
 echo ""
 echo -e "${BOLD}[4/4] Menjalankan server cabang ${STORE_INPUT}...${NC}"
 (
@@ -210,7 +296,7 @@ echo -e "${BOLD}[4/4] Menjalankan server cabang ${STORE_INPUT}...${NC}"
 echo "Menunggu inisialisasi server (10 detik)..."
 sleep 10
 
-# 11. Selesai
+# 13. Selesai
 echo ""
 echo -e "${GREEN}============================================================${NC}"
 echo -e "${BOLD}  CABANG BARU BERHASIL DIBUAT & BERJALAN!${NC}"
@@ -222,10 +308,9 @@ echo -e "  Machine ID   : ${YELLOW}${MACHINE_ID}${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo -e "${BOLD}INFO AKTIVASI LISENSI:${NC}"
-echo -e "1. Cabang ini SUDAH OTOMATIS TERDAFTAR ke dashboard VOC ML pusat."
-echo -e "2. Buka dashboard VOC ML Anda pada menu 'Machine ID Masuk'."
-echo -e "3. Klik 'Cetak key' / 'Aktivasi' untuk menyetujui."
-echo -e "4. Begitu disetujui, cabang ini otomatis terbuka dalam 5 detik!"
+echo -e "1. Cabang ini SUDAH OTOMATIS TERDAFTAR ke server lisensi pusat."
+echo -e "2. Hubungi administrator / penyedia software Anda untuk aktivasi lisensi."
+echo -e "3. Begitu disetujui, cabang ini otomatis terbuka dalam 5 detik!"
 echo ""
 
 # Buka browser
