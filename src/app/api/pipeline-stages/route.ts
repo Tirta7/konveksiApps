@@ -95,9 +95,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.pipeline_stages) data.pipeline_stages = [];
-  const body = await req.json();
 
   // Support 1-click Preset Reset
   if (body.action === "reset_preset") {
@@ -138,9 +138,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.pipeline_stages) data.pipeline_stages = [];
-  const body = await req.json();
 
   if (body.reorder && Array.isArray(body.reorder)) {
     for (const { id, urutan } of body.reorder) {
@@ -171,9 +171,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const { id } = await req.json();
   const data = readData();
   if (!data.pipeline_stages) data.pipeline_stages = [];
-  const { id } = await req.json();
 
   const idx = data.pipeline_stages.findIndex((s: any) => s.id === id);
   if (idx === -1) return NextResponse.json({ error: "Stage tidak ditemukan" }, { status: 404 });

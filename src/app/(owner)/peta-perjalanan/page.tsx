@@ -150,10 +150,10 @@ export default function PetaPerjalananPage() {
 
   const getStageStatusInfo = (po: any) => {
     if (!po?.stats) return { label: "Menunggu", color: "#64748B", bg: "#F1F5F9", border: "#CBD5E1" };
-    if (po.stats.totalDiGudang >= po.jumlahTerbit) {
+    if ((po.stats.totalDiGudang || 0) + (po.stats.totalReject || 0) >= po.jumlahTerbit) {
       return { label: "Selesai di Gudang", color: "#059669", bg: "#ECFDF5", border: "#A7F3D0" };
     }
-    if (po.stats.totalWashing > 0 && po.stats.totalWashingDone < po.stats.totalWashing) {
+    if ((po.stats.totalWashingProses ?? 0) > 0) {
       return { label: "Sedang Washing", color: "#0284C7", bg: "#F0F9FF", border: "#BAE6FD" };
     }
     if (po.stats.totalWashingDone > 0) {
@@ -865,7 +865,7 @@ export default function PetaPerjalananPage() {
 
                   {/* STEP 3: WASHING JEANS */}
                   {(() => {
-                    const isDone = detail.stats.totalWashingDone > 0 && detail.stats.totalWashingDone >= detail.stats.totalWashing;
+                    const isDone = detail.stats.totalWashing > 0 && (detail.stats.totalWashingProses ?? 0) === 0;
                     const isProses = detail.stats.totalWashing > 0;
                     return (
                       <div className="journey-step-box" style={{
@@ -900,10 +900,12 @@ export default function PetaPerjalananPage() {
                         </div>
                         <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>3. Washing Denim</div>
                         <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-                          {detail.transfers?.find((t: any) => t.ke === "washing")?.vendor_ke_nama || "Vendor Laundry"}
+                          {[...new Set((detail.transfers || []).filter((t: any) => t.ke === "washing" && (t.vendor_id || t.ke_vendor_id)).map((t: any) => t.vendor_ke_nama))].join(", ") || "Vendor Laundry"}
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: isDone ? "#16A34A" : isProses ? "#0284C7" : "#64748B", marginTop: 6 }}>
                           {detail.stats.totalWashingDone} / {detail.stats.totalWashing || 0} pcs cuci
+                          {(detail.stats.totalWashingReject || 0) > 0 ? ` · ${detail.stats.totalWashingReject} reject` : ""}
+                          {(detail.stats.totalWashingProses || 0) > 0 ? ` · ${detail.stats.totalWashingProses} proses` : ""}
                         </div>
                       </div>
                     );
@@ -911,7 +913,10 @@ export default function PetaPerjalananPage() {
 
                   {/* STEP 4: BERSIH BENANG & FINISHING */}
                   {(() => {
-                    const finishingTransfer = detail.transfers?.find((t: any) => t.ke === "bersih_benang" || t.ke === "benang" || t.ke === "finishing");
+                    // Hanya transfer ke vendor benang/finishing sungguhan (pool ACC "Gudang" ber-ke finishing diabaikan)
+                    const finishingTransfer = detail.transfers?.find((t: any) =>
+                      (t.ke === "bersih_benang" || t.ke === "benang" || t.ke === "finishing") &&
+                      (t.vendor_id || t.ke_vendor_id) && !/gudang/i.test(t.ke_nama_tahap || ""));
                     const isDone = finishingTransfer?.status === "Diverifikasi";
                     const isProses = Boolean(finishingTransfer);
                     return (
@@ -1001,7 +1006,7 @@ export default function PetaPerjalananPage() {
 
                   {/* STEP 6: GUDANG JADI */}
                   {(() => {
-                    const isAllDone = detail.stats.totalDiGudang >= detail.jumlahTerbit;
+                    const isAllDone = (detail.stats.totalDiGudang || 0) + (detail.stats.totalReject || 0) >= detail.jumlahTerbit;
                     return (
                       <div className="journey-step-box" style={{
                         background: isAllDone ? "#ECFDF5" : detail.stats.totalDiGudang > 0 ? "#EFF6FF" : "#F8FAFC",
@@ -1036,7 +1041,7 @@ export default function PetaPerjalananPage() {
                         <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>6. Gudang Barang Jadi</div>
                         <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Stok Siap Jual</div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: isAllDone ? "#059669" : "#2563EB", marginTop: 6 }}>
-                          {detail.stats.totalDiGudang} pcs masuk
+                          {detail.stats.totalDiGudang} pcs masuk{(detail.stats.totalReject || 0) > 0 ? ` · ${detail.stats.totalReject} reject` : ""}
                         </div>
                       </div>
                     );
@@ -1329,8 +1334,9 @@ export default function PetaPerjalananPage() {
 
                 {/* Produksi Transfers (Washing, Finishing, etc) */}
                 {(detail.transfers || []).map((t: any) => {
-                  const isWashing = t.ke === "washing";
-                  const isDone = t.status === "Diverifikasi" || t.status === "Diterima";
+                  const isWashing = t.ke === "washing" && !!(t.vendor_id || t.ke_vendor_id);
+                  const isDone = t.status === "Diverifikasi" || t.status === "Diterima" || t.status === "Selesai";
+                  const tahapNama = t.ke_nama_tahap || String(t.ke || "");
 
                   return (
                     <TimelineEventNode
@@ -1338,11 +1344,11 @@ export default function PetaPerjalananPage() {
                       icon={isWashing ? <Droplets size={17} color={isDone ? "#16A34A" : "#0284C7"} /> : <Truck size={17} color="#2563EB" />}
                       iconBg={isDone ? "#F0FDF4" : isWashing ? "#F0F9FF" : "#EFF6FF"}
                       iconBorder={isDone ? "#86EFAC" : isWashing ? "#BAE6FD" : "#BFDBFE"}
-                      badgeText={isWashing ? `Transfer Washing ${isDone ? "— Selesai" : "— Kirim"}` : `Transfer ${t.ke.toUpperCase()}`}
+                      badgeText={isWashing ? `Transfer Washing ${isDone ? "— Selesai" : "— Kirim"}` : `Transfer ${tahapNama.toUpperCase()}`}
                       badgeBg={isDone ? "#DCFCE7" : isWashing ? "#E0F2FE" : "#DBEAFE"}
                       badgeColor={isDone ? "#166534" : isWashing ? "#0369A1" : "#1E40AF"}
                       time={fmtDT(t.tanggal_kirim)}
-                      title={`Pengiriman ke Vendor: ${t.vendor_ke_nama || t.ke}`}
+                      title={(t.vendor_id || t.ke_vendor_id) ? `Pengiriman ke Vendor: ${t.vendor_ke_nama}` : `Antrean Tahap: ${tahapNama}`}
                       subtitle={isDone ? `Barang selesai dikerjakan & diverifikasi (${t.jumlah_diterima || t.jumlah_kirim} pcs)` : `Status: ${t.status || "Dalam Proses"} (${t.jumlah_kirim} pcs)`}
                       extraNote={t.catatan}
                       sizes={t.sizeBreakdown}

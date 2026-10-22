@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { BarChart2, TrendingUp, Store, ShoppingBag, UploadCloud, DollarSign, Wallet, FileX, CreditCard, ChevronRight, Calculator, PieChart } from "lucide-react";
@@ -23,9 +23,9 @@ export default function LaporanPage() {
       const d1 = await r1.json();
       setData(d1);
 
-      // Fetch all data for financial reconciliation
+      // Fetch all data for financial reconciliation (pesanan per Order ID agar omzet tidak dobel)
       const [rSales, rRetur, rSettlement] = await Promise.all([
-        fetch("/api/penjualan-online"),
+        fetch("/api/penjualan-online?grouped=1"),
         fetch("/api/returns/online"),
         fetch("/api/settlement/online")
       ]);
@@ -33,7 +33,7 @@ export default function LaporanPage() {
       const dRetur = await rRetur.json();
       const dSettlement = await rSettlement.json();
       setKeuanganData({
-        sales: Array.isArray(dSales) ? dSales : (dSales.penjualan_online || []),
+        sales: Array.isArray(dSales) ? dSales : [],
         retur: Array.isArray(dRetur) ? dRetur : (dRetur.retur_online || []),
         settlement: dSettlement.settlement_online || []
       });
@@ -125,25 +125,27 @@ export default function LaporanPage() {
   const returMap = new Map<string, any>();
   keuanganData.retur.forEach(r => returMap.set(r.order_id, r));
 
-  // Build unified order table
+  // Build unified order table (1 baris = 1 Order ID)
   const unifiedOrders = keuanganData.sales
-    .filter(sale => sale.order_id && !sale.order_id.includes("Platform unique"))
+    .filter(sale => sale.order_id && !String(sale.order_id).includes("Platform unique"))
     .map(sale => {
-    const isRetur = returMap.has(sale.order_id);
-    const returData = isRetur ? returMap.get(sale.order_id) : null;
+    const returScan = (sale.returs || [])[0]; // retur yang sudah diproses di menu Retur Marketplace
+    const isRetur = returMap.has(sale.order_id) || !!returScan;
+    const returData = returMap.has(sale.order_id) ? returMap.get(sale.order_id) : null;
     const settleData = settlementMap.get(sale.order_id);
 
-    const omzetKotor = sale.order_amount;
+    const omzetKotor = Number(sale.total_amount ?? sale.order_amount ?? 0);
     const labaBersih = settleData ? settleData.penyelesaian_pembayaran : (isRetur ? 0 : omzetKotor); // Default to omzet kotor if not settled, but 0 if retur
     const potongan = settleData ? Math.abs(settleData.biaya_lainnya || settleData.biaya_komisi || 0) : 0;
+    const items = sale.items || [];
     
     return {
       order_id: sale.order_id,
-      product: sale.product_name,
-      variation: sale.variation,
+      product: items.length ? items.map((i: any) => i.product_name).join(", ") : sale.product_name,
+      variation: items.length ? items.map((i: any) => i.variation).filter(Boolean).join(", ") : sale.variation,
       tanggal: sale.tanggal_pesanan,
       isRetur,
-      statusRetur: returData?.return_type || "",
+      statusRetur: returData?.return_type || (returScan ? (returScan.kondisi === "sesuai" ? "Retur · kembali ke stok" : `Banding · ${returScan.status}`) : ""),
       omzetKotor,
       labaBersih,
       potongan,

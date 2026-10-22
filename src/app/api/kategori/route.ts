@@ -54,8 +54,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const data = readData();
   const { nama, deskripsi } = await req.json();
+  const data = readData();
   if (!nama || !nama.trim()) {
     return NextResponse.json({ error: "Nama kategori wajib diisi" }, { status: 400 });
   }
@@ -79,8 +79,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const data = readData();
   const { id, nama, deskripsi } = await req.json();
+  const data = readData();
   if (!id) return NextResponse.json({ error: "ID dibutuhkan" }, { status: 400 });
   
   const idx = data.kategori_produk.findIndex((k: any) => k.id === Number(id));

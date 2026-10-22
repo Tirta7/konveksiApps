@@ -24,6 +24,7 @@ import {
 import Barcode from "react-barcode";
 import { toast } from "sonner";
 import Link from "next/link";
+import { findStageByKey, isGudangStage } from "@/lib/stage-resolve";
 
 export default function BarcodeProduksiPage() {
   const [barcodes, setBarcodes] = useState<any[]>([]);
@@ -40,10 +41,22 @@ export default function BarcodeProduksiPage() {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [printSizeTarget, setPrintSizeTarget] = useState<string | null>(null);
 
+  // Status tampilan per pcs: "siap_jual" yang sudah diterima Gudang & Stok → "stok" (sudah di Data Barang)
+  const viewKey = (b: any) => (b?.status === "siap_jual" ? (b.stockAt ? "stok" : "siap_jual") : b?.status);
+  const KANAL_SHORT: Record<string, string> = { "Retail Offline": "RETAIL", "Penjualan Grosir": "GROSIR", "Penjualan Online": "ONLINE" };
+  const fmtTgl = (s?: string) => (s ? new Date(s).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-");
+
   // Status display config
-  const getStatusInfo = (status: string) => {
-    if (status === "siap_jual") return { label: "SIAP CETAK / SELESAI", color: "#10B981", border: "#10B981", bg: "#ECFDF5", opacity: 1, clickable: true };
-    if (status === "gudang") return { label: "GUDANG", color: "#3B82F6", border: "#3B82F6", bg: "#EFF6FF", opacity: 1, clickable: false };
+  const getStatusInfo = (status: string, b?: any) => {
+    if (status === "terjual") {
+      const k = b?.terjual_kanal ? KANAL_SHORT[b.terjual_kanal] || String(b.terjual_kanal).toUpperCase() : "";
+      return { label: k ? `TERJUAL · ${k}` : "TERJUAL", color: "#DB2777", border: "#F472B6", bg: "#FDF2F8", opacity: 1, clickable: true };
+    }
+    if (status === "stok") return { label: "DI STOK · SIAP JUAL", color: "#059669", border: "#10B981", bg: "#ECFDF5", opacity: 1, clickable: true };
+    if (status === "retur_banding") return { label: "RETUR · BANDING", color: "#D97706", border: "#F59E0B", bg: "#FFFBEB", opacity: 1, clickable: true };
+    if (status === "reject") return { label: "REJECT", color: "#DC2626", border: "#FCA5A5", bg: "#FEF2F2", opacity: 0.85, clickable: false };
+    if (status === "siap_jual") return { label: "SELESAI · SIAP MASUK GUDANG", color: "#0D9488", border: "#14B8A6", bg: "#F0FDFA", opacity: 1, clickable: true };
+    if (status === "gudang") return { label: "DI GUDANG · ANTRE MASUK STOK", color: "#0D9488", border: "#14B8A6", bg: "#F0FDFA", opacity: 1, clickable: false };
     if (status === "potong" || status === "cmt") return { label: "SEDANG DIJAHIT", color: "#8B5CF6", border: "#8B5CF6", bg: "#F5F3FF", opacity: 1, clickable: false };
     if (status === "washing") return { label: "DIKIRIM: WASHING", color: "#F59E0B", border: "#F59E0B", bg: "#FFFBEB", opacity: 1, clickable: false };
     
@@ -52,12 +65,13 @@ export default function BarcodeProduksiPage() {
       if (baseStatus === "cmt" || baseStatus === "potong") return { label: "DIKERJAKAN: JAHIT (CMT)", color: "#9333EA", border: "#9333EA", bg: "#FAF5FF", opacity: 1, clickable: false };
       if (baseStatus === "washing") return { label: "DIKERJAKAN: WASHING", color: "#D97706", border: "#D97706", bg: "#FEF3C7", opacity: 1, clickable: false };
       
-      const stage = pipelineStages.find(s => s.slug === baseStatus);
+      const stage = findStageByKey(pipelineStages, baseStatus, true);
       if (stage) return { label: `DIKERJAKAN: ${stage.nama.toUpperCase()}`, color: stage.warna || "#06B6D4", border: stage.warna || "#06B6D4", bg: "#ECFEFF", opacity: 1, clickable: false };
     }
     
-    // Dynamic stages
-    const stage = pipelineStages.find(s => s.slug === status);
+    // Dynamic stages — status barcode memakai kode tipe vendor (vendor_tipe), baru fallback ke slug
+    const stage = findStageByKey(pipelineStages, status, true);
+    if (stage && isGudangStage(stage)) return { label: "DI GUDANG · ANTRE MASUK STOK", color: "#0D9488", border: "#14B8A6", bg: "#F0FDFA", opacity: 1, clickable: false };
     if (stage) return { label: `TAHAP: ${stage.nama.toUpperCase()}`, color: stage.warna || "#06B6D4", border: stage.warna || "#06B6D4", bg: "#ECFEFF", opacity: 1, clickable: false };
     
     return { label: `${(status || "PROSES").toUpperCase()}`, color: "#64748B", border: "#CBD5E1", bg: "#F8FAFC", opacity: 0.9, clickable: false };
@@ -194,11 +208,13 @@ export default function BarcodeProduksiPage() {
   const stageSummary = useMemo(() => {
     const map = new Map<string, { label: string; color: string; count: number }>();
     filteredBarcodes.forEach(b => {
-      const si = getStatusInfo(b.status);
-      if (!map.has(b.status)) {
-        map.set(b.status, { label: si.label, color: si.color, count: 0 });
+      const key = viewKey(b);
+      // ringkasan per status (tanpa memecah kanal penjualan)
+      const si = getStatusInfo(key);
+      if (!map.has(key)) {
+        map.set(key, { label: si.label, color: si.color, count: 0 });
       }
-      map.get(b.status)!.count++;
+      map.get(key)!.count++;
     });
     return Array.from(map.values());
   }, [filteredBarcodes]);
@@ -561,8 +577,9 @@ export default function BarcodeProduksiPage() {
                       {/* BARCODE STICKER GRID */}
                       <div className="barcode-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(225px, 1fr))", gap: 12 }}>
                         {itemsInSize.map((b: any) => {
-                          const isReady = b.status === "siap_jual";
-                          const si = getStatusInfo(b.status);
+                          const vk = viewKey(b);
+                          const isReady = vk === "stok" || vk === "siap_jual" || vk === "terjual";
+                          const si = getStatusInfo(vk, b);
                           const isCopied = copiedCode === b.kodeBarcode;
 
                           return (
@@ -635,7 +652,22 @@ export default function BarcodeProduksiPage() {
                                 />
                               </div>
 
-                              {/* Card Action footer (No-print) */}
+                              {/* Info penjualan (No-print) */}
+                              {vk === "terjual" && (
+                                <div className="no-print" style={{ marginTop: 6, background: "#FDF2F8", border: "1px solid #FBCFE8", borderRadius: 5, padding: "4px 6px", fontSize: 9.5, color: "#9D174D", lineHeight: 1.35 }}>
+                                  <div style={{ fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {b.no_transaksi || "-"}{b.pelanggan ? ` · ${b.pelanggan}` : ""}
+                                  </div>
+                                  <div style={{ color: "#BE185D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {fmtTgl(b.terjual_at)}{b.order_id ? ` · Order ${b.order_id}` : ""}
+                                  </div>
+                                </div>
+                              )}
+                              {vk === "stok" && b.kode_barang && (
+                                <div className="no-print" style={{ marginTop: 6, fontSize: 9.5, color: "#047857", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {b.sku || b.kode_barang} · {b.nama_barang}
+                                </div>
+                              )}
                               <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, paddingTop: 4, borderTop: "1px dashed #E2E8F0" }}>
                                 <button
                                   type="button"
@@ -674,7 +706,7 @@ export default function BarcodeProduksiPage() {
                   </thead>
                   <tbody>
                     {filteredBarcodes.map((b: any, idx: number) => {
-                      const si = getStatusInfo(b.status);
+                      const si = getStatusInfo(viewKey(b), b);
                       const isCopied = copiedCode === b.kodeBarcode;
                       return (
                         <tr 
@@ -804,12 +836,41 @@ export default function BarcodeProduksiPage() {
                   <span style={{ color: "var(--text-secondary)" }}>PO Induk:</span>
                   <span style={{ fontWeight: 700 }}>{selectedBarcode.noPo}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ color: "var(--text-secondary)" }}>Status Tracking:</span>
-                  <span style={{ fontWeight: 800, color: getStatusInfo(selectedBarcode.status).color }}>
-                    {getStatusInfo(selectedBarcode.status).label}
+                  <span style={{ fontWeight: 800, color: getStatusInfo(viewKey(selectedBarcode), selectedBarcode).color }}>
+                    {getStatusInfo(viewKey(selectedBarcode), selectedBarcode).label}
                   </span>
                 </div>
+                {selectedBarcode.barang_id != null && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ color: "var(--text-secondary)" }}>Barang Jadi / SKU:</span>
+                    <span style={{ fontWeight: 700, textAlign: "right" }}>{selectedBarcode.nama_barang || "-"} <span style={{ fontFamily: "monospace", color: "#64748B" }}>({selectedBarcode.sku || selectedBarcode.kode_barang || "-"})</span></span>
+                  </div>
+                )}
+                {selectedBarcode.stockAt && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ color: "var(--text-secondary)" }}>Masuk Stok:</span>
+                    <span style={{ fontWeight: 700 }}>{fmtTgl(selectedBarcode.stockAt)}</span>
+                  </div>
+                )}
+                {viewKey(selectedBarcode) === "terjual" && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #FBCFE8", display: "flex", flexDirection: "column", gap: 5 }}>
+                    {[
+                      ["Terjual via", selectedBarcode.terjual_kanal || "-"],
+                      ["No. Transaksi", selectedBarcode.no_transaksi || "-"],
+                      ["Tanggal Terjual", fmtTgl(selectedBarcode.terjual_at)],
+                      ["Pembeli", selectedBarcode.pelanggan || "-"],
+                      ...(selectedBarcode.order_id ? [["Order ID", selectedBarcode.order_id]] : []),
+                      ...(selectedBarcode.harga_terjual != null ? [["Harga Jual", `Rp ${Number(selectedBarcode.harga_terjual).toLocaleString("id-ID")}`]] : []),
+                    ].map(([l, v]) => (
+                      <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <span style={{ color: "var(--text-secondary)" }}>{l}:</span>
+                        <span style={{ fontWeight: 800, color: "#9D174D", textAlign: "right" }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

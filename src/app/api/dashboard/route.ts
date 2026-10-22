@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 import { getCmtCompletion, getTransferCompletion, cmtReports, isVendorTransferActive } from "@/lib/po-lifecycle";
+import { getStockInbound, getVendorWip, getPoStockProgress, vendorStageSummary } from "@/lib/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +14,21 @@ export async function GET() {
     const produksi_transfers = data.produksi_transfers || [];
     const pemotongan_kain = data.pemotongan_kain || [];
 
-    // PO Aktif = PO yang belum selesai (saldo masuk gudang < jumlahTerbit)
-    // Hitung stok di gudang via po_ledgers
-    const po_ledgers = data.po_ledgers || [];
-    const gudangLedger: Record<string, number> = {};
-    for (const l of po_ledgers) {
-      if (l.ke_vendor_id === "GUDANG") {
-        gudangLedger[l.poId] = (gudangLedger[l.poId] || 0) + Number(l.jumlah || 0);
-      }
+    // Posisi barang riil per PO (sumber yang sama dengan Gudang & Alur Produksi):
+    //  - masuk  : pcs yang sudah masuk Gudang & Stok (stock_movements "masuk")
+    //  - reject : pcs yang di-reject (stock_movements "reject")
+    //  - antre  : sudah selesai proses, menunggu diterima gudang
+    //  - di_vendor : masih dikerjakan / dikirim ke vendor lanjutan
+    // Catatan: po_ledgers GUDANG tidak dipakai lagi karena ACC → gudang dan penarikan
+    // kembali ke gudang tercatat dua kali (menyebabkan angka ganda, mis. 1000 dari 500).
+    const inbound = getStockInbound(data);
+    const wip = getVendorWip(data);
+    const progressMap: Record<string, any> = {};
+    for (const p of getPoStockProgress(data, inbound, wip)) progressMap[String(p.po_id)] = p;
+
+    const terjualMap: Record<string, number> = {};
+    for (const b of (data.barcode_item || [])) {
+      if (b.status === "terjual") terjualMap[String(b.poId)] = (terjualMap[String(b.poId)] || 0) + 1;
     }
 
     // Enrich po_produksi dengan progress
@@ -35,23 +43,52 @@ export async function GET() {
         s + (r.items || []).reduce((s2: number, i: any) => s2 + Number(i.jumlah || 0), 0), 0);
       const totalDisetujui = cmt.approved;
 
-      // Washing
-      const washingT = produksi_transfers.filter((t: any) => String(t.po_id) === String(po.id) && t.ke === "washing");
-      const totalWashing = washingT.reduce((s: number, t: any) => s + (t.jumlah_kirim || 0), 0);
-      const totalWashingDone = washingT.filter((t: any) => t.status === "Diverifikasi")
-        .reduce((s: number, t: any) => s + (t.jumlah_diterima || t.jumlah_kirim || 0), 0);
+      // Washing (hanya transfer ke vendor washing, pool ACC tidak dihitung)
+      const washSum = vendorStageSummary(data, po.id, "washing");
+      const totalWashing = washSum.kirim;
+      const totalWashingDone = washSum.approved;
 
-      // Gudang
-      const totalDiGudang = gudangLedger[po.id] || 0;
+      // Posisi barang riil
+      const terbit = Number(po.jumlahTerbit || 0);
+      const prog = progressMap[String(po.id)] || { masuk: 0, reject: 0, antre: 0, di_vendor: 0 };
+      const totalDiGudang = Number(prog.masuk || 0);
+      const totalReject = Number(prog.reject || 0);
+      const totalAntre = Number(prog.antre || 0);
+      const totalDiVendor = Number(prog.di_vendor || 0);
+      const totalTerjual = terjualMap[String(po.id)] || 0;
+      // Sisa yang belum keluar dari CMT (belum dijahit / belum di-ACC)
+      const totalDiCmt = Math.max(0, terbit - totalDiGudang - totalReject - totalAntre - totalDiVendor);
 
-      const pctCMT = po.jumlahTerbit > 0 ? Math.round((totalDilaporkan / po.jumlahTerbit) * 100) : 0;
-      const pctDisetujui = po.jumlahTerbit > 0 ? Math.round((totalDisetujui / po.jumlahTerbit) * 100) : 0;
-      const pctGudang = po.jumlahTerbit > 0 ? Math.round((totalDiGudang / po.jumlahTerbit) * 100) : 0;
+      const vendorPosisi = wip
+        .filter((w: any) => String(w.po_id) === String(po.id))
+        .map((w: any) => {
+          const t = produksi_transfers.find((x: any) => x.id === w.transfer_id);
+          const dikerjakan = t?.status === "Dikerjakan" || !!t?.mulai_kerja_at;
+          return {
+            transfer_id: w.transfer_id,
+            vendor_nama: w.vendor_nama,
+            tahap: w.tahap,
+            jumlah: w.sisa,
+            status: dikerjakan ? "dikerjakan" : "dikirim",
+            lateDays: w.lateDays || 0,
+          };
+        });
+
+      const pct = (n: number) => (terbit > 0 ? Math.min(100, Math.round((n / terbit) * 100)) : 0);
+      const pctCMT = pct(totalDilaporkan);
+      const pctDisetujui = pct(totalDisetujui);
+      const pctGudang = pct(totalDiGudang);
 
       let stage = "menunggu";
-      if (totalDiGudang >= po.jumlahTerbit) stage = "selesai";
-      else if (totalWashing > 0 && totalWashingDone < totalWashing) stage = "washing";
-      else if (totalWashingDone > 0) stage = "selesai-washing";
+      let stageLabel = "";
+      if (terbit > 0 && totalDiGudang + totalReject >= terbit) stage = "selesai";
+      else if (totalDiVendor > 0) {
+        stage = "vendor";
+        const tahapSet = Array.from(new Set(vendorPosisi.map((v: any) => v.tahap).filter(Boolean)));
+        stageLabel = tahapSet.length ? `Proses ${tahapSet.join(" & ")}` : "Proses Vendor";
+      }
+      else if (totalAntre > 0) stage = "antre-gudang";
+      else if (totalDiGudang > 0) stage = "sebagian-gudang";
       else if (totalDisetujui > 0) stage = "siap-tarik";
       else if (totalDilaporkan > 0) stage = "dijahit";
 
@@ -87,11 +124,21 @@ export async function GET() {
         totalWashing,
         totalWashingDone,
         totalDiGudang,
-        sisaPcs: Math.max(0, po.jumlahTerbit - totalDiGudang),
+        totalReject,
+        totalAntre,
+        totalDiVendor,
+        totalDiCmt,
+        totalTerjual,
+        vendorPosisi,
+        sisaPcs: Math.max(0, terbit - totalDiGudang - totalReject),
         pctCMT,
         pctDisetujui,
         pctGudang,
+        pctReject: pct(totalReject),
+        pctAntre: pct(totalAntre),
+        pctVendor: pct(totalDiVendor),
         stage,
+        stageLabel,
         sizeBreakdown: po.sizeBreakdown || [],
       };
     });
@@ -140,10 +187,7 @@ export async function GET() {
     const totalPoTerlambat = new Set(overdueList.map((o: any) => o.id)).size;
 
     // Vendor aktif dengan PO & status keterlambatan
-    const vendorAktifIds = new Set(po_produksi.filter((po: any) => {
-      const g = gudangLedger[po.id] || 0;
-      return g < po.jumlahTerbit;
-    }).map((po: any) => po.vendorId));
+    const vendorAktifIds = new Set(poList.filter((po: any) => po.stage !== "selesai").map((po: any) => po.vendorId));
 
     const vendorList = vendors
       .filter((v: any) => vendorAktifIds.has(v.id))

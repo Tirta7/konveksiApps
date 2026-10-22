@@ -96,10 +96,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const body = await req.json();
   const data = readData();
   if (!data.item_pendukung) data.item_pendukung = [];
 
-  const body = await req.json();
   const { id, nama, kategori, tipe, warna, satuan, stok, harga_beli, supplier_id, catatan } = body;
 
   if (!nama || !kategori) {
@@ -149,10 +149,10 @@ export async function POST(req: Request) {
 
 // Quick Restock / Penambahan Pembelian Stok Langsung
 export async function PATCH(req: Request) {
+  const body = await req.json();
   const data = readData();
   if (!data.item_pendukung) data.item_pendukung = [];
 
-  const body = await req.json();
   const { id, tambah_stok, harga_beli_baru, catatan } = body;
 
   const idx = data.item_pendukung.findIndex((i: any) => i.id === Number(id));

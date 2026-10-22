@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 import { getCmtCompletion, getTransferCompletion } from "@/lib/po-lifecycle";
+import { emitEvent } from "@/lib/realtime-hub";
+import { sortedStages, findStageByKey, barcodeStatusForStage } from "@/lib/stage-resolve";
+import { getSessionFromRequest } from "@/lib/auth";
 
 // ─────────────────────────────────────────────
 // GET — Ambil daftar laporan progres
@@ -9,7 +12,9 @@ export async function GET(req: NextRequest) {
   const data = readData();
   if (!data.cmt_progres) data.cmt_progres = [];
   const { searchParams } = new URL(req.url);
-  const vendorId = searchParams.get("vendor_id");
+  const sess = getSessionFromRequest(req);
+  // Sesi vendor hanya melihat laporannya sendiri
+  const vendorId = sess?.t === "vendor" ? String(sess.id) : searchParams.get("vendor_id");
   const poId = searchParams.get("po_id");
   const status = searchParams.get("status");
 
@@ -18,12 +23,19 @@ export async function GET(req: NextRequest) {
   if (poId)     list = list.filter((p: any) => String(p.po_id) === poId);
   if (status)   list = list.filter((p: any) => p.status === status);
 
+  const stages = data.pipeline_stages || [];
   const withInfo = list.map((p: any) => {
     const vendor = (data.vendors || []).find((v: any) => v.id === p.vendor_id);
     const po     = (data.po_produksi || []).find((po: any) => po.id === p.po_id);
     const transfer = (data.produksi_transfers || []).find((t: any) => t.id === p.transfer_id);
-    const targetJumlah = transfer ? transfer.jumlah_kirim : (po ? po.jumlahTerbit : 0);
-    return { ...p, vendor_nama: vendor?.nama || "Unknown", noPo: po?.noPo || "-", model: po?.model || "-", targetJumlah };
+    // Target vendor lanjutan = jatah transfer (dikurangi reject), CMT = jumlah PO
+    const targetJumlah = transfer
+      ? Math.max(0, Number(transfer.jumlah_kirim || 0) - Number(transfer.jumlah_reject || 0))
+      : (po ? po.jumlahTerbit : 0);
+    const vendor_tipe = vendor?.tipe || (p.transfer_id ? null : "cmt");
+    const stage = stages.find((s: any) => s.vendor_tipe && s.vendor_tipe === vendor_tipe);
+    const tahap_nama = stage?.nama || stage?.name || (vendor_tipe ? String(vendor_tipe).charAt(0).toUpperCase() + String(vendor_tipe).slice(1) : null);
+    return { ...p, vendor_nama: vendor?.nama || "Unknown", noPo: po?.noPo || "-", model: po?.model || "-", targetJumlah, vendor_tipe, tahap_nama };
   }).reverse();
 
   return NextResponse.json(withInfo);
@@ -35,9 +47,21 @@ export async function GET(req: NextRequest) {
 //   2. ACC / Tolak laporan dari admin   → ada `action` + `id`
 // ─────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const data = readData();
   const body = await req.json();
+  const data = readData();
   const { action, id, distribusi, po_id, vendor_id, items, catatan } = body;
+
+  // Otorisasi: vendor hanya boleh submit laporan miliknya; ACC / Tolak khusus owner/admin
+  const sess = getSessionFromRequest(req);
+  if (sess?.t === "vendor") {
+    if (action || id) return NextResponse.json({ error: "Akses ditolak: ACC / tolak laporan hanya oleh admin" }, { status: 403 });
+    if (String(vendor_id) !== String(sess.id)) return NextResponse.json({ error: "Akses ditolak: laporan harus atas nama akun vendor Anda" }, { status: 403 });
+    const v = (data.vendors || []).find((x: any) => String(x.id) === String(sess.id));
+    if (v && (v.tipe === "cmt" || v.tipe === "jahit")) {
+      const po = (data.po_produksi || []).find((p: any) => String(p.id) === String(po_id));
+      if (!po || String(po.vendorId) !== String(sess.id)) return NextResponse.json({ error: "Akses ditolak: PO ini bukan milik Anda" }, { status: 403 });
+    }
+  }
 
   // ══════════════════════════════════════════
   // MODE 1: SUBMIT LAPORAN BARU DARI VENDOR
@@ -50,7 +74,6 @@ export async function POST(req: NextRequest) {
     if (!data.cmt_progres) data.cmt_progres = [];
 
     const totalJumlah = items.reduce((sum: number, i: any) => sum + Number(i.jumlah || 0), 0);
-    const newId = nextId(data, "cmt_progres" as any);
 
     // Untuk vendor downstream (bukan CMT/jahit) → po_id dari frontend adalah transfer_id
     const vendor = (data.vendors || []).find((v: any) => String(v.id) === String(vendor_id));
@@ -61,9 +84,14 @@ export async function POST(req: NextRequest) {
       // Downstream: po_id yang dikirim adalah transfer ID
       transferId = Number(po_id);
       const transfer = (data.produksi_transfers || []).find((t: any) => String(t.id) === String(transferId));
-      if (transfer) {
-        realPoId = Number(transfer.po_id);
+      if (!transfer) {
+        return NextResponse.json({ error: "Pekerjaan tidak ditemukan. Muat ulang portal.", code: "STALE" }, { status: 409 });
       }
+      // Bentrok: admin baru saja menarik / memindahkan pekerjaan ini
+      if (String(transfer.vendor_id) !== String(vendor_id) || transfer.is_forwarded || ["Kembali ke Gudang", "Ditolak"].includes(transfer.status)) {
+        return NextResponse.json({ error: "Pekerjaan ini baru saja ditarik / dipindahkan oleh admin. Muat ulang portal.", code: "STALE" }, { status: 409 });
+      }
+      realPoId = Number(transfer.po_id);
     }
 
     // Validasi: tidak boleh melapor melebihi sisa / melapor pekerjaan yang sudah selesai
@@ -92,6 +120,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const newId = nextId(data, "cmt_progres" as any);
     data.cmt_progres.push({
       id: newId,
       po_id: realPoId,
@@ -105,6 +134,8 @@ export async function POST(req: NextRequest) {
     });
 
     writeData(data);
+    const poR = (data.po_produksi || []).find((p: any) => p.id === realPoId);
+    emitEvent("progressReported", { id: newId, vendor_id: Number(vendor_id), vendor_nama: vendor?.nama || "Vendor", po_id: realPoId, no_po: poR?.noPo || "", jumlah: totalJumlah, transfer_id: transferId });
     return NextResponse.json({ success: true, id: newId });
   }
 
@@ -125,6 +156,7 @@ export async function POST(req: NextRequest) {
     data.cmt_progres[idx].status = "Ditolak";
     data.cmt_progres[idx].ditolakPada = new Date().toISOString();
     writeData(data);
+    emitEvent("reportReviewed", { id: laporan.id, vendor_id: laporan.vendor_id, status: "Ditolak", jumlah: laporan.totalJumlah });
     return NextResponse.json({ success: true });
   }
 
@@ -142,36 +174,37 @@ export async function POST(req: NextRequest) {
   data.cmt_progres[idx].status = "Diterima";
   data.cmt_progres[idx].diterimaPada = new Date().toISOString();
 
-  // Tentukan stage saat ini & berikutnya dari pipeline
+  // Tentukan stage saat ini & berikutnya dari pipeline (hanya tahap AKTIF, tanpa mengubah urutan master)
   const vendorAcc = (data.vendors || []).find((v: any) => String(v.id) === String(laporan.vendor_id));
-  const stages = (data.pipeline_stages || []).sort((a: any, b: any) => a.urutan - b.urutan);
-  const currentIdx = stages.findIndex((s: any) => s.vendor_tipe === vendorAcc?.tipe);
-  let nextStageSlug = "gudang";
-  if (currentIdx >= 0 && currentIdx < stages.length - 1) {
-    nextStageSlug = stages[currentIdx + 1].vendor_tipe || stages[currentIdx + 1].slug;
-  }
+  const stages = sortedStages(data.pipeline_stages || []);
   const currentStageSlug = vendorAcc?.tipe || "cmt";
+  const currentStage = findStageByKey(stages, currentStageSlug, true);
+  const currentIdx = currentStage ? stages.findIndex((s: any) => s.id === currentStage.id) : -1;
+  const nextStage: any = currentIdx >= 0 && currentIdx < stages.length - 1 ? stages[currentIdx + 1] : null;
+  // Kunci `ke` tetap seperti sebelumnya (vendor_tipe tahap berikutnya, kompatibel dengan portal vendor,
+  // permintaan kerja & antrean Gudang). Karena vendor_tipe bisa sama dengan slug tahap lain
+  // (mis. tahap "Gudang" ber-vendor_tipe "finishing" vs tahap slug "finishing" = "Packing"),
+  // tahap tujuan yang PASTI disimpan di `ke_stage_slug` dan dibaca oleh lib/stage-resolve.
+  const nextStageSlug = nextStage ? (nextStage.vendor_tipe || nextStage.slug) : "gudang";
+  const nextStageExact = nextStage?.slug || null;
+  const nextBarcodeStatus = barcodeStatusForStage(nextStage);
 
-  // Update barcode_item status
+  // Update barcode_item status — utamakan pcs yang sedang DIKERJAKAN (milik vendor yang lapor),
+  // baru pcs di tahap ini yang belum mulai. Mencegah pcs vendor lain (tahap sama) ikut berpindah.
   if (data.barcode_item) {
+    const target = distribusi ? (distribusi[0]?.ke || nextBarcodeStatus) : nextBarcodeStatus;
+    const rankAcc = (st: string) => {
+      if (st === `${currentStageSlug}_dikerjakan` || st === "cmt_dikerjakan" || st === "potong_dikerjakan" || st === "jahit_dikerjakan") return 0;
+      if (st === currentStageSlug || st === "cmt" || st === "potong") return 1;
+      return 9;
+    };
     for (const item of (laporan.items || [])) {
       const { size, jumlah } = item;
-      let updated = 0;
-      for (let i = 0; i < data.barcode_item.length && updated < Number(jumlah); i++) {
-        const b = data.barcode_item[i];
-        if (
-          String(b.poId) === String(laporan.po_id) &&
-          b.size === size &&
-          (
-            b.status === currentStageSlug || b.status === `${currentStageSlug}_dikerjakan` ||
-            b.status === "cmt" || b.status === "potong" ||
-            b.status === "cmt_dikerjakan" || b.status === "potong_dikerjakan" || b.status === "jahit_dikerjakan"
-          )
-        ) {
-          data.barcode_item[i].status = distribusi ? (distribusi[0]?.ke || nextStageSlug) : nextStageSlug;
-          updated++;
-        }
-      }
+      data.barcode_item
+        .filter((b: any) => String(b.poId) === String(laporan.po_id) && b.size === size && rankAcc(b.status) < 9)
+        .sort((x: any, y: any) => rankAcc(x.status) - rankAcc(y.status) || x.id - y.id)
+        .slice(0, Number(jumlah))
+        .forEach((b: any) => { b.status = target; });
     }
   }
 
@@ -231,8 +264,12 @@ export async function POST(req: NextRequest) {
       po_id: laporan.po_id,
       dari: currentStageSlug,
       ke: nextStageSlug,
+      ke_stage_slug: nextStageExact,
+      dari_stage_slug: currentStage?.slug || null,
       vendor_id: null,
       dari_vendor_id: laporan.vendor_id,
+      dari_transfer_id: laporan.transfer_id ?? null,
+      dari_laporan_id: laporan.id,
       jumlah_kirim: laporan.totalJumlah,
       sizeBreakdown: laporan.items || [],
       catatan: "Otomatis dari ACC Progres",
@@ -252,7 +289,7 @@ export async function POST(req: NextRequest) {
       const pIdx = data.po_pipeline.findIndex((p: any) => String(p.po_id) === String(laporan.po_id));
       if (pIdx !== -1) {
         const pStages = data.po_pipeline[pIdx].stages;
-        const nIdx = pStages.findIndex((s: any) => s.slug === nextStageSlug);
+        const nIdx = pStages.findIndex((s: any) => s.slug === (nextStageExact || nextStageSlug));
         if (nIdx !== -1 && pStages[nIdx].status === "Menunggu") pStages[nIdx].status = "Proses";
       }
     }
@@ -269,6 +306,7 @@ export async function POST(req: NextRequest) {
     const po = (data.po_produksi || []).find((p: any) => String(p.id) === String(laporan.po_id));
     if (po) completion = getCmtCompletion(data, po);
   }
+  emitEvent("reportReviewed", { id: laporan.id, vendor_id: laporan.vendor_id, status: "Diterima", jumlah: laporan.totalJumlah, selesai: !!completion?.done });
   return NextResponse.json({
     success: true,
     status: "Diterima",

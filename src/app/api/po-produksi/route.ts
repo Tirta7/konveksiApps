@@ -2,21 +2,14 @@ export const dynamic = "force-dynamic";
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 import { getCmtCompletion, cmtReports } from "@/lib/po-lifecycle";
+import { vendorStageSummary } from "@/lib/stock";
 import crypto from "crypto";
 import QRCode from "qrcode";
 
 export async function GET() {
   const data = readData();
   
-  // Pre-build washing transfer lookup per poId
-  const washingByPo: Record<string, any[]> = {};
-  for (const t of (data.produksi_transfers || [])) {
-    if (t.ke === "washing") {
-      const key = String(t.po_id);
-      if (!washingByPo[key]) washingByPo[key] = [];
-      washingByPo[key].push(t);
-    }
-  }
+  // (Washing dihitung via vendorStageSummary — transfer vendor riil, tahap via resolver bersama)
 
   // Calculate saldo for each PO
   const poList = data.po_produksi.map((po: any) => {
@@ -55,15 +48,13 @@ export async function GET() {
     const pctCmt = po.jumlahTerbit > 0 ? Math.round((totalDilaporkan / po.jumlahTerbit) * 100) : 0;
     const pctDisetujui = po.jumlahTerbit > 0 ? Math.round((totalDisetujui / po.jumlahTerbit) * 100) : 0;
 
-    // Washing progress
-    const washingRecords = washingByPo[String(po.id)] || [];
-    const washingKirim = washingRecords.reduce((sum: number, t: any) => sum + (t.jumlah_kirim || 0), 0);
-    const washingACC = washingRecords
-      .filter((t: any) => t.status === "Diverifikasi")
-      .reduce((sum: number, t: any) => sum + (t.jumlah_diterima || t.jumlah_kirim || 0), 0);
-    const washingProses = washingKirim - washingACC; // still in washing
-    const pctWashing = po.jumlahTerbit > 0 ? Math.round((washingKirim / po.jumlahTerbit) * 100) : 0;
-    const pctWashingACC = po.jumlahTerbit > 0 ? Math.round((washingACC / po.jumlahTerbit) * 100) : 0;
+    // Washing progress (hanya pengiriman ke vendor washing; pool/penarikan tidak dihitung)
+    const ws = vendorStageSummary(data, po.id, "washing");
+    const washingKirim = ws.kirim;
+    const washingACC = ws.approved;
+    const washingProses = ws.proses; // still in washing
+    const pctWashing = po.jumlahTerbit > 0 ? Math.min(100, Math.round((washingKirim / po.jumlahTerbit) * 100)) : 0;
+    const pctWashingACC = po.jumlahTerbit > 0 ? Math.min(100, Math.round((washingACC / po.jumlahTerbit) * 100)) : 0;
 
     // Target selesai lookup from pemotongan if null
     const pemotongan = (data.pemotongan_kain || []).find((pk: any) => pk.id === po.pemotongan_id);
@@ -71,7 +62,7 @@ export async function GET() {
 
     // Current stage determination
     let currentStage = "cmt";
-    if (washingACC > 0) currentStage = "selesai_washing";
+    if (washingACC > 0 && washingProses === 0) currentStage = "selesai_washing";
     else if (washingKirim > 0) currentStage = "washing";
     else if (totalDisetujui > 0) currentStage = "siap_tarik";
     else if (totalDilaporkan > 0) currentStage = "dilaporkan";
@@ -81,6 +72,12 @@ export async function GET() {
 
     return {
       ...po,
+      nama_kain: po.nama_kain || pemotongan?.nama_barang || "-",
+      jenis_jahitan: po.jenis_jahitan || pemotongan?.jenis_jahitan || "",
+      tipe_benang: po.tipe_benang || pemotongan?.tipe_benang || "",
+      tipe_resleting: po.tipe_resleting || pemotongan?.tipe_resleting || "",
+      catatan_jahitan: po.catatan_jahitan || pemotongan?.catatan_jahitan || "",
+      item_pendukung_used: po.item_pendukung_used || pemotongan?.item_pendukung_used || [],
       target_selesai: targetSelesai,
       pemotongan_target_selesai: pemotongan?.target_selesai || null,
       vendor_nama: vendorObj?.nama || null,
@@ -118,8 +115,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const data = readData();
   const body = await req.json();
+  const data = readData();
   const { pemotonganId, sizeBreakdown, jumlahTerbit, vendorId, catatan } = body;
   
   if (!pemotonganId || !jumlahTerbit || !vendorId || !sizeBreakdown?.length) {
@@ -160,6 +157,12 @@ export async function POST(req: NextRequest) {
     noPo,
     model: pemotongan.model,
     pemotongan_id: pemotongan.id,
+    nama_kain: pemotongan.nama_barang || "",
+    jenis_jahitan: pemotongan.jenis_jahitan || "",
+    tipe_benang: pemotongan.tipe_benang || "",
+    tipe_resleting: pemotongan.tipe_resleting || "",
+    catatan_jahitan: pemotongan.catatan_jahitan || "",
+    item_pendukung_used: pemotongan.item_pendukung_used || [],
     sizeBreakdown, // e.g. [{ size: 'M', jumlah: 100 }]
     jumlahTerbit: Number(jumlahTerbit),
     vendorId: Number(vendorId),

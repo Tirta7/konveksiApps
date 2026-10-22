@@ -18,8 +18,8 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const data = readData();
   const body = await req.json();
+  const data = readData();
   const { id, bayar_amount } = body;
 
   if (!id || !bayar_amount) {

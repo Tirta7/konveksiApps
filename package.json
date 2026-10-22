@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
-    "dev:redis": "REDIS_URL=redis://127.0.0.1:6379 next dev -p 3001",
+    "dev": "node server.mjs",
+    "dev:next": "next dev -p 3001",
+    "dev:redis": "REDIS_URL=redis://127.0.0.1:6379 node server.mjs",
     "redis:start": "redis-server --daemonize yes 2>/dev/null || brew services start redis",
     "redis:stop": "redis-cli shutdown nosave 2>/dev/null || brew services stop redis || true",
     "redis:ping": "redis-cli ping",
     "migrate": "node migrate.js",
     "build": "next build",
-    "start": "next start -p 3001"
+    "start": "NODE_ENV=production node server.mjs",
+    "start:next": "next start -p 3001"
   },
   "dependencies": {
     "@types/better-sqlite3": "^9.6.0",
@@ -28,7 +30,8 @@
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
     "sonner": "^2.0.8",
-    "uuid": "^14.0.2"
+    "uuid": "^14.0.2",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -37,6 +40,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.2",
     "drizzle-kit": "^0.31.10",
     "typescript": "^5"
   }

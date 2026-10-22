@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
 
 // POST: save/create pipeline for a PO
 export async function POST(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.po_pipeline) data.po_pipeline = [];
-  const body = await req.json();
   const { po_id, stages } = body;
   if (!po_id || !stages) return NextResponse.json({ error: "po_id dan stages wajib" }, { status: 400 });
 
@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
 
 // PATCH: update a specific stage status within a PO pipeline
 export async function PATCH(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.po_pipeline) data.po_pipeline = [];
-  const body = await req.json();
   const { po_id, stage_id, updates } = body;
   if (!po_id || !stage_id || !updates) return NextResponse.json({ error: "po_id, stage_id, updates wajib" }, { status: 400 });
 

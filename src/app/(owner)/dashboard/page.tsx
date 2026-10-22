@@ -44,6 +44,9 @@ function cleanWaNumber(phone?: string) {
 
 const STAGE_CFG: Record<string, { label: string; bg: string; color: string }> = {
   "selesai":        { label: "Selesai",        bg: "#D1FAE5", color: "#065F46" },
+  "vendor":         { label: "Proses Vendor",   bg: "#E0F2FE", color: "#0369A1" },
+  "antre-gudang":   { label: "Antre Gudang",    bg: "#FEF3C7", color: "#B45309" },
+  "sebagian-gudang":{ label: "Sebagian di Stok", bg: "#DCFCE7", color: "#166534" },
   "selesai-washing":{ label: "Selesai Washing", bg: "#CFFAFE", color: "#0E7490" },
   "washing":        { label: "Washing",         bg: "#E0F2FE", color: "#0369A1" },
   "siap-tarik":     { label: "Siap Tarik",      bg: "#DCFCE7", color: "#166534" },
@@ -552,7 +555,7 @@ export default function DashboardPage() {
                 isAlert: totalPoTerlambat > 0
               },
               { id: "pcs", fiIcon: "fi-sr-needle", bg: "#FEF3C7", color: "#D97706", label: "Total PCS", val: data?.totalPCS ?? 0, sub: "Volume terbit" },
-              { id: "gudang", fiIcon: "fi-sr-box-open", bg: "#DCFCE7", color: "#16A34A", label: "Di Gudang", val: data?.totalDiGudang ?? 0, sub: "Pcs tuntas" },
+              { id: "gudang", fiIcon: "fi-sr-box-open", bg: "#DCFCE7", color: "#16A34A", label: "Masuk Stok", val: data?.totalDiGudang ?? 0, sub: "Pcs masuk Gudang & Stok" },
               { id: "vendor", fiIcon: "fi-sr-users", bg: "#F5F3FF", color: "#7C3AED", label: "Vendor Aktif", val: vendorList.length, sub: "CMT & Alur" },
             ].map((item, i) => {
               const isSelected = (item.id === "all" && poFilter === "all") || (item.id === "overdue" && poFilter === "overdue") || (item.id === "ontime" && poFilter === "ontime");
@@ -746,7 +749,7 @@ export default function DashboardPage() {
                               {po.noPo}
                             </span>
                             <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: stage.bg, color: stage.color }}>
-                              {stage.label}
+                              {po.stageLabel || stage.label}
                             </span>
                             {isLate && (
                               <span style={{ 
@@ -792,26 +795,54 @@ export default function DashboardPage() {
 
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
                           <div style={{ fontSize: 19, fontWeight: 900, color: "#0F172A" }}>{po.jumlahTerbit} <span style={{ fontSize: 11, color: "#94A3B8" }}>pcs</span></div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: isLate ? "#DC2626" : "#10B981" }}>
-                            {po.totalDiGudang} di gudang ({po.sisaPcs} sisa)
+                          <div style={{ fontSize: 11, fontWeight: 700, color: po.stage === "selesai" ? "#10B981" : "#475569" }}>
+                            {po.totalDiGudang} masuk stok · {po.sisaPcs} belum
                           </div>
                         </div>
                       </div>
 
-                      {/* Progress bars */}
-                      <div style={{ width: "100%", background: "#E2E8F0", height: 7, borderRadius: 4, overflow: "hidden", position: "relative" }}>
-                        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(po.pctGudang, 100)}%`, background: "#10B981", borderRadius: 4 }} />
-                        <div style={{ position: "absolute", left: `${po.pctGudang}%`, top: 0, height: "100%", width: `${Math.min(po.pctDisetujui - po.pctGudang, 100)}%`, background: "#3B82F6", borderRadius: 4 }} />
-                        <div style={{ position: "absolute", left: `${po.pctDisetujui}%`, top: 0, height: "100%", width: `${Math.min(po.pctCMT - po.pctDisetujui, 100)}%`, background: "#F59E0B", borderRadius: 4 }} />
+                      {/* Progress bar tersegmen: stok → antre gudang → di vendor → reject */}
+                      <div style={{ width: "100%", background: "#E2E8F0", height: 8, borderRadius: 4, overflow: "hidden", display: "flex" }}>
+                        <div title={`${po.totalDiGudang} pcs masuk stok`} style={{ width: `${po.pctGudang}%`, background: "#10B981" }} />
+                        <div title={`${po.totalAntre} pcs antre gudang`} style={{ width: `${po.pctAntre}%`, background: "#F59E0B" }} />
+                        <div title={`${po.totalDiVendor} pcs di vendor`} style={{ width: `${po.pctVendor}%`, background: "#3B82F6" }} />
+                        <div title={`${po.totalReject} pcs reject`} style={{ width: `${po.pctReject}%`, background: "#EF4444" }} />
                       </div>
 
+                      {/* Posisi barang saat ini */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                        {[
+                          { v: po.totalDiGudang, label: "Masuk Stok", bg: "#ECFDF5", c: "#047857", extra: po.totalTerjual > 0 ? ` (${po.totalTerjual} terjual)` : "" },
+                          { v: po.totalAntre, label: "Antre Gudang", bg: "#FFFBEB", c: "#B45309", extra: "" },
+                          { v: po.totalDiVendor, label: "Di Vendor", bg: "#EFF6FF", c: "#1D4ED8", extra: "" },
+                          { v: po.totalDiCmt, label: "Di CMT", bg: "#F5F3FF", c: "#6D28D9", extra: "" },
+                          { v: po.totalReject, label: "Reject", bg: "#FEF2F2", c: "#B91C1C", extra: "" },
+                        ].filter((x) => x.v > 0).map((x) => (
+                          <span key={x.label} style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: x.bg, color: x.c }}>
+                            {x.label}: {x.v} pcs{x.extra}
+                          </span>
+                        ))}
+                      </div>
+                      {po.vendorPosisi?.length > 0 && (
+                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+                          {po.vendorPosisi.map((vp: any) => (
+                            <div key={vp.transfer_id} style={{ fontSize: 11, color: "#475569", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <span style={{ width: 6, height: 6, borderRadius: 3, background: vp.status === "dikerjakan" ? "#3B82F6" : "#94A3B8" }} />
+                              <strong style={{ color: "#1E293B" }}>{vp.vendor_nama}</strong>
+                              <span>· {vp.tahap} · {vp.jumlah} pcs</span>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: vp.status === "dikerjakan" ? "#DBEAFE" : "#F1F5F9", color: vp.status === "dikerjakan" ? "#1D4ED8" : "#64748B" }}>
+                                {vp.status === "dikerjakan" ? "Sedang dikerjakan" : "Dikirim · belum mulai"}
+                              </span>
+                              {vp.lateDays > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626" }}>terlambat {vp.lateDays} hari</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, flexWrap: "wrap", gap: 8 }}>
-                        <div style={{ display: "flex", gap: 10, fontSize: 10, color: "#94A3B8" }}>
-                          {po.totalDiGudang > 0 && <span style={{ color: "#10B981", fontWeight: 700 }}> {po.totalDiGudang} gudang</span>}
-                          {po.totalDisetujui > 0 && <span style={{ color: "#3B82F6", fontWeight: 700 }}> {po.totalDisetujui} ACC</span>}
-                          {po.totalDilaporkan > 0 && <span style={{ color: "#F59E0B", fontWeight: 700 }}> {po.totalDilaporkan} laporan</span>}
-                          {po.totalWashing > 0 && <span style={{ color: "#06B6D4", fontWeight: 700 }}> {po.totalWashingDone}/{po.totalWashing} washing</span>}
-                          <span style={{ fontWeight: 600 }}>{po.pctGudang}% selesai</span>
+                        <div style={{ display: "flex", gap: 10, fontSize: 10, color: "#94A3B8", flexWrap: "wrap" }}>
+                          <span>CMT: {po.totalDisetujui}/{po.jumlahTerbit} di-ACC</span>
+                          <span style={{ fontWeight: 700, color: "#10B981" }}>{po.pctGudang}% masuk stok</span>
                         </div>
 
                         {/* Quick action buttons per PO */}
@@ -1112,25 +1143,31 @@ export default function DashboardPage() {
 
                 {/* Progress breakdown */}
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>Alur Progres Pengerjaan:</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, textAlign: "center" }}>
-                    <div style={{ background: "#EFF6FF", padding: "8px 6px", borderRadius: 8 }}>
-                      <div style={{ fontSize: 10, color: "#1D4ED8", fontWeight: 700 }}>Dilaporkan CMT</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#1E293B", marginTop: 2 }}>{selectedPo.totalDilaporkan} pcs</div>
-                    </div>
-                    <div style={{ background: "#F0FDF4", padding: "8px 6px", borderRadius: 8 }}>
-                      <div style={{ fontSize: 10, color: "#15803D", fontWeight: 700 }}>Diverifikasi ACC</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#1E293B", marginTop: 2 }}>{selectedPo.totalDisetujui} pcs</div>
-                    </div>
-                    <div style={{ background: "#ECFEFF", padding: "8px 6px", borderRadius: 8 }}>
-                      <div style={{ fontSize: 10, color: "#0E7490", fontWeight: 700 }}>Washing Selesai</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#1E293B", marginTop: 2 }}>{selectedPo.totalWashingDone} pcs</div>
-                    </div>
-                    <div style={{ background: "#DCFCE7", padding: "8px 6px", borderRadius: 8 }}>
-                      <div style={{ fontSize: 10, color: "#166534", fontWeight: 700 }}>Masuk Gudang</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#166534", marginTop: 2 }}>{selectedPo.totalDiGudang} pcs</div>
-                    </div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>Posisi Barang Saat Ini:</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8, textAlign: "center" }}>
+                    {[
+                      { label: "CMT di-ACC", v: `${selectedPo.totalDisetujui}/${selectedPo.jumlahTerbit}`, bg: "#F5F3FF", c: "#6D28D9" },
+                      { label: "Di Vendor", v: selectedPo.totalDiVendor, bg: "#EFF6FF", c: "#1D4ED8" },
+                      { label: "Antre Gudang", v: selectedPo.totalAntre, bg: "#FFFBEB", c: "#B45309" },
+                      { label: "Masuk Stok", v: selectedPo.totalDiGudang, bg: "#DCFCE7", c: "#166534" },
+                      { label: "Terjual", v: selectedPo.totalTerjual, bg: "#ECFEFF", c: "#0E7490" },
+                      { label: "Reject", v: selectedPo.totalReject, bg: "#FEF2F2", c: "#B91C1C" },
+                    ].map((x) => (
+                      <div key={x.label} style={{ background: x.bg, padding: "8px 6px", borderRadius: 8 }}>
+                        <div style={{ fontSize: 10, color: x.c, fontWeight: 700 }}>{x.label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: "#1E293B", marginTop: 2 }}>{x.v} pcs</div>
+                      </div>
+                    ))}
                   </div>
+                  {selectedPo.vendorPosisi?.length > 0 && (
+                    <div style={{ marginTop: 8, fontSize: 11.5, color: "#475569", display: "flex", flexDirection: "column", gap: 3 }}>
+                      {selectedPo.vendorPosisi.map((vp: any) => (
+                        <div key={vp.transfer_id}>
+                          • <strong>{vp.vendor_nama}</strong> ({vp.tahap}) — {vp.jumlah} pcs · {vp.status === "dikerjakan" ? "sedang dikerjakan" : "dikirim, belum mulai"}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Size breakdown list */}

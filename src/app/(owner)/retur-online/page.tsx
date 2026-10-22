@@ -1,9 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { UploadCloud, CheckCircle, Search, XCircle, FileText, Download, ChevronRight, User, MapPin, Truck, CreditCard, BarChart2, Table as TableIcon } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
+import { ScanLine, Scale, FileSpreadsheet } from "lucide-react";
+import ReturMarketplacePanel from "@/components/ReturMarketplacePanel";
 
 export default function ReturOnlinePage() {
   const [data, setData] = useState<any[]>([]);
@@ -14,6 +16,7 @@ export default function ReturOnlinePage() {
   const [uploading, setUploading] = useState(false);
   const [selectedRetur, setSelectedRetur] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "summary">("table");
+  const [tab, setTab] = useState<"scan" | "banding" | "csv">("scan");
 
   const fetchData = async () => {
     try {
@@ -227,17 +230,31 @@ export default function ReturOnlinePage() {
         <div style={{ padding: "24px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", marginBottom: 4 }}>Retur Penjualan (Online)</h1>
-            <p style={{ fontSize: 13, color: "#64748B" }}>Integrasi laporan CSV dari TikTok Shop untuk melacak pesanan batal & retur.</p>
+            <p style={{ fontSize: 13, color: "#64748B" }}>Scan barang retur dari Shopee / TikTok / marketplace lain — sesuai kembali ke stok, tidak sesuai diajukan banding.</p>
           </div>
-          <div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", background: "#F1F5F9", borderRadius: 10, padding: 4 }}>
+              {([["scan", "Scan Retur Datang", ScanLine], ["banding", "Banding Marketplace", Scale], ["csv", "Laporan Retur CSV", FileSpreadsheet]] as const).map(([k, l, I]) => (
+                <button key={k} id={`tab-retur-${k}`} onClick={() => setTab(k)} style={{ padding: "8px 12px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: tab === k ? "white" : "transparent", color: tab === k ? "#0F172A" : "#64748B", boxShadow: tab === k ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}><I size={14} /> {l}</button>
+              ))}
+            </div>
+            {tab === "csv" && (
             <label style={{ background: "#2563EB", color: "white", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1 }}>
               <UploadCloud size={18} />
               {uploading ? "Memproses..." : "Upload Laporan TikTok (CSV)"}
               <input type="file" accept=".csv" onChange={handleFileUpload} disabled={uploading} style={{ display: "none" }} />
             </label>
+            )}
           </div>
         </div>
 
+        {tab !== "csv" && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }}>
+            <ReturMarketplacePanel key={tab} tab={tab} />
+          </div>
+        )}
+
+        {tab === "csv" && (<>
         <div style={{ padding: "16px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ flex: 1, display: "flex", alignItems: "center", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: 10, padding: "0 14px", maxWidth: 400 }}>
             <Search size={18} color="#94A3B8" />
@@ -559,6 +576,7 @@ export default function ReturOnlinePage() {
           )}
         </div>
       </div>
+        </>)}
     </div>
     </>
   );

@@ -9,8 +9,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const data = readData();
   const body = await req.json();
+  const data = readData();
   const { jenis_kain, jumlah_pcs, jumlah_meter, steps, size_breakdown, is_retur, parent_batch_id } = body;
   
   if (!jenis_kain || !steps?.length) return NextResponse.json({ error: "Invalid data" }, { status: 400 });

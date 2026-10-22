@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
+import { emitEvent } from "@/lib/realtime-hub";
+import { vendorOwnershipError } from "@/lib/auth";
 
 export async function PUT(req: NextRequest) {
   try {
@@ -12,27 +14,56 @@ export async function PUT(req: NextRequest) {
 
     const data = readData();
 
+    // Otorisasi sebelum data diubah: vendor hanya boleh menyentuh pekerjaannya sendiri
+    {
+      const ownerVendorId = is_transfer
+        ? (data.produksi_transfers || []).find((t: any) => String(t.id) === String(id))?.vendor_id
+        : (data.po_produksi || []).find((p: any) => String(p.id) === String(id))?.vendorId;
+      const authErr = vendorOwnershipError(req, ownerVendorId);
+      if (authErr) return NextResponse.json({ error: authErr }, { status: 403 });
+    }
+
     let targetSizeBreakdown = null;
+    let vendor_id: any = null;
+    let vendor_nama: string = "";
+    let no_po: string = "";
+    const nowIso = new Date().toISOString();
 
     if (is_transfer) {
       const idx = data.produksi_transfers.findIndex((t: any) => String(t.id) === String(id));
       if (idx === -1) return NextResponse.json({ error: "Data transfer tidak ditemukan" }, { status: 404 });
 
-      targetSizeBreakdown = data.produksi_transfers[idx].sizeBreakdown;
+      const tf = data.produksi_transfers[idx];
+      targetSizeBreakdown = tf.sizeBreakdown;
+      vendor_id = tf.vendor_id;
+      const v = data.vendors?.find((vend: any) => String(vend.id) === String(vendor_id));
+      vendor_nama = v?.nama || "Vendor";
+      const poObj = data.po_produksi?.find((p: any) => String(p.id) === String(po_id));
+      no_po = poObj?.noPo || tf.no_po || `PO #${po_id}`;
 
       if (action === "mulai") {
-        data.produksi_transfers[idx].status = "Dikerjakan";
+        tf.status = "Dikerjakan";
+        tf.mulai_kerja_at = nowIso;
       } else if (action === "batal") {
-        data.produksi_transfers[idx].status = "Proses"; // Kembalikan ke Proses
+        tf.status = "Proses"; // Kembalikan ke Proses
+        tf.mulai_kerja_at = null;
       }
     } else {
       const idx = data.po_produksi.findIndex((p: any) => String(p.id) === String(id));
       if (idx === -1) return NextResponse.json({ error: "Data PO tidak ditemukan" }, { status: 404 });
 
+      const po = data.po_produksi[idx];
+      vendor_id = po.vendorId;
+      const v = data.vendors?.find((vend: any) => String(vend.id) === String(vendor_id));
+      vendor_nama = v?.nama || "Vendor";
+      no_po = po.noPo || `PO #${po.id}`;
+
       if (action === "mulai") {
-        data.po_produksi[idx].status = "Dikerjakan";
+        po.status = "Dikerjakan";
+        po.mulai_kerja_at = nowIso;
       } else if (action === "batal") {
-        data.po_produksi[idx].status = "Proses";
+        po.status = "Proses";
+        po.mulai_kerja_at = null;
       }
     }
 
@@ -85,7 +116,24 @@ export async function PUT(req: NextRequest) {
     }
 
     writeData(data);
-    return NextResponse.json({ success: true });
+
+    // Emit event realtime to all connected clients
+    emitEvent("vendorWorking", {
+      action,
+      vendor_id,
+      vendor_nama,
+      po_id,
+      no_po,
+      vendor_tipe,
+      is_transfer: !!is_transfer,
+      mulai_kerja_at: action === "mulai" ? nowIso : null
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      status: action === "mulai" ? "Dikerjakan" : "Proses",
+      mulai_kerja_at: action === "mulai" ? nowIso : null
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

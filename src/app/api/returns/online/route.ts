@@ -13,8 +13,8 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const data = readData();
     const body = await req.json();
+    const data = readData();
     const { id, status } = body;
 
     if (!id || !status) return NextResponse.json({ error: "id dan status wajib diisi" }, { status: 400 });
@@ -33,8 +33,8 @@ export async function PUT(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const data = readData();
     const body = await req.json();
+    const data = readData();
     if (!data.retur_online) data.retur_online = [];
 
     const rows = Array.isArray(body) ? body : [body];

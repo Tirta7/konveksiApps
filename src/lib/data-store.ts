@@ -4,7 +4,9 @@ import { broadcast } from "./sse";
 import { getCached, setCache, publishChange, isRedisReady } from "./redis";
 import { reconcileProduction } from "./po-lifecycle";
 
-const DATA_PATH = path.join(process.cwd(), "konveksi-data.json");
+// DATA_DIR → lokasi data (Docker: volume /data). Default: folder project (pengembangan lokal).
+export const DATA_DIR = process.env.DATA_DIR || process.cwd();
+const DATA_PATH = path.join(DATA_DIR, "konveksi-data.json");
 const TEMP_PATH = DATA_PATH + ".tmp";
 
 export interface DataStore {
@@ -39,6 +41,7 @@ export interface DataStore {
   po_ledgers: any[];
   pipeline_stages: any[];
   po_pipeline: any[];
+  nota_reject_vendor?: any[];
   item_pendukung: any[];
   pengaturan_sistem?: any;
   _counters: Record<string, number>;
@@ -51,10 +54,10 @@ function getInitialData(): DataStore {
     retur_produksi: [], retur_online: [], kategori_produk: [], data_barang: [], data_supplier: [],
     data_pelanggan: [],
     po_produksi: [], po_pengambilan: [], barcode_item: [], cmt_requests: [], cmt_progres: [], vendor_types: [], produksi_transfers: [], po_ledgers: [],
-    pipeline_stages: [], po_pipeline: [], item_pendukung: [],
+    pipeline_stages: [], po_pipeline: [], item_pendukung: [], nota_reject_vendor: [],
     pengaturan_sistem: {
-      nama_usaha: "KONVEKSI APPS | JEANS PRODUCTION",
-      tagline: "Sistem Tracking Produksi Jeans",
+      nama_usaha: process.env.STORE_NAME || "KONVEKSI APPS | JEANS PRODUCTION",
+      tagline: process.env.STORE_NAME ? `Sistem Manajemen & Tracking Produksi ${process.env.STORE_NAME}` : "Sistem Tracking Produksi Jeans",
       alamat: "Jl. Industri Konveksi No. 88",
       telepon: "(022) 555-8899",
       email: "info@konveksiapps.com",

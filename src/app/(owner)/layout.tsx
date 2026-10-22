@@ -2,19 +2,66 @@
 
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
+import NotificationBell from "@/components/NotificationBell";
 import { Menu } from "lucide-react";
-import { subscribeRealtime } from "@/lib/realtime-client";
+import { subscribeRealtime, subscribeRealtimeEvent } from "@/lib/realtime-client";
+import { toast } from "sonner";
 
 /**
- * Uses ONE shared SSE connection per browser (shared across tabs, see realtime-client).
+ * Uses ONE shared realtime connection per browser (WebSocket, fallback SSE — see realtime-client).
  * When server broadcasts "dataChanged", dispatches a window event
  * so any page-level fetchData() listeners refresh automatically.
+ * Event aplikasi (permintaan vendor, laporan progres) ditampilkan sebagai notifikasi live.
  */
 function useGlobalSync() {
   useEffect(() => {
-    return subscribeRealtime(() => {
+    const unsubSync = subscribeRealtime(() => {
       window.dispatchEvent(new CustomEvent("konveksi-sync"));
     });
+    const unsubEvt = subscribeRealtimeEvent((event, d) => {
+      window.dispatchEvent(new CustomEvent("konveksi-rt", { detail: { event, data: d } }));
+      if (event === "vendorRequest") {
+        toast.info(`📥 ${d?.vendor_nama || "Vendor"} baru saja meminta ${d?.total || 0} pcs${d?.no_po ? ` dari ${d.no_po}` : ""}`, {
+          description: "Cek Antrean Request Vendor sebelum membagikan stok PO ini.",
+          duration: 8000,
+        });
+      } else if (event === "progressReported") {
+        toast.info(`📝 ${d?.vendor_nama || "Vendor"} melaporkan ${d?.jumlah || 0} pcs selesai${d?.no_po ? ` (${d.no_po})` : ""}`, {
+          description: "Menunggu ACC admin.",
+          duration: 6000,
+        });
+      } else if (event === "vendorWorking") {
+        if (d?.action === "mulai") {
+          toast.success(`⚡ ${d?.vendor_nama || "Vendor"} mulai mengerjakan ${d?.no_po ? `PO ${d.no_po}` : "pekerjaan"}`, {
+            description: "Status pengerjaan langsung diperbarui secara realtime di Alur Produksi.",
+            duration: 6000,
+          });
+        } else {
+          toast.info(`ℹ️ ${d?.vendor_nama || "Vendor"} membatalkan pengerjaan ${d?.no_po ? `PO ${d.no_po}` : ""}`, {
+            duration: 5000,
+          });
+        }
+      }
+    });
+    // Cek status lisensi berkala di background (jika dikunci dari pusat, langsung kunci layar browser)
+    const checkLicenseHeartbeat = async () => {
+      try {
+        const res = await fetch("/api/license-status");
+        if (res.ok) {
+          const lic = await res.json();
+          if (lic && lic.allowed === false) {
+            window.location.reload();
+          }
+        }
+      } catch {}
+    };
+    const licInterval = setInterval(checkLicenseHeartbeat, 10000); // 10 Detik
+
+    return () => { 
+      unsubSync(); 
+      unsubEvt(); 
+      clearInterval(licInterval);
+    };
   }, []);
 }
 
@@ -94,13 +141,16 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
              />
              <span>{appName}</span>
            </div>
-           <button 
-             className="mobile-toggle-btn" 
-             onClick={() => setIsMobileOpen(true)}
-             aria-label="Buka Menu"
-           >
-             <Menu size={22} />
-           </button>
+           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+             <NotificationBell align="right" />
+             <button 
+               className="mobile-toggle-btn" 
+               onClick={() => setIsMobileOpen(true)}
+               aria-label="Buka Menu"
+             >
+               <Menu size={22} />
+             </button>
+           </div>
         </header>
         {children}
       </main>

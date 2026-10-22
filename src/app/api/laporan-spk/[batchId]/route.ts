@@ -1,7 +1,5 @@
 export const dynamic = "force-dynamic";
 ﻿import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import * as schema from "@/lib/schema";
 
 export async function GET() {
   try {

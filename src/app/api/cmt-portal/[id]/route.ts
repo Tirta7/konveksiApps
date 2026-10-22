@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 import { getCmtCompletion, getTransferCompletion, cmtReports, transferReports, isVendorTransferActive } from "@/lib/po-lifecycle";
+import { isOpenPool, poolMatchesVendorType, poolAvailability, stageLabel } from "@/lib/pool-guard";
+import { vendorOwnershipError, publicVendor } from "@/lib/auth";
 
 // GET portal data for a specific CMT vendor
 export async function GET(req: Request, context: { params: Promise<{ id: string }> | { id: string } }) {
   const data = readData();
   const params = await Promise.resolve(context.params);
   const vendorId = Number(params.id);
+
+  // Vendor hanya boleh membuka portalnya sendiri (owner/admin boleh melihat semua)
+  const authErr = vendorOwnershipError(req, vendorId);
+  if (authErr) return NextResponse.json({ error: authErr }, { status: 401 });
 
   const vendor = (data.vendors || []).find((v: any) => v.id === vendorId);
   if (!vendor) {
@@ -36,9 +42,20 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     for (const po of myPOs) {
       const c = getCmtCompletion(data, po, now);
       const reports = cmtReports(data, po);
+      const pemotongan = (data.pemotongan_kain || []).find((pk: any) => String(pk.id) === String(po.pemotongan_id));
+      const tp = pemotongan ? (data.tukang_potong || []).find((t: any) => t.id === pemotongan.tukang_potong_id) : null;
       const base = {
         ...po,
         no_po: po.noPo,          // alias for frontend
+        nama_kain: po.nama_kain || pemotongan?.nama_barang || "-",
+        jenis_jahitan: po.jenis_jahitan || pemotongan?.jenis_jahitan || "",
+        tipe_benang: po.tipe_benang || pemotongan?.tipe_benang || "",
+        tipe_resleting: po.tipe_resleting || pemotongan?.tipe_resleting || "",
+        catatan_jahitan: po.catatan_jahitan || pemotongan?.catatan_jahitan || "",
+        item_pendukung_used: po.item_pendukung_used || pemotongan?.item_pendukung_used || [],
+        tukang_potong_nama: tp ? tp.nama : null,
+        tukang_potong_kode: tp ? tp.kode : null,
+        isi_per_bundle: pemotongan?.isi_per_bundle || 20,
         jumlah_terbit: po.jumlahTerbit,
         totalDiambil: c.approved,
         totalPending: c.pending,
@@ -67,23 +84,57 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
   } else {
     // Vendor downstream (Washing, Finishing, dll) — job di produksi_transfers
     const myTransfers = (data.produksi_transfers || []).filter((t: any) =>
-      t.vendor_id === vendorId && (isVendorTransferActive(t) || t.status === "Selesai")
+      Number(t.vendor_id) === Number(vendorId) && (isVendorTransferActive(t) || t.status === "Selesai")
     );
     for (const t of myTransfers) {
       const po = (data.po_produksi || []).find((p: any) => p.id === t.po_id);
+      const pemotongan = po ? (data.pemotongan_kain || []).find((pk: any) => String(pk.id) === String(po.pemotongan_id)) : null;
+      const tp = pemotongan ? (data.tukang_potong || []).find((t: any) => t.id === pemotongan.tukang_potong_id) : null;
       const c = getTransferCompletion(data, t, now);
       const reports = transferReports(data, t);
+      const originVendorNama = (() => {
+        if (t.dari_vendor_id) {
+          return (data.vendors || []).find((v: any) => v.id === Number(t.dari_vendor_id))?.nama || "";
+        }
+        if (t.transfer_id_asal) {
+          const originTf = (data.produksi_transfers || []).find((x: any) => x.id === Number(t.transfer_id_asal));
+          if (originTf?.vendor_id) {
+            return (data.vendors || []).find((v: any) => v.id === Number(originTf.vendor_id))?.nama || "";
+          }
+        }
+        if (po?.vendorId) {
+          return (data.vendors || []).find((v: any) => v.id === Number(po.vendorId))?.nama || "";
+        }
+        return "";
+      })();
+
       const base = {
         id: t.id,
+        transfer_id: t.id,
         po_id: t.po_id,
         is_transfer: true,
         no_po: po ? po.noPo : "Unknown",
         noPo: po ? po.noPo : "Unknown",
         model: po ? po.model : "Unknown",
-        jumlah_terbit: t.jumlah_kirim, // Total yang ditugaskan ke vendor ini
+        nama_kain: po?.nama_kain || pemotongan?.nama_barang || "-",
+        catatan: t.catatan || "",
+        catatan_pengiriman: t.catatan || "",
+        asal_tahap: t.dari || "",
+        asal_vendor: originVendorNama,
+        ke_tahap: t.ke || "",
+        jenis_jahitan: po?.jenis_jahitan || pemotongan?.jenis_jahitan || "",
+        tipe_benang: po?.tipe_benang || pemotongan?.tipe_benang || "",
+        tipe_resleting: po?.tipe_resleting || pemotongan?.tipe_resleting || "",
+        catatan_jahitan: po?.catatan_jahitan || pemotongan?.catatan_jahitan || "",
+        item_pendukung_used: po?.item_pendukung_used || pemotongan?.item_pendukung_used || [],
+        tukang_potong_nama: tp ? tp.nama : null,
+        tukang_potong_kode: tp ? tp.kode : null,
+        jumlah_terbit: c.jumlah,       // Total yang wajib dilaporkan vendor (dikirim − reject)
+        jumlah_kirim: t.jumlah_kirim,
+        jumlah_reject: Number(t.jumlah_reject || 0),
         totalDiambil: c.approved,      // Hanya yang sudah Diterima/ACC admin
         totalPending: c.pending,
-        pct: t.jumlah_kirim > 0 ? Math.round((c.approved / t.jumlah_kirim) * 100) : 0,
+        pct: c.jumlah > 0 ? Math.round((c.approved / c.jumlah) * 100) : 0,
         sizeBreakdown: (t.sizeBreakdown || []).map((s: any) => ({
           size: s.size,
           jumlah: Number(s.jumlah || s.max || 0),
@@ -93,6 +144,9 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
         pendingSizeProgress: sumSizes(reports.filter(isPending)),
         progres: [],
         transfer_status: t.status,
+        is_rework: !!t.is_rework || t.status === "Retur Perbaikan",
+        rework_count: t.rework_count || 1,
+        alasan_retur: t.alasan_retur || "",
         targetSelesai: c.target,
         overdueDays: c.lateDays,
         isOverdue: c.isOverdue,
@@ -112,24 +166,151 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     .sort((a: any, b: any) => new Date(b.tanggalSelesai || 0).getTime() - new Date(a.tanggalSelesai || 0).getTime())
     .slice(0, 50);
 
-  // Gaji / Tagihan
-  const gaji = (data.gaji_cmt || [])
-    .filter((g: any) => g.cmtId === vendorId)
+  // ── Helper Tarif Pcs Vendor ──
+  const resolveTarif = (modelName?: string, customRate?: number) => {
+    if (customRate && Number(customRate) > 0) return Number(customRate);
+    if (modelName && vendor.tarifPotongan && vendor.tarifPotongan[modelName]) {
+      return Number(vendor.tarifPotongan[modelName]);
+    }
+    return Number(vendor.hargaPerPcs || 5000);
+  };
+
+  // ── Realtime Hak Gaji Per Pekerjaan / PO ──
+  const allVendorJobs = [...historiPO, ...activePO];
+
+  const rincianGajiPerPo = allVendorJobs.map((job: any) => {
+    const poId = job.po_id || job.id;
+    const noPo = job.no_po || job.noPo || "PO";
+    const model = job.model || "Umum";
+    const targetPcs = Number(job.jumlah_terbit ?? job.jumlahTerbit ?? 0);
+    const pcsSelesai = Number(job.totalDiambil || 0); // yang sudah di-ACC admin
+    const pcsPending = Number(job.totalPending || 0); // menunggu ACC
+    const tarifPerPcs = resolveTarif(model, job.hargaPerPcs);
+    const subtotalHak = pcsSelesai * tarifPerPcs;
+    const subtotalPending = pcsPending * tarifPerPcs;
+    const estimasiTotal = targetPcs * tarifPerPcs;
+
+    // Cek pembayaran tercatat di gaji_cmt untuk PO ini
+    const poPayments = (data.gaji_cmt || []).filter(
+      (g: any) => Number(g.cmtId) === Number(vendorId) && String(g.poId) === String(poId)
+    );
+    const paidForPo = poPayments.reduce(
+      (sum: number, g: any) => sum + Number(g.dibayar ?? (g.status === "Lunas" ? (g.totalGaji || g.total || 0) : 0)),
+      0
+    );
+    const sisaHak = Math.max(0, subtotalHak - paidForPo);
+
+    let statusBayar = "Belum Ada Pcs";
+    if (subtotalHak > 0) {
+      if (paidForPo >= subtotalHak) {
+        statusBayar = "Lunas";
+      } else if (paidForPo > 0) {
+        statusBayar = "Sebagian Dibayar";
+      } else {
+        statusBayar = job.tanggalSelesai || pcsSelesai >= targetPcs ? "Siap Cair" : "Akumulasi Berjalan";
+      }
+    }
+
+    return {
+      poId,
+      jobId: job.id,
+      noPo,
+      model,
+      targetPcs,
+      pcsSelesai,
+      pcsPending,
+      tarifPerPcs,
+      subtotalHak,
+      subtotalPending,
+      estimasiTotal,
+      dibayar: paidForPo,
+      sisaHak,
+      statusBayar,
+      isDone: !!job.tanggalSelesai || (targetPcs > 0 && pcsSelesai >= targetPcs),
+      tanggalSelesai: job.tanggalSelesai || null,
+      reportedAt: job.reportedAt || null,
+    };
+  });
+
+  // ── Official Payout Slips dari data.gaji_cmt ──
+  const officialSlips = (data.gaji_cmt || [])
+    .filter((g: any) => Number(g.cmtId) === Number(vendorId))
     .map((g: any) => {
       const amt = Number(g.totalGaji ?? g.total ?? 0);
-      const dibayar = Number(g.dibayar ?? 0);
+      const isLunas = g.status === "Lunas";
+      const dibayar = Number(g.dibayar ?? (isLunas ? amt : 0));
+      const sisaTagihan = Math.max(0, amt - dibayar);
+      const matchedJob = allVendorJobs.find(
+        (j: any) => String(j.id) === String(g.poId) || String(j.po_id) === String(g.poId)
+      );
+      const noPo = matchedJob ? (matchedJob.no_po || matchedJob.noPo) : (g.noPo || "-");
+      const model = matchedJob ? matchedJob.model : (g.model || "-");
+
       return {
         ...g,
+        id: g.id,
+        isOfficial: true,
+        isRealtime: false,
+        noPo,
+        model,
         total: amt,
         totalGaji: amt,
         dibayar,
-        sisaTagihan: Math.max(0, amt - dibayar)
+        sisaTagihan,
+        status: g.status || "Lunas",
+        metode: g.metode || "Transfer Bank",
+        keterangan: g.catatan || (matchedJob ? `Pembayaran Upah SPK ${noPo} (${model})` : `Slip Pembayaran #${g.id}`),
+        tanggal: g.tanggal || new Date().toISOString(),
       };
-    })
-    .slice().reverse();
+    });
 
-  const totalTertunggak = gaji.filter((g: any) => g.status !== "Lunas")
-    .reduce((sum: number, g: any) => sum + (Number(g.total || 0) - Number(g.dibayar || 0)), 0);
+  // ── Unbilled Realtime Slips (Upah dari PO yang sudah dikerjakan tapi belum ada slip resmi gaji_cmt) ──
+  const unbilledSlips = rincianGajiPerPo
+    .filter((r: any) => r.pcsSelesai > 0 && r.sisaHak > 0 && !officialSlips.some((o: any) => String(o.poId) === String(r.poId)))
+    .map((r: any) => ({
+      id: `rt-po-${r.poId}`,
+      poId: r.poId,
+      noPo: r.noPo,
+      model: r.model,
+      isOfficial: false,
+      isRealtime: true,
+      keterangan: `Upah SPK ${r.noPo} (${r.model}) - ${r.pcsSelesai.toLocaleString("id-ID")} pcs`,
+      jumlahPcs: r.pcsSelesai,
+      targetPcs: r.targetPcs,
+      tarifPerPcs: r.tarifPerPcs,
+      total: r.subtotalHak,
+      totalGaji: r.subtotalHak,
+      dibayar: r.dibayar,
+      sisaTagihan: r.sisaHak,
+      status: r.isDone ? "Siap Cair" : "Akumulasi Berjalan",
+      metode: "Transfer Bank",
+      tanggal: r.tanggalSelesai || r.reportedAt || new Date().toISOString(),
+      catatan: `${r.pcsSelesai.toLocaleString("id-ID")} pcs diverifikasi × Rp ${r.tarifPerPcs.toLocaleString("id-ID")}/pcs`,
+    }));
+
+  // Gabungkan semua slip gaji (slip resmi + slip real-time berjalan)
+  const gaji = [...officialSlips, ...unbilledSlips].sort(
+    (a: any, b: any) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime()
+  );
+
+  // ── Ringkasan Akumulasi Hak & Hutang Gaji ──
+  const totalHakGaji = rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.subtotalHak, 0);
+  const totalPendingGaji = rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.subtotalPending, 0);
+  const totalSudahDibayar = officialSlips.reduce((sum: number, g: any) => sum + Number(g.dibayar || 0), 0);
+  const sisaHakGaji = Math.max(0, totalHakGaji - totalSudahDibayar);
+  const totalTertunggak = sisaHakGaji;
+
+  const ringkasanGaji = {
+    totalHakGaji,
+    totalPendingGaji,
+    totalSudahDibayar,
+    sisaHakGaji,
+    totalTertunggak,
+    totalPcsSelesai: rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.pcsSelesai, 0),
+    totalPcsPending: rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.pcsPending, 0),
+    tarifDasar: vendor.hargaPerPcs || 5000,
+    tarifPotongan: vendor.tarifPotongan || {},
+  };
 
   // Requests dari CMT ini
   const requests = (data.cmt_requests || [])
@@ -183,13 +364,11 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       .sort((a: any, b: any) => b.sisa_total - a.sisa_total);
   } else {
     // Vendor downstream (Washing, Finishing, dll) mencari di produksi_transfers (Standby Pool)
-    const standby = (data.produksi_transfers || []).filter((t: any) => t.ke === vendor.tipe && !t.vendor_id);
+    const standby = (data.produksi_transfers || []).filter((t: any) => isOpenPool(t) && poolMatchesVendorType(data, t, vendor.tipe));
     pemotonganReady = standby.map((t: any) => {
       const po = (data.po_produksi || []).find((x: any) => x.id === t.po_id);
-      const pendingReqsForT = (data.cmt_requests || []).filter((r: any) => String(r.transfer_id) === String(t.id) && r.status === "Pending");
-      const totalPendingReqPcs = pendingReqsForT.reduce((sum: number, r: any) => sum + (Number(r.total_request) || 0), 0);
-      const originalSisaTotal = t.jumlah_kirim;
-      const effectiveSisaTotal = Math.max(0, originalSisaTotal - totalPendingReqPcs);
+      const avail = poolAvailability(data, t);
+      const dariVendor = t.dari_vendor_id != null ? (data.vendors || []).find((v: any) => v.id === t.dari_vendor_id) : null;
       return {
         id: t.id,
         is_transfer: true,
@@ -198,14 +377,15 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
         target_selesai: null,
         nama_barang: po ? po.noPo : "Unknown",
         model: po ? po.model : "Unknown",
-        total_pcs: originalSisaTotal,
-        sisa_total: effectiveSisaTotal,
-        sisa_asli: originalSisaTotal,
-        sizeBreakdown: t.sizeBreakdown || [],
-        pending_requests: pendingReqsForT.map((r: any) => {
-          const v = (data.vendors || []).find((v: any) => v.id === r.vendor_id);
-          return { vendor_nama: v ? v.nama : "Unknown", total_request: r.total_request };
-        })
+        total_pcs: avail.total,
+        sisa_total: avail.free,
+        sisa_asli: avail.total,
+        sizeBreakdown: avail.sizes,
+        dari_tahap: stageLabel(data, t.dari),
+        dari_vendor: dariVendor?.nama || null,
+        last_change: t.last_change || null,
+        rev: Number(t.rev || 0),
+        pending_requests: avail.reservations.map((r) => ({ vendor_id: r.vendor_id, vendor_nama: r.vendor_nama, total_request: r.sisa, is_mine: String(r.vendor_id) === String(vendor.id) }))
       };
     }).filter((p: any) => p.sisa_total > 0 || p.pending_requests.length > 0)
       .sort((a: any, b: any) => b.sisa_total - a.sisa_total);
@@ -275,17 +455,35 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     .filter((p: any) => String(p.vendor_id) === String(vendorId))
     .slice().reverse();
 
+  // Tagihan & Nota Reject Vendor
+  const nota_reject = (data.nota_reject_vendor || []).filter(
+    (n: any) =>
+      String(n.vendor_id) === String(vendorId) ||
+      (n.vendor_nama && vendor.nama && n.vendor_nama.trim().toLowerCase() === vendor.nama.trim().toLowerCase())
+  );
+  const totalKlaimReject = nota_reject.reduce((s: number, n: any) => s + Number(n.total_klaim || 0), 0);
+  const totalKlaimLunas = nota_reject
+    .filter((n: any) => n.status_klaim === "Lunas" || n.status_klaim === "Selesai")
+    .reduce((s: number, n: any) => s + Number(n.nominal_dibayar || n.total_klaim || 0), 0);
+  const totalKlaimTertunggak = Math.max(0, totalKlaimReject - totalKlaimLunas);
+
   return NextResponse.json({
-    vendor,
+    vendor: publicVendor(vendor),
     activePO,
     historiPO,
     gaji,
     totalTertunggak,
+    ringkasanGaji,
+    rincianGajiPerPo,
     requests,
     pemotonganReady,
     canRequest,
     blockInfo,
     kinerja,
-    cmt_progres
+    cmt_progres,
+    nota_reject,
+    totalKlaimReject,
+    totalKlaimLunas,
+    totalKlaimTertunggak,
   });
 }

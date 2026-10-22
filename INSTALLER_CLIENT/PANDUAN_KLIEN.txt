@@ -1,0 +1,47 @@
+========================================================================
+PANDUAN INSTALASI & PENGGUNAAN APLIKASI KONVEKSI (CLIENT / PABRIK)
+========================================================================
+
+1. PERSYARATAN UTAMA:
+   - Komputer menggunakan OS Windows 10 atau Windows 11 (64-bit).
+   - Docker Desktop sudah terpasang dan dalam status aktif ("Engine Running").
+     Download Docker Desktop: https://www.docker.com/products/docker-desktop/
+
+2. CARA INSTALASI PERTAMA KALI:
+   - Cukup klik 2x pada file: "INSTALL.bat"
+   - Script akan otomatis:
+     a. Memeriksa status keaktifan Docker Desktop.
+     b. Membaca Machine ID unik hardware komputer ini secara otomatis.
+     c. Meminta nama cabang/outlet Anda (misal: Konveksi Solo / Gudang Pusat).
+     d. Mengunduh (pull) aplikasi Konveksi versi terbaru dari cloud.
+     e. Menjalankan server aplikasi di latar belakang.
+     f. Memunculkan Machine ID Anda di layar hitam CMD.
+     g. Otomatis membuka aplikasi di browser web: http://localhost:3001
+
+3. AKTIVASI LISENSI (JIKA MUNCUL LAYAR MERAH "APLIKASI TERKUNCI"):
+   - Salin "Machine ID" yang tertera di layar merah tersebut.
+   - Kirimkan Machine ID ke pengembang / daftarkan di Dashboard VOC ML pusat.
+   - Begitu diaktifkan dari pusat, aplikasi otomatis terbuka sendiri dalam 
+     5 detik tanpa perlu me-restart komputer.
+
+
+4. CARA MENGGUNAKAN SEHARI-HARI:
+   - Cukup klik 2x pada: "BUKA_APLIKASI.bat"
+   - Atau buka browser Chrome / Edge lalu ketik: http://localhost:3001
+   - Untuk akses dari komputer lain dalam 1 jaringan Wi-Fi/LAN kantor, 
+     ketik: http://[IP-KOMPUTER-SERVER]:3001 (contoh: http://192.168.1.50:3001)
+
+5. CARA UPDATE VERSI TERBARU:
+   - Jika pengembang merilis fitur baru, cukup klik 2x: "UPDATE.bat"
+   - Script akan otomatis mengunduh pembaruan tanpa menghapus data Anda.
+
+6. CARA MEMATIKAN APLIKASI:
+   - Klik 2x pada file: "STOP.bat"
+
+7. KEAMANAN DATA:
+   - Seluruh data Anda (database, backup, pengaturan) tersimpan aman di 
+     folder "data/" di dalam direktori ini.
+   - Jangan menghapus folder "data/".
+   - Anda dapat membuat salinan cadangan manual kapan saja dengan 
+     mengklik 2x file "BACKUP_DATA.bat".
+========================================================================

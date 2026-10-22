@@ -1,0 +1,30 @@
+# KONVEKSI APPS — jalankan: docker compose up -d --build
+# Akses online lewat Cloudflare Tunnel (vr.vocpos.id), tanpa buka port router.
+services:
+  app:
+    build: .
+    image: konveksi-app:latest
+    container_name: konveksi-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATA_DIR: /data
+      TZ: Asia/Jakarta
+    volumes:
+      - ./data:/data
+    # Akses dari jaringan kantor (LAN): http://IP-SERVER:3001
+    # Hapus bagian ports ini jika hanya ingin diakses lewat vr.vocpos.id
+    ports:
+      - "3001:3001"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: konveksi-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - app

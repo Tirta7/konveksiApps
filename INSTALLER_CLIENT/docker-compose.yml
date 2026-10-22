@@ -1,0 +1,43 @@
+# ============================================================
+#   SISTEM MANAJEMEN KONVEKSI - DOCKER COMPOSE FOR CLIENT
+# ============================================================
+services:
+  app:
+    image: ghcr.io/tirta7/konveksi-app:latest
+    container_name: konveksi_app
+    restart: unless-stopped
+    ports:
+      # Akses lokal: http://localhost:3001 atau http://IP-KOMPUTER:3001
+      - "${PORT:-3001}:3001"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATA_DIR: /data
+      TZ: Asia/Jakarta
+      STORE_NAME: ${STORE_NAME:-Konveksi Cabang Utama}
+      VOCML_SERVER_URL: ${VOCML_SERVER_URL:-https://vocml.vocpos.id}
+      VOCML_PRODUCT: pos
+      VOCML_MACHINE_ID: ${VOCML_MACHINE_ID:-}
+      VOCML_DISABLED: ${VOCML_DISABLED:-false}
+    volumes:
+      # Data persisten (database json, backup, auth secret) tersimpan di folder data/ lokal komputer
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3001/api/auth/me"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Opsional: Jika ingin aplikasi bisa diakses online dari luar kantor via Cloudflare Tunnel
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: konveksi_tunnel
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+  #   depends_on:
+  #     - app

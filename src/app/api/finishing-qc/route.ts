@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 
 // GET: list finishing qc results
@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
   const vendorId = searchParams.get("vendor_id");
   const poId = searchParams.get("po_id");
   
-  // Get transfers sent TO finishing stage
-  let transfers = (data.produksi_transfers || []).filter((t: any) => t.ke === "finishing");
+  // Get transfers sent TO finishing stage (hanya ke vendor; pool ACC "Gudang" juga ber-ke finishing)
+  let transfers = (data.produksi_transfers || []).filter((t: any) => t.ke === "finishing" && t.vendor_id != null);
   if (vendorId) transfers = transfers.filter((t: any) => String(t.vendor_id) === vendorId);
   if (poId) transfers = transfers.filter((t: any) => String(t.po_id) === poId);
   
@@ -38,11 +38,11 @@ export async function GET(req: NextRequest) {
 
 // POST: QC finishing submit - marks barcodes as siap_jual
 export async function POST(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.barcode_item) data.barcode_item = [];
   if (!data.produksi_transfers) data.produksi_transfers = [];
   
-  const body = await req.json();
   const { po_id, vendor_id, sizeBreakdown, catatan } = body;
   // sizeBreakdown: [{ size: "XS", jumlah: 25 }, ...]
   

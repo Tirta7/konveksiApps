@@ -7,8 +7,9 @@ import {
   LayoutDashboard, MapPin, FilePlus, FileText, Warehouse,
   ShoppingCart, Store, RotateCcw, RefreshCw, BarChart2, Users,
   ClipboardList, Package, Settings, ScanBarcode, Factory,
-  ChevronLeft, ChevronRight, Smartphone, X, CheckCircle2, Download
+  ChevronLeft, ChevronRight, Smartphone, X, CheckCircle2, Download, LogOut
 } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 const MENU = [
   { label: "Dashboard",            href: "/dashboard",        icon: LayoutDashboard },
@@ -57,6 +58,9 @@ const MENU = [
   { label: "Pengaturan",           href: "/pengaturan",       icon: Settings },
 ] as const;
 
+/** Menu khusus Owner (sama dengan aturan di src/proxy.ts). */
+const OWNER_ONLY_HREFS = new Set(["/laporan", "/hutang", "/piutang", "/karyawan", "/pengaturan"]);
+
 
 export default function Sidebar({ 
   isCollapsed = false, 
@@ -72,6 +76,23 @@ export default function Sidebar({
   const [subTagline, setSubTagline] = useState("Sistem Tracking Produksi Jeans");
   const [logoUrl, setLogoUrl] = useState("/icons/icon-192.png");
   const [showPwaModal, setShowPwaModal] = useState(false);
+  const [me, setMe] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json()).then((d) => setMe(d?.session || null)).catch(() => {});
+  }, []);
+
+  const isOwner = me?.role === "owner";
+  // Sembunyikan menu Owner untuk Admin + buang judul grup yang jadi kosong
+  const visibleMenu = (() => {
+    const items = (MENU as readonly any[]).filter((it) => it.divider || isOwner || !OWNER_ONLY_HREFS.has(it.href));
+    return items.filter((it, i) => !it.divider || (items[i + 1] && !items[i + 1].divider));
+  })();
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.replace("/login");
+  };
 
   const fetchBrandData = () => {
     fetch("/api/pengaturan")
@@ -113,8 +134,8 @@ export default function Sidebar({
   return (
     <>
       <aside className="app-sidebar">
-        <div className="sidebar-logo">
-          <div style={{ display: "flex", alignItems: "center", gap: 10, overflow: "hidden", flex: 1 }}>
+        <div className="sidebar-logo" style={isCollapsed ? { display: "flex", flexDirection: "column", alignItems: "center", gap: 10 } : {}}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, overflow: "hidden", flex: isCollapsed ? "initial" : 1, width: isCollapsed ? "100%" : "auto", justifyContent: isCollapsed ? "center" : "flex-start" }}>
             <img 
               src={logoUrl} 
               alt="Logo" 
@@ -143,27 +164,11 @@ export default function Sidebar({
               </div>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {onCloseMobile && (
-              <button 
-                onClick={onCloseMobile} 
-                className="mobile-close-btn"
-                title="Tutup Menu"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#94A3B8",
-                  cursor: "pointer",
-                  padding: "6px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "6px"
-                }}
-              >
-                <X size={20} />
-              </button>
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* ICON LONCENG NOTIFIKASI TERBARU */}
+            <NotificationBell isCollapsed={isCollapsed} align="left" />
+
+
             {toggleSidebar && (
               <button onClick={toggleSidebar} className="toggle-btn" title="Toggle Sidebar">
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
@@ -173,7 +178,7 @@ export default function Sidebar({
         </div>
 
         <nav className="sidebar-nav">
-          {MENU.map((item: any, idx: number) => {
+          {visibleMenu.map((item: any, idx: number) => {
             if (item.divider) return (
               <div key={idx} style={{ padding: "8px 12px 4px", fontSize: 10, fontWeight: 800, color: "#64748B", letterSpacing: 1, textTransform: "uppercase", marginTop: 8 }}>
                 {item.divider}
@@ -198,6 +203,19 @@ export default function Sidebar({
 
         {/* PWA INSTALL BUTTON & FOOTER */}
         <div className="sidebar-footer" style={{ display: "flex", flexDirection: "column", gap: 8, padding: isCollapsed ? "12px 8px" : "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          {me && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: isCollapsed ? 0 : "6px 8px", borderRadius: 10, background: isCollapsed ? "transparent" : "rgba(255,255,255,0.05)", justifyContent: isCollapsed ? "center" : "space-between" }}>
+              {!isCollapsed && (
+                <div style={{ overflow: "hidden" }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#F1F5F9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{me.nama}</div>
+                  <div style={{ fontSize: 10, color: isOwner ? "#FBBF24" : "#93C5FD", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{isOwner ? "Owner" : "Admin / Gudang"}</div>
+                </div>
+              )}
+              <button id="sidebar-logout" type="button" onClick={handleLogout} title="Keluar" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)", color: "#FCA5A5", borderRadius: 8, padding: 6, cursor: "pointer", display: "flex" }}>
+                <LogOut size={14} />
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={handleInstallPWA}

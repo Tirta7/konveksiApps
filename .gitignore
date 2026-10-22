@@ -41,3 +41,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# auth & data runtime (jangan di-commit)
+.auth-secret
+/backups/
+/data/
+!.env.example
+license-cache.json
+*.backup*.json
+konveksi-data.json.*
+*.bak

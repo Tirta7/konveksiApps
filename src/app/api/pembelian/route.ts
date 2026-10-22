@@ -15,12 +15,12 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const body = await req.json();
   const data = readData();
   if (!data.purchase_orders) data.purchase_orders = [];
   if (!data.hutang) data.hutang = [];
   if (!data.data_kain) data.data_kain = [];
   
-  const body = await req.json();
   const { tanggal, supplier_id, status, metode_pembayaran, catatan, items } = body;
 
   if (!tanggal || !supplier_id || !items || items.length === 0) {
@@ -74,8 +74,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const data = readData();
   const body = await req.json();
+  const data = readData();
   const { id, status } = body;
 
   const idx = data.purchase_orders.findIndex((p:any) => p.id === id);

@@ -13,8 +13,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const data = readData();
   const body = await req.json();
+  const data = readData();
   const { poId, jumlahDiambil, penerima, catatan } = body;
   
   if (!poId || !jumlahDiambil || !penerima) {

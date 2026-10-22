@@ -1,0 +1,3 @@
+# Ganti file ini menjadi ".token" jika image ghcr.io Anda bersifat PRIVATE
+GITHUB_USERNAME=tirta7
+GITHUB_TOKEN=ghp_masukkan_personal_access_token_di_sini

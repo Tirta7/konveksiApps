@@ -12,10 +12,14 @@
  *  - Vendor lanjutan (washing, finishing, dll) memakai aturan yang sama per produksi_transfer.
  */
 
+import { transferTargetStage, isGudangStage } from "@/lib/stage-resolve";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const APPROVED = new Set(["Diterima", "Diverifikasi", "selesai"]);
 const PENDING = new Set(["Menunggu", "Pending"]);
-const ACTIVE_TRANSFER = new Set(["Proses", "Dikerjakan"]);
+export const REPORT_APPROVED = APPROVED;
+export const REPORT_PENDING = PENDING;
+const ACTIVE_TRANSFER = new Set(["Kirim", "Dikirim", "Proses", "Dikerjakan", "Pending", "Diterima"]);
 
 export function startOfDay(d: Date | string): Date {
   const x = new Date(d);
@@ -159,15 +163,18 @@ export function getCmtCompletion(data: any, po: any, now: Date = new Date()): Co
 
 /** Status pengerjaan vendor lanjutan (washing/finishing/dll) untuk satu transfer. */
 export function getTransferCompletion(data: any, t: any, now: Date = new Date()): Completion {
+  // Barang yang dinyatakan reject oleh admin tidak perlu dilaporkan vendor lagi
+  const reject = Number(t.jumlah_reject || 0);
+  const jumlah = Math.max(0, Number(t.jumlah_kirim || 0) - reject);
   return computeCompletion(
     transferReports(data, t),
-    Number(t.jumlah_kirim || 0),
+    jumlah,
     // Vendor lanjutan hanya dinilai dari target transfer-nya sendiri (bukan target CMT/PO)
     t.target_selesai || null,
     {
       selesaiAt: t.selesai_at,
       lateDays: t.terlambat_hari,
-      forcedDone: t.status === "Selesai",
+      forcedDone: t.status === "Selesai" || (jumlah <= 0 && reject > 0),
     },
     now
   );
@@ -203,7 +210,8 @@ export function reconcileProduction(data: any, now: Date = new Date()): boolean 
     if (!isVendorTransferActive(t)) continue;
     const c = getTransferCompletion(data, t, now);
     if (c.done) {
-      t.status = "Selesai";
+      const isRejectTotal = Number(t.jumlah_reject || 0) >= Number(t.jumlah_kirim || 0) && Number(t.jumlah_kirim || 0) > 0;
+      t.status = isRejectTotal ? "Reject" : "Selesai";
       t.selesai_at = c.selesaiAt || now.toISOString();
       t.terlambat_hari = c.lateDays;
       t.tepat_waktu = c.lateDays === 0;
@@ -240,6 +248,19 @@ export function syncPipelines(data: any, now: Date = new Date()): number {
     const jahitProses = cmtReported > 0 || !!po.vendorId;
     const poTransfers = transfersByPo[po.id] || [];
 
+    // Barang yang benar-benar sudah masuk Gudang & Stok / reject (sumber: stock_movements)
+    let masukStok = 0, rejectStok = 0, lastMoveAt: string | null = null;
+    for (const m of (data.stock_movements || [])) {
+      if (String(m.po_id) !== String(po.id)) continue;
+      if (m.jenis === "masuk") masukStok += Number(m.jumlah || 0);
+      else if (m.jenis === "reject") rejectStok += Number(m.jumlah || 0);
+      else continue;
+      const at = m.tanggal || m.createdAt || null;
+      if (at && (!lastMoveAt || at > lastMoveAt)) lastMoveAt = at;
+    }
+    const terbit = Number(po.jumlahTerbit || 0);
+    const poTuntas = terbit > 0 && masukStok + rejectStok >= terbit;
+
     const existingIndex = data.po_pipeline.findIndex((pp: any) => pp.po_id === po.id);
     const existingStages = existingIndex !== -1 ? (data.po_pipeline[existingIndex].stages || []) : [];
 
@@ -263,21 +284,38 @@ export function syncPipelines(data: any, now: Date = new Date()): number {
         catatan = "Pemotongan kain selesai & SPK diterbitkan";
       } else if (isJahit) {
         vendor_id = po.vendorId || null;
-        status = cmt.done ? "Selesai" : jahitProses ? "Proses" : "Menunggu";
+        status = cmt.done ? "Selesai" : po.status === "Dikerjakan" ? "Dikerjakan" : jahitProses ? "Proses" : "Menunggu";
         if (cmt.done) selesai_tgl = (cmt.selesaiAt || "").split("T")[0] || prev?.selesai_tgl || today;
         terlambat_hari = cmt.lateDays;
         catatan = po.catatan || "";
+      } else if (isGudangStage(s)) {
+        // Tahap Gudang: status mengikuti barang yang sudah masuk stok (bukan jumlah transfer)
+        const stageTfs = poTransfers.filter((t: any) => transferTargetStage(activeStages, t)?.id === s.id);
+        if (poTuntas) {
+          status = "Selesai";
+          selesai_tgl = prev?.selesai_tgl || (lastMoveAt || "").split("T")[0] || today;
+        } else if (masukStok > 0 || stageTfs.some((t: any) => !t.is_forwarded && Number(t.jumlah_kirim || 0) > 0)) {
+          status = "Proses";
+        }
+        catatan = [
+          masukStok > 0 ? `${masukStok} pcs masuk stok` : "",
+          rejectStok > 0 ? `${rejectStok} pcs reject` : "",
+          terbit > 0 && !poTuntas ? `${Math.max(0, terbit - masukStok - rejectStok)} pcs belum masuk` : "",
+        ].filter(Boolean).join(" · ");
       } else {
-        const stageTfs = poTransfers.filter((t: any) => t.ke === s.slug || (isWash && t.ke === "washing"));
+        const stageTfs = poTransfers.filter((t: any) => transferTargetStage(activeStages, t)?.id === s.id);
         const vendorTfs = stageTfs.filter((t: any) => t.vendor_id != null);
         const totalKirim = stageTfs.reduce((sum: number, t: any) => sum + (Number(t.jumlah_kirim) || 0), 0);
-        const totalTerima = vendorTfs.reduce((sum: number, t: any) => sum + (Number(t.jumlah_diterima) || 0), 0);
+        // Pakai jumlah diterima awal (sebelum dipindah bertahap ke Gudang & Stok)
+        const totalTerima = vendorTfs.reduce((sum: number, t: any) => sum + (Number(t.jumlah_diterima_awal ?? t.jumlah_diterima) || 0), 0);
         let approved = 0;
+        let rejected = 0;
         let maxLate = 0;
         let lastSelesai: string | null = null;
         for (const t of vendorTfs) {
           const c = getTransferCompletion(data, t, now);
           approved += c.approved;
+          rejected += Number(t.jumlah_reject || 0);
           maxLate = Math.max(maxLate, c.lateDays);
           if (c.selesaiAt && (!lastSelesai || c.selesaiAt > lastSelesai)) lastSelesai = c.selesaiAt;
         }
@@ -286,14 +324,21 @@ export function syncPipelines(data: any, now: Date = new Date()): number {
         target_selesai = lastTf?.target_selesai || poTargetSelesai;
         terlambat_hari = maxLate;
 
-        const doneQty = Math.max(approved, totalTerima);
-        if (po.jumlahTerbit > 0 && doneQty >= po.jumlahTerbit) {
+        const doneQty = Math.max(approved + rejected, totalTerima);
+        if (stageTfs.length === 0 && poTuntas) {
+          // PO sudah tuntas masuk stok tanpa melewati tahap ini
+          status = "Selesai";
+          catatan = "Dilewati — PO tidak melalui tahap ini";
+        } else if (po.jumlahTerbit > 0 && doneQty >= po.jumlahTerbit) {
           status = "Selesai";
           selesai_tgl = prev?.selesai_tgl || (lastSelesai || "").split("T")[0] || today;
+        } else if (vendorTfs.some((t: any) => t.status === "Dikerjakan")) {
+          status = "Dikerjakan";
         } else if (totalKirim > 0 || vendorTfs.length > 0) {
           status = "Proses";
         }
-        catatan = stageTfs.length > 0 ? `${stageTfs.length} transfer pengiriman` : "";
+        if (vendorTfs.length > 0) catatan = `${vendorTfs.length} pengiriman ke vendor`;
+        else if (stageTfs.some((t: any) => !t.is_forwarded && t.status !== "Ditarik Penuh" && Number(t.jumlah_kirim || 0) > 0)) catatan = "Standby — belum dikirim ke vendor";
       }
 
       if (prev && prev.manual_status) {

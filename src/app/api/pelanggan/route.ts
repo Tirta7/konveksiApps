@@ -64,10 +64,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const body = await req.json();
     const data = readData();
     if (!data.data_pelanggan) data.data_pelanggan = [];
 
-    const body = await req.json();
     const { id, nama, tipe, kontak, alamat, kota, ekspedisi, piutang, catatan } = body;
 
     if (!nama || !nama.trim()) {

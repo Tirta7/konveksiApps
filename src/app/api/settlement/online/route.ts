@@ -1,29 +1,12 @@
 export const dynamic = "force-dynamic";
 ﻿import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-const dataPath = path.join(process.cwd(), "src", "lib", "data.json");
-
-function readData() {
-  if (!fs.existsSync(dataPath)) return { settlement_online: [] };
-  const raw = fs.readFileSync(dataPath, "utf-8");
-  return JSON.parse(raw);
-}
-
-function writeData(data: any) {
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-}
-
-function nextId(data: any, collection: string) {
-  const arr = data[collection] || [];
-  return arr.length > 0 ? Math.max(...arr.map((x: any) => x.id)) + 1 : 1;
-}
+// Pakai penyimpanan utama (sebelumnya file terpisah src/lib/data.json → data tidak ikut backup & tidak konsisten)
+import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function POST(req: Request) {
   try {
-    const data = readData();
     const body = await req.json();
+    const data: any = readData();
     
     if (!Array.isArray(body)) {
       return NextResponse.json({ error: "Invalid data format. Expected an array." }, { status: 400 });
@@ -75,6 +58,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const data = readData();
+  const data: any = readData();
   return NextResponse.json({ settlement_online: data.settlement_online || [] });
 }

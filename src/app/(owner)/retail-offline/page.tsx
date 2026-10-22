@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
-import { Plus, X, Store, ShoppingCart, BarChart2 } from "lucide-react";
+import { Plus, X, Store, ShoppingCart, BarChart2, ScanLine, ClipboardList } from "lucide-react";
+import ScanJualPanel from "@/components/ScanJualPanel";
 
 const KATEGORI = ["Slim Fit","Regular Fit","Bootcut","Skinny","Wide Leg","Mom Jeans","Straight Cut","Cargo Jeans"];
 
@@ -16,11 +17,19 @@ export default function RetailOfflinePage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ kategori: "", jumlah: "", tanggal: new Date().toISOString().split("T")[0], catatan: "" });
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"scan" | "manual">("scan");
 
   const load = () => { 
     fetch("/api/retail")
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
+      .then(d => {
+        // API mengembalikan array → hitung total hari ini di sisi klien
+        const list = Array.isArray(d) ? d : (d?.list || []);
+        const today = new Date().toISOString().split("T")[0];
+        const todayTotal = list.filter((s: any) => String(s.tanggal || "").startsWith(today)).reduce((a: number, s: any) => a + Number(s.jumlah || 0), 0);
+        setData({ list, todayTotal });
+        setLoading(false);
+      })
       .catch(() => setLoading(false)); 
   };
   useEffect(() => { load(); }, []);
@@ -63,10 +72,24 @@ export default function RetailOfflinePage() {
             <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", marginBottom: 4 }}>Retail Offline</h1>
             <p style={{ fontSize: 13, color: "#64748B" }}>Pencatatan penjualan di toko fisik (Kasir/POS)</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", gap: 6, background: "#10B981", border: "none", color: "white", boxShadow: "0 4px 12px rgba(16,185,129,0.3)", cursor: "pointer" }}>
-            <ShoppingCart size={16} /> Catat Penjualan
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", background: "#F1F5F9", borderRadius: 10, padding: 4 }}>
+              <button id="tab-retail-scan" onClick={() => setTab("scan")} style={{ padding: "8px 14px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: tab === "scan" ? "white" : "transparent", color: tab === "scan" ? "#047857" : "#64748B", boxShadow: tab === "scan" ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}><ScanLine size={15} /> Kasir Scan Barcode</button>
+              <button id="tab-retail-manual" onClick={() => setTab("manual")} style={{ padding: "8px 14px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, background: tab === "manual" ? "white" : "transparent", color: tab === "manual" ? "#047857" : "#64748B", boxShadow: tab === "manual" ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}><ClipboardList size={15} /> Catatan Manual</button>
+            </div>
+            {tab === "manual" && (
+              <button className="btn btn-primary" onClick={() => setShowForm(true)} style={{ padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", gap: 6, background: "#10B981", border: "none", color: "white", boxShadow: "0 4px 12px rgba(16,185,129,0.3)", cursor: "pointer" }}>
+                <ShoppingCart size={16} /> Catat Penjualan
+              </button>
+            )}
+          </div>
         </div>
+
+        {tab === "scan" && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }}>
+            <ScanJualPanel kanal="Retail Offline" accent="#059669" pelangganLabel="Nama Pembeli" />
+          </div>
+        )}
 
         {/* Modal Form */}
         {showForm && (
@@ -114,7 +137,8 @@ export default function RetailOfflinePage() {
           </div>
         )}
 
-        {/* Split Layout */}
+        {/* Split Layout (catatan manual — tidak mengurangi stok per pcs) */}
+        {tab === "manual" && (
         <div style={{ display: "flex", gap: 24, flex: 1, overflow: "hidden", padding: "24px 32px" }}>
           
           {/* Left Panel: Summary */}
@@ -189,6 +213,7 @@ export default function RetailOfflinePage() {
           </div>
           
         </div>
+        )}
       </div>
     </>
   );

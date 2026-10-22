@@ -27,7 +27,9 @@ import {
   Check,
   MessageCircle,
   Package,
-  RotateCcw
+  RotateCcw,
+  KeyRound,
+  Lock
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -264,6 +266,35 @@ export default function AturVendorPage() {
     });
     toast.success(v.aktif ? `Vendor ${v.nama} dinonaktifkan` : `Vendor ${v.nama} diaktifkan kembali`);
     load();
+  };
+
+  // Akun portal vendor: login dengan Kode Vendor + password (disimpan terenkripsi di server)
+  const handleSetPortalPassword = async (v: any) => {
+    const pw = window.prompt(
+      `${v.portal_aktif ? "Reset" : "Buat"} password portal untuk ${v.nama}\nKode login: ${v.kodeVendor}\n\nMasukkan password baru (min. 6 karakter).` +
+      (v.portal_aktif ? "\nSesi vendor yang sedang login akan otomatis keluar." : "")
+    );
+    if (!pw) return;
+    const res = await fetch("/api/vendors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: v.id, portal_password: pw })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { toast.error(j.error || "Gagal menyimpan password"); return; }
+    toast.success(`Password portal ${v.nama} disimpan. Berikan password ini langsung ke vendor.`);
+    load(true);
+  };
+
+  const handleDisablePortal = async (v: any) => {
+    if (!window.confirm(`Matikan akses portal ${v.nama}? Vendor tidak bisa login sampai password dibuat lagi.`)) return;
+    await fetch("/api/vendors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: v.id, portal_password_clear: true })
+    });
+    toast.success(`Akses portal ${v.nama} dimatikan`);
+    load(true);
   };
 
   const openAddTipe = () => {
@@ -763,6 +794,26 @@ export default function AturVendorPage() {
                               )}
                             </div>
 
+                            {/* Akun Portal (login vendor) */}
+                            {portalHref && (
+                              <div style={{ background: v.portal_aktif ? "#F0FDF4" : "#FFFBEB", border: `1px solid ${v.portal_aktif ? "#BBF7D0" : "#FDE68A"}`, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                                <Lock size={14} color={v.portal_aktif ? "#16A34A" : "#D97706"} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: "#64748B", textTransform: "uppercase" }}>Login Portal</div>
+                                  <div style={{ fontSize: 12, fontWeight: 800, color: "#0F172A", fontFamily: "monospace" }}>{v.kodeVendor}</div>
+                                  <div style={{ fontSize: 10.5, color: v.portal_aktif ? "#166534" : "#92400E" }}>{v.portal_aktif ? "Password aktif" : "Belum ada password — vendor belum bisa login"}</div>
+                                </div>
+                                <button id={`portal-pw-${v.id}`} type="button" onClick={() => handleSetPortalPassword(v)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, border: "1px solid #CBD5E1", background: "white", fontSize: 11, fontWeight: 800, color: "#334155", cursor: "pointer" }}>
+                                  <KeyRound size={12} /> {v.portal_aktif ? "Reset" : "Buat"} Password
+                                </button>
+                                {v.portal_aktif && (
+                                  <button id={`portal-off-${v.id}`} type="button" onClick={() => handleDisablePortal(v)} title="Matikan akses portal" style={{ padding: 6, borderRadius: 8, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", cursor: "pointer", display: "inline-flex" }}>
+                                    <X size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
                             {/* Tarif Khusus Details */}
                             {tarifEntries.length > 0 && (
                               <div style={{ background: "#FFF7ED", border: "1px solid #FDBA74", borderRadius: 10, padding: "8px 12px" }}>
@@ -783,7 +834,7 @@ export default function AturVendorPage() {
                             <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: "auto", paddingTop: 8, borderTop: "1px solid #F1F5F9" }}>
                               {v.kontak ? (
                                 <a
-                                  href={`https://wa.me/62${v.kontak.replace(/^0/, "")}`}
+                                  href={`https://wa.me/62${v.kontak.replace(/^0/, "")}${portalHref ? `?text=${encodeURIComponent(`Halo ${v.nama}, berikut akses Portal Vendor:\nLink: ${typeof window !== "undefined" ? window.location.origin : ""}${portalHref}\nKode login: ${v.kodeVendor}\nPassword: (diberikan terpisah oleh admin)`)}` : ""}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 12px", background: "#F0FDF4", border: "1px solid #86EFAC", color: "#16A34A", textDecoration: "none", borderRadius: 8, fontSize: 12, fontWeight: 700 }}

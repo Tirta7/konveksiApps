@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { transferStatusInfo } from "@/lib/transfer-status";
+import { transferTargetStage, transferSourceStage, isGudangStage } from "@/lib/stage-resolve";
 import { 
   Scissors, 
   Zap, 
@@ -31,10 +33,14 @@ import {
   Building2,
   Check,
   ExternalLink,
-  MessageCircle
+  MessageCircle,
+  Play,
+  AlertOctagon
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import NotaRejectModal from "@/components/NotaRejectModal";
+import { setPresence, subscribePresence, type PresenceEntry } from "@/lib/realtime-client";
 
 const STAGE_ICON: Record<string, any> = {
   potong_kain: Scissors, potong_bahan: Scissors, potong: Scissors,
@@ -60,6 +66,9 @@ const getIcon = (slug?: string) => {
 const STATUS_STYLE: Record<string, { bg: string; border: string; dot: string; text: string; label: string }> = {
   Menunggu:  { bg: "#F1F5F9", border: "#CBD5E1", dot: "#94A3B8", text: "#64748B", label: "Menunggu" },
   Proses:    { bg: "#EFF6FF", border: "#BFDBFE", dot: "#2563EB", text: "#1D4ED8", label: "Sedang Proses" },
+  Dikerjakan: { bg: "#ECFDF5", border: "#A7F3D0", dot: "#10B981", text: "#059669", label: "Sedang Dikerjakan" },
+  "Sedang Dikerjakan": { bg: "#ECFDF5", border: "#A7F3D0", dot: "#10B981", text: "#059669", label: "Sedang Dikerjakan" },
+  "Menunggu ACC": { bg: "#FFFBEB", border: "#FCD34D", dot: "#F59E0B", text: "#B45309", label: "Menunggu ACC Admin" },
   Selesai:   { bg: "#ECFDF5", border: "#A7F3D0", dot: "#10B981", text: "#059669", label: "Selesai" },
   Terlambat: { bg: "#FEF2F2", border: "#FECACA", dot: "#EF4444", text: "#DC2626", label: "Terlambat" },
 };
@@ -75,6 +84,17 @@ const normalizeStage = (slug?: string) => {
   if (s.includes("qc") || s.includes("gudang")) return "gudang";
   if (s.includes("pack") || s.includes("finishing")) return "finishing";
   return s;
+};
+
+const getStageDisplayName = (slug?: string) => {
+  const norm = normalizeStage(slug);
+  if (norm === "washing") return "Washing";
+  if (norm === "cmt") return "Jahit";
+  if (norm === "potong") return "Potong";
+  if (norm === "bersih_benang") return "Bersih Benang";
+  if (norm === "gudang") return "Gudang";
+  if (norm === "finishing") return "Packing";
+  return slug || "Pos";
 };
 
 // Radial Progress component matching vendor portal
@@ -131,6 +151,10 @@ function RadialProgress({
 
 export default function AlurProduksiPage() {
   const [stages, setStages] = useState<any[]>([]);
+  // Nama/tahap transfer via resolver bersama (slug vs vendor_tipe tidak tertukar)
+  const tfStageName = (t: any) => transferTargetStage(stages, t)?.nama || getStageDisplayName(t?.ke);
+  const tfSourceName = (t: any) => transferSourceStage(stages, t)?.nama || getStageDisplayName(t?.dari);
+  const tfIsGudang = (t: any) => isGudangStage(transferTargetStage(stages, t)) || normalizeStage(t?.ke) === "gudang" || t?.ke === "qc_bahan" || t?.ke === "siap_jual";
   const [poPipelines, setPoPipelines] = useState<any[]>([]);
   const [poProduksi, setPoProduksi] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
@@ -145,6 +169,7 @@ export default function AlurProduksiPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | "Proses" | "Menunggu" | "Selesai">("all");
   const [filterVendor, setFilterVendor] = useState("all");
   const [sortBy, setSortBy] = useState<"no_po" | "most_qty" | "nearest_deadline">("no_po");
+  const [cmtRequests, setCmtRequests] = useState<any[]>([]);
 
   // Modals
   const [statusModal, setStatusModal] = useState<{ po_id: number; stage_id: number; stageName: string; currentStatus: string; noPo: string } | null>(null);
@@ -154,12 +179,36 @@ export default function AlurProduksiPage() {
     vendor_id: "",
     jumlah_kirim: "",
     target_selesai: "",
-    catatan: ""
+    catatan: "",
+    sumber_id: "" as string,              // id transfer asal ("po" = kuota PO langsung)
+    sizes: {} as Record<string, string>,  // rincian per size yang dikirim
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [riskAck, setRiskAck] = useState(false);
   const [showAllVendors, setShowAllVendors] = useState(false);
   const [expandedVendorId, setExpandedVendorId] = useState<number | null>(null);
+  // Realtime anti-bentrok
+  const [conflict, setConflict] = useState<any | null>(null);       // respon 409 dari server (STALE / RESERVED)
+  const [presenceList, setPresenceList] = useState<PresenceEntry[]>([]);
+  const [liveNotice, setLiveNotice] = useState<{ text: string; tone: "warn" | "info"; at: number } | null>(null);
+  const [notaRejectModal, setNotaRejectModal] = useState<any | null>(null);
+
+  const handleOpenNotaReject = async (tf: any) => {
+    try {
+      const res = await fetch("/api/nota-reject");
+      if (!res.ok) return;
+      const json = await res.json();
+      const list = json.data || [];
+      const found = list.find((n: any) => n.no_nota === tf.no_nota_reject || String(n.transfer_id) === String(tf.id));
+      if (found) {
+        setNotaRejectModal(found);
+      } else {
+        toast.info(`Nota reject: ${tf.no_nota_reject || "Belum ada rincian"}`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleManualSync = async () => {
     setSyncing(true);
@@ -181,13 +230,14 @@ export default function AlurProduksiPage() {
   const fetchAll = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const [s, pp, po, v, cp, tf] = await Promise.all([
+      const [s, pp, po, v, cp, tf, cr] = await Promise.all([
         fetch("/api/pipeline-stages?_t=" + Date.now()).then(r => r.json()).catch(() => []),
         fetch("/api/po-pipeline?_t=" + Date.now()).then(r => r.json()).catch(() => []),
         fetch("/api/po-produksi?_t=" + Date.now()).then(r => r.json()).catch(() => []),
         fetch("/api/vendors?_t=" + Date.now()).then(r => r.json()).catch(() => []),
         fetch("/api/cmt-progres?_t=" + Date.now()).then(r => r.json()).catch(() => []),
         fetch("/api/produksi-transfer?_t=" + Date.now()).then(r => r.json()).catch(() => []),
+        fetch("/api/cmt-request?_t=" + Date.now()).then(r => r.json()).catch(() => []),
       ]);
       const sorted = Array.isArray(s) ? s.filter((x: any) => x.aktif).sort((a: any, b: any) => a.urutan - b.urutan) : [];
       setStages(sorted);
@@ -197,6 +247,7 @@ export default function AlurProduksiPage() {
       setVendors(Array.isArray(v) ? v : []);
       setCmtProgres(Array.isArray(cp) ? cp : []);
       setTransfers(Array.isArray(tf) ? tf : []);
+      setCmtRequests(Array.isArray(cr) ? cr : []);
     } catch (e) {
       toast.error("Gagal memuat data alur produksi");
     } finally {
@@ -209,12 +260,78 @@ export default function AlurProduksiPage() {
     const handleSync = () => { 
       fetchAll(true); // Silent background reload, no blinking!
     };
+    const handleRt = (e: any) => {
+      const evt = e.detail?.event;
+      if (["vendorWorking", "progressReported", "poolAllocated", "vendorRequest", "requestUpdated"].includes(evt)) {
+        fetchAll(true);
+      }
+    };
     window.addEventListener("konveksi-sync", handleSync);
-    return () => window.removeEventListener("konveksi-sync", handleSync);
+    window.addEventListener("konveksi-rt", handleRt);
+    const unsubPresence = subscribePresence(setPresenceList);
+    return () => { 
+      window.removeEventListener("konveksi-sync", handleSync); 
+      window.removeEventListener("konveksi-rt", handleRt); 
+      unsubPresence(); 
+    };
   }, []);
 
+  // Auto-open transfer modal from notification link (e.g. ?po=1&sumber=6)
+  useEffect(() => {
+    if (poProduksi.length === 0 || stages.length === 0) return;
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const poParam = p.get("po");
+      const sumberParam = p.get("sumber");
+      const vendorParam = p.get("vendor");
+      if (poParam) {
+        const targetPo = poProduksi.find((x: any) => String(x.id) === String(poParam));
+        if (targetPo) {
+          const st = stages.find((s: any) => s.slug === targetPo.currentStage) || stages[0];
+          openTransferModal(targetPo, st, sumberParam || undefined, vendorParam || undefined);
+          window.history.replaceState({}, "", "/alur-produksi");
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poProduksi.length, stages.length]);
+
+  // Presence: beri tahu vendor bahwa admin sedang membagikan stok PO ini
+  const modalPoId = transferModal?.po?.id ?? null;
+  const modalNoPo = transferModal?.po?.noPo ?? "";
+  useEffect(() => {
+    if (modalPoId == null) return;
+    const key = `kirim:${modalPoId}`;
+    const tid = transferForm.sumber_id && transferForm.sumber_id !== "po" ? Number(transferForm.sumber_id) : null;
+    setPresence(key, { key, role: "admin", name: "Admin", action: "kirim", po_id: modalPoId, transfer_id: tid, label: `Admin sedang membagikan stok ${modalNoPo}` });
+    return () => setPresence(key, null);
+  }, [modalPoId, modalNoPo, transferForm.sumber_id]);
+
+  // Event realtime (WebSocket) yang menyangkut PO di modal → refresh + tampilkan peringatan
+  useEffect(() => {
+    if (modalPoId == null) { setLiveNotice(null); setConflict(null); return; }
+    const onRt = (e: any) => {
+      const { event, data } = e.detail || {};
+      if (!data) return;
+      const samePo = data.po_id != null ? Number(data.po_id) === Number(modalPoId) : (data.no_po && data.no_po === modalNoPo);
+      if (!samePo) return;
+      if (event === "vendorRequest") {
+        setLiveNotice({ tone: "warn", at: Date.now(), text: `${data.vendor_nama || "Vendor"} BARU SAJA meminta ${data.total || 0} pcs dari stok PO ini. Stok yang bisa dibagikan sudah diperbarui — periksa kembali sebelum mengirim.` });
+        fetchAll(true);
+      } else if (event === "poolAllocated") {
+        setLiveNotice({ tone: "warn", at: Date.now(), text: `${data.by || "Admin lain"} baru saja mengalokasikan ${data.jumlah || 0} pcs ke ${data.ke || "pos lain"}. Sisa stok sumber: ${data.sisa ?? "-"} pcs.` });
+        fetchAll(true);
+      } else if (event === "progressReported" || event === "requestUpdated") {
+        fetchAll(true);
+      }
+    };
+    window.addEventListener("konveksi-rt", onRt);
+    return () => window.removeEventListener("konveksi-rt", onRt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalPoId, modalNoPo]);
+
   const getPO = (id: number) => poProduksi.find(p => p.id === id);
-  const getVendorName = (id?: number) => vendors.find(v => v.id === id)?.nama || "—";
+  const getVendorName = (id?: any) => (id != null ? vendors.find(v => String(v.id) === String(id))?.nama : null) || "—";
 
   // Active Stage Object
   const activeStageObj = useMemo(() => {
@@ -231,7 +348,7 @@ export default function AlurProduksiPage() {
 
     if (isJahitStage || isPotongStage) {
       if (po.vendorId) {
-        const records = cmtProgres.filter(p => p.po_id === poId);
+        const records = cmtProgres.filter(p => p.po_id === poId && !p.transfer_id);
         const lapor = records.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDilaporkan || 0;
         const acc = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
                            .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDisetujui || 0;
@@ -251,16 +368,20 @@ export default function AlurProduksiPage() {
     
     // Other stages: read from transfers matching normalized slug
     const relevantTf = transfers.filter(t => t.po_id === poId && normalizeStage(t.ke) === sNorm);
-    return relevantTf.map(t => ({
-      vendor_id: t.vendor_id,
-      vendor_nama: getVendorName(t.vendor_id),
-      target_selesai: t.target_selesai,
-      qty_total: t.jumlah_kirim,
-      qty_lapor: t.jumlah_diterima || 0,
-      qty_acc: t.status === "Diterima" ? t.jumlah_kirim : 0,
-      type: "transfer",
-      status: t.status
-    }));
+    return relevantTf.map(t => {
+      const info = transferStatusInfo(t);
+      return {
+        vendor_id: t.vendor_id,
+        vendor_nama: t.vendor_id == null ? "Standby (belum ada vendor)" : getVendorName(t.vendor_id),
+        target_selesai: t.target_selesai,
+        qty_total: t.jumlah_kirim,
+        qty_lapor: (t.progress?.approved || 0) + (t.progress?.pending || 0),
+        qty_acc: t.progress?.approved || 0,
+        type: "transfer",
+        status: info.label,
+        info,
+      };
+    });
   };
 
   // Live status summary for a PO (CMT, Washing, per size)
@@ -272,7 +393,7 @@ export default function AlurProduksiPage() {
     const vendorKontak = vendorObj?.kontak || "";
 
     const totalTarget = Number(po.jumlahTerbit) || 0;
-    const records = cmtProgres.filter(p => p.po_id === po.id);
+    const records = cmtProgres.filter(p => p.po_id === po.id && !p.transfer_id);
     const totalLapor = records.reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDilaporkan || 0;
     const totalACC = records.filter(p => p.status === "Diverifikasi" || p.status === "Diterima")
                             .reduce((s, r) => s + (r.items || []).reduce((ss: number, i: any) => ss + Number(i.jumlah || 0), 0), 0) || po.totalDisetujui || 0;
@@ -301,7 +422,153 @@ export default function AlurProduksiPage() {
     const washTransfers = transfers.filter(t => t.po_id === po.id && normalizeStage(t.ke) === "washing");
     const totalWashKirim = washTransfers.reduce((s, t) => s + (Number(t.jumlah_kirim) || 0), 0);
 
+    const isWorking = po.status === "Dikerjakan" || !!po.mulai_kerja_at;
+    const hasPendingAcc = records.some((r: any) => r.status === "Menunggu" || r.status === "Pending") || !!po.cmt_menunggu_acc;
+    const isDone = totalTarget > 0 && totalACC >= totalTarget && sisaPcs === 0;
+
+    // ── PROGRES NYATA PO (Termasuk Pos Lanjutan: Washing, Gudang, dll) ──
+    const forwardedIds = new Set<number>();
+    transfers.filter((t: any) => t.po_id === po.id).forEach((t: any) => {
+      if (t.transfer_id_asal) forwardedIds.add(Number(t.transfer_id_asal));
+      if (t.dari_transfer_id) forwardedIds.add(Number(t.dari_transfer_id));
+    });
+
+    const activeDownstream = transfers.filter((t: any) => {
+      if (t.po_id !== po.id) return false;
+      if (t.status === "Ditarik Penuh") return false;
+      if (t.is_forwarded && Number(t.jumlah_kirim || 0) === 0) return false;
+      if (forwardedIds.has(Number(t.id))) return false;
+      return Number(t.jumlah_kirim || 0) > 0;
+    });
+
+    const isRejectTf = (t: any) =>
+      t.status === "Reject" ||
+      (Number(t.jumlah_reject || 0) > 0 && Number(t.jumlah_reject || 0) >= Number(t.jumlah_kirim || 0)) ||
+      (Boolean(t.no_nota_reject) && Number(t.progress?.approved || t.jumlah_diterima || 0) <= 0);
+
+    const isDoneTf = (t: any) =>
+      !isRejectTf(t) && (t.status === "Selesai" || t.status === "Diverifikasi" || t.status === "Diterima");
+
+    let effectivePct = pct;
+    let effectiveSisa = sisaPcs;
+    let effectiveStatus = isDone ? "Selesai" : isWorking ? "Dikerjakan" : "Proses";
+    let effectiveLabel = sisaPcs > 0 ? `Sisa Jahit: ${sisaPcs.toLocaleString("id-ID")} pcs` : "Jahit Selesai (100%)";
+    let isPipelineFullyDone = isDone && activeDownstream.length === 0;
+
+    if (activeDownstream.length > 0) {
+      // Ada pengerjaan pos lanjutan aktif di frontier (tanpa double counting antar pos)
+      // Barang di Gudang yang sudah dipindah ke Gudang & Stok mengurangi jumlah_diterima → pakai nilai awal
+      const approvedOf = (t: any) => {
+        const isGudangTf = tfIsGudang(t);
+        if (isGudangTf) return Number(t.jumlah_diterima_awal ?? t.jumlah_diterima ?? t.jumlah_kirim ?? 0);
+        return Number(t.progress?.approved ?? t.jumlah_diterima ?? Math.max(0, Number(t.jumlah_kirim || 0) - Number(t.jumlah_reject || 0)));
+      };
+      const kirimOf = (t: any) => {
+        const isGudangTf = tfIsGudang(t);
+        return isGudangTf ? Math.max(Number(t.jumlah_kirim || 0), Number(t.jumlah_diterima_awal || 0)) : Number(t.jumlah_kirim || 0);
+      };
+      const rawKirim = activeDownstream.reduce((s: number, t: any) => s + kirimOf(t), 0);
+      // Total PO adalah batas atas — mencegah angka melebihi PO (mis. 1.000 dari PO 500)
+      const poBase = totalTarget > 0 ? totalTarget : rawKirim;
+      const totalDownstreamKirim = Math.min(rawKirim, poBase);
+      const totalDownstreamReject = activeDownstream.reduce((s: number, t: any) => s + (isRejectTf(t) ? Number(t.jumlah_kirim || 0) : Number(t.jumlah_reject || 0)), 0);
+      const totalDownstreamSelesai = Math.min(poBase, activeDownstream.filter(isDoneTf).reduce((s: number, t: any) => s + approvedOf(t), 0));
+      const totalDownstreamDikerjakan = Math.max(0, totalDownstreamKirim - totalDownstreamSelesai - totalDownstreamReject);
+      const belumDikirim = Math.max(0, poBase - totalDownstreamKirim);
+      // Persentase selalu terhadap TOTAL PO: 300 selesai dari PO 1.000 = 30%
+      const downstreamPct = poBase > 0 ? Math.round((totalDownstreamSelesai / poBase) * 100) : 0;
+
+      // Cari tahap lanjutan yang belum selesai (Dikerjakan / Kirim / Proses)
+      const unfinishedTfs = activeDownstream.filter((t: any) => !isDoneTf(t) && !isRejectTf(t));
+      if (unfinishedTfs.length > 0 || belumDikirim > 0) {
+        effectiveSisa = totalDownstreamDikerjakan + belumDikirim;
+        effectiveStatus = unfinishedTfs.some((t: any) => t.status === "Dikerjakan") ? "Dikerjakan" : "Kirim";
+
+        const firstUnfinished = unfinishedTfs[0] || activeDownstream[activeDownstream.length - 1];
+        const stageName = tfStageName(firstUnfinished);
+        const isKeGudang = tfIsGudang(firstUnfinished);
+
+        if (isKeGudang && unfinishedTfs.length > 0) {
+          effectiveLabel = firstUnfinished.holding && firstUnfinished.vendor_id == null && firstUnfinished.status !== "Diverifikasi" && normalizeStage(firstUnfinished.ke) !== "gudang"
+            ? `Gudang: Siap Masuk Stok (${totalDownstreamKirim.toLocaleString("id-ID")} pcs)`
+            : `Gudang: Menunggu Verifikasi Terima (${totalDownstreamKirim.toLocaleString("id-ID")} pcs)`;
+          effectivePct = totalDownstreamSelesai > 0 ? downstreamPct : 90;
+        } else {
+          const actionLabel = firstUnfinished.status === "Kirim" ? "dikirim" : "dikerjakan";
+          const rejectSub = totalDownstreamReject > 0 ? ` (${totalDownstreamReject.toLocaleString("id-ID")} pcs reject)` : "";
+          const parts = [`${stageName}: ${totalDownstreamSelesai.toLocaleString("id-ID")}/${poBase.toLocaleString("id-ID")} pcs (${downstreamPct}%)${rejectSub}`];
+          if (totalDownstreamDikerjakan > 0) parts.push(`Sisa ${totalDownstreamDikerjakan.toLocaleString("id-ID")} pcs ${actionLabel}`);
+          if (belumDikirim > 0) parts.push(`${belumDikirim.toLocaleString("id-ID")} pcs belum dikirim dari pos sebelumnya`);
+          effectiveLabel = parts.join(" • ");
+          effectivePct = downstreamPct;
+        }
+        isPipelineFullyDone = false;
+      } else {
+        // Semua transfer pos lanjutan berstatus Selesai / Diverifikasi
+        const hasGudang = activeDownstream.some((t: any) => tfIsGudang(t));
+        if (hasGudang) {
+          effectivePct = 100;
+          effectiveSisa = 0;
+          effectiveStatus = "Selesai";
+          effectiveLabel = "Lengkap Masuk Gudang (100%)";
+          isPipelineFullyDone = true;
+        } else {
+          const lastTf = activeDownstream[activeDownstream.length - 1];
+          const stageName = tfStageName(lastTf);
+          effectivePct = downstreamPct;
+          effectiveSisa = 0;
+          effectiveStatus = "Selesai";
+          effectiveLabel = `${stageName} Selesai (100%) • Menunggu Pos Berikutnya`;
+          isPipelineFullyDone = false;
+        }
+      }
+    }
+
+    // ── RINCIAN POSISI BARANG (agar jelas barang ada di mana saja) ──
+    const poTfs = transfers.filter((t: any) => t.po_id === po.id);
+    const masukStok = poTfs.reduce((s: number, t: any) => s + Number(t.stocked_qty || 0), 0);
+    let rejectQty = 0;
+    const diVendorList: { nama: string; tahap: string; qty: number; status: string }[] = [];
+    const menungguList: { tahap: string; qty: number; ket: string }[] = [];
+    for (const t of poTfs) {
+      if (t.status === "Ditarik Penuh" || t.status === "Ditolak") continue;
+      if (isRejectTf(t)) { rejectQty += Number(t.jumlah_reject || t.jumlah_kirim || 0); continue; }
+      rejectQty += Number(t.jumlah_reject || 0) + Number(t.reject_qty || 0);
+      const kirim = Number(t.jumlah_kirim || 0);
+      const isGudangTf = tfIsGudang(t);
+      if (t.vendor_id != null) {
+        if (t.is_forwarded || !["Kirim", "Proses", "Dikerjakan"].includes(t.status)) continue;
+        const qty = Math.max(0, kirim - Number(t.progress?.approved || 0) - Number(t.jumlah_reject || 0));
+        if (qty > 0) diVendorList.push({ nama: getVendorName(t.vendor_id), tahap: tfStageName(t), qty, status: t.status === "Kirim" ? "baru dikirim, belum mulai" : "sedang dikerjakan" });
+      } else if (!t.is_forwarded) {
+        if (isGudangTf) {
+          const qty = t.status === "Diverifikasi" ? Number(t.jumlah_diterima ?? kirim) : kirim;
+          const ket = t.status === "Diverifikasi"
+            ? "sudah dicek, belum dimasukkan ke Gudang & Stok"
+            : t.holding ? `hasil ${tfSourceName(t)} — siap dimasukkan ke Gudang & Stok` : "menunggu verifikasi terima";
+          if (qty > 0) menungguList.push({ tahap: "Gudang", qty, ket });
+        } else if (kirim > 0) {
+          menungguList.push({ tahap: tfStageName(t), qty: kirim, ket: `standby — hasil ${tfSourceName(t)} belum dikirim ke vendor ${tfStageName(t)}` });
+        }
+      }
+    }
+    const diVendorQty = diVendorList.reduce((s, x) => s + x.qty, 0);
+    const menungguQty = menungguList.reduce((s, x) => s + x.qty, 0);
+    const terhitung = masukStok + rejectQty + diVendorQty + menungguQty;
+    const posisi = {
+      total: totalTarget,
+      masukStok,
+      reject: rejectQty,
+      diVendor: diVendorQty,
+      diVendorList,
+      menunggu: menungguQty,
+      menungguList,
+      belum: Math.max(0, totalTarget - terhitung),
+      selisihLebih: Math.max(0, terhitung - totalTarget),
+    };
+
     return {
+      posisi,
       vendorObj,
       vendorNama,
       vendorKode,
@@ -314,7 +581,18 @@ export default function AlurProduksiPage() {
       pctACC,
       sizeList,
       washTransfers,
-      totalWashKirim
+      totalWashKirim,
+      isWorking,
+      hasPendingAcc,
+      isDone,
+      mulaiKerjaAt: po.mulai_kerja_at || null,
+      effectivePct,
+      effectiveSisa,
+      effectiveStatus,
+      effectiveLabel,
+      isPipelineFullyDone,
+      activeDownstream,
+      allPoTransfers: transfers.filter((t: any) => t.po_id === po.id && Number(t.jumlah_kirim) > 0 && t.status !== "Ditarik Penuh")
     };
   };
 
@@ -398,6 +676,76 @@ export default function AlurProduksiPage() {
   };
   const stageNameBySlug = (slug?: string) => stages.find(s => s.slug === slug)?.nama || slug || "-";
 
+  // Cocokkan nilai tahap (slug pipeline / vendor tipe seperti "washing", "finishing") ke stage pipeline
+  const resolveStage = (v?: string) => {
+    if (!v) return null;
+    return stages.find(s => s.vendor_tipe && s.vendor_tipe === v)
+      || stages.find(s => s.slug === v)
+      || stages.find(s => normalizeStage(s.slug) === normalizeStage(v))
+      || null;
+  };
+
+  // Daftar "barang yang bisa dikirim" untuk 1 PO — tiap sumber jelas asalnya (tahap + vendor) & rincian size
+  const getTransferSources = (poId: number) => {
+    const out: any[] = [];
+    for (const t of transfers) {
+      if (t.po_id !== poId) continue;
+      let kind = "";
+      let sizes: any[] = [];
+      let total = 0;
+      if (t.holding && t.holding.kind !== "siap_jual") {
+        kind = t.holding.kind; sizes = t.holding.sizes || []; total = Number(t.holding.total || 0);
+      } else if (t.vendor_id == null && !t.holding && !t.is_forwarded && t.status !== "Ditarik Penuh" && Number(t.jumlah_kirim || 0) > 0 && normalizeStage(t.dari) === "cmt") {
+        kind = "pool"; sizes = t.sizeBreakdown || []; total = Number(t.jumlah_kirim || 0);
+      } else continue;
+      if (total <= 0) continue;
+      const isPool = kind === "pool";
+      const fromVal = isPool ? t.dari : t.ke;
+      const fromStage = resolveStage(fromVal);
+      const asalVendorId = isPool ? t.dari_vendor_id : t.vendor_id;
+      const asalVendor = asalVendorId != null ? getVendorName(asalVendorId) : null;
+      const tujuanStage = isPool ? resolveStage(t.ke) : (fromStage ? stages.find(s => s.urutan > fromStage.urutan) : null);
+      const statusText = kind === "gudang"
+        ? "Stok Gudang Produksi · sudah diverifikasi"
+        : kind === "vendor_acc"
+          ? "Selesai · sudah di-ACC admin"
+          : `Selesai · di-ACC admin · standby${tujuanStage ? ` untuk ${tujuanStage.nama}` : ""}`;
+      out.push({
+        id: String(t.id),
+        transfer: t,
+        kind,
+        sizes,
+        total,
+        fromSlug: fromStage?.slug || fromVal,
+        fromNama: kind === "gudang" ? "Gudang Produksi" : (fromStage?.nama || fromVal || "-"),
+        fromUrutan: fromStage?.urutan || 0,
+        asalVendor,
+        asalVendorId,
+        dariTransferId: t.dari_transfer_id ?? null,
+        tujuanSlug: tujuanStage?.slug || "",
+        statusText,
+        tanggal: t.tanggal_kirim,
+      });
+    }
+    return out.sort((a, b) => a.fromUrutan - b.fromUrutan || String(a.tanggal).localeCompare(String(b.tanggal)));
+  };
+
+  // Barang hasil pekerjaan vendor (transfer) yang sudah siap dikirim lagi
+  const getReadyFromJob = (tf: any) => {
+    if (tf.vendor_id == null) return [];
+    return getTransferSources(tf.po_id).filter(s =>
+      s.transfer.id === tf.id ||
+      (s.dariTransferId != null ? String(s.dariTransferId) === String(tf.id)
+        : (s.kind === "pool" && s.asalVendorId === tf.vendor_id && normalizeStage(s.transfer.dari) === normalizeStage(tf.ke)))
+    );
+  };
+
+  const sizesToForm = (sizes: any[]) => {
+    const m: Record<string, string> = {};
+    for (const s of sizes || []) if (Number(s.jumlah) > 0) m[String(s.size)] = String(s.jumlah);
+    return m;
+  };
+
   // Vendor Workload & Capacity Analysis (Kapasitas & Status Barang Belum Selesai)
   const getVendorWorkload = (vendorId: number) => {
     const vendor = vendors.find(v => v.id === vendorId);
@@ -406,7 +754,7 @@ export default function AlurProduksiPage() {
     // PO jahit yang ditugaskan langsung ke vendor ini (CMT)
     const activePOs = poProduksi.filter(p => p.vendorId === vendorId && !p.cmt_selesai && p.status !== "Selesai" && p.status !== "Pipeline Selesai" && p.status !== "Closed");
     // Transfer ke vendor ini yang masih dikerjakan (washing, benang, dll)
-    const activeTransfers = transfers.filter(t => t.vendor_id === vendorId && (t.status === "Proses" || t.status === "Dikerjakan"));
+    const activeTransfers = transfers.filter(t => t.vendor_id === vendorId && (t.status === "Proses" || t.status === "Dikerjakan" || t.status === "Kirim"));
 
     const items: any[] = [];
 
@@ -438,14 +786,15 @@ export default function AlurProduksiPage() {
         isOverdue: po.cmt_is_overdue ?? isOverdue(targetDate),
         overdueDays: po.cmt_late_days ?? overdueDays(targetDate),
         sisaHari: targetDate ? remainingDays(targetDate) : null,
-        status: lapor > acc ? "Menunggu ACC laporan" : acc > 0 ? "Sedang dijahit" : "Belum ada laporan progres",
+        status: lapor > acc ? (lapor >= (po.jumlahTerbit || 0) ? "Menunggu ACC Admin" : `Sebagian Menunggu ACC (${(lapor - acc).toLocaleString("id-ID")} pcs)`) : acc > 0 ? "Sedang dijahit · setor bertahap" : "Sedang dikerjakan · belum ada laporan",
       });
     }
 
     for (const t of activeTransfers) {
       if (activePOs.find(p => p.id === t.po_id) && stageVendorType(t.ke) === "cmt") continue;
       const po = getPO(t.po_id);
-      const diterima = Number(t.jumlah_diterima || 0);
+      const diterima = Number(t.progress?.approved ?? t.jumlah_diterima ?? 0);
+      const dilapor = diterima + Number(t.progress?.pending || 0);
       const sisa = Math.max(0, (t.jumlah_kirim || 0) - diterima);
       if (sisa <= 0) continue;
       const targetDate = t.target_selesai || po?.target_selesai || null;
@@ -461,14 +810,14 @@ export default function AlurProduksiPage() {
         lastReportDays: daysSince(t.tanggal_terima),
         totalPcs: t.jumlah_kirim,
         selesaiPcs: diterima,
-        dilaporPcs: diterima,
+        dilaporPcs: dilapor,
         sisaPcs: sisa,
         progressPct: t.jumlah_kirim > 0 ? Math.round((diterima / t.jumlah_kirim) * 100) : 0,
         target_selesai: targetDate,
         isOverdue: isOverdue(targetDate),
         overdueDays: overdueDays(targetDate),
         sisaHari: targetDate ? remainingDays(targetDate) : null,
-        status: t.status === "Kirim" ? "Dikirim, belum dikonfirmasi vendor" : t.status === "Dikerjakan" ? "Sedang dikerjakan" : (t.status || "Proses"),
+        status: transferStatusInfo(t).label,
       });
     }
 
@@ -581,7 +930,13 @@ export default function AlurProduksiPage() {
       if (!po) return false;
 
       const rawStatus = stageEntry?.status || "Menunggu";
-      if (filterStatus !== "all" && rawStatus !== filterStatus) return false;
+      if (filterStatus !== "all") {
+        if (filterStatus === "Proses") {
+          if (rawStatus !== "Proses" && rawStatus !== "Dikerjakan" && rawStatus !== "Sedang Dikerjakan") return false;
+        } else if (rawStatus !== filterStatus) {
+          return false;
+        }
+      }
 
       if (filterVendor !== "all" && String(po.vendorId) !== String(filterVendor)) return false;
 
@@ -653,7 +1008,7 @@ export default function AlurProduksiPage() {
   };
 
   // Open Transfer Modal
-  const openTransferModal = (po: any, currentStage: any) => {
+  const openTransferModal = (po: any, currentStage: any, sumberId?: string, initialVendorId?: string) => {
     // Determine next stage
     const curUrutan = currentStage?.urutan || 1;
     const nextSt = stages.find(s => s.urutan > curUrutan && s.aktif);
@@ -664,28 +1019,85 @@ export default function AlurProduksiPage() {
     const defDateStr = defDate.toISOString().split("T")[0];
     const initialTargetDate = po.target_selesai ? String(po.target_selesai).split("T")[0] : defDateStr;
 
+    // Sumber barang: dipilih eksplisit, atau otomatis jika hanya ada 1 sumber
+    const sources = getTransferSources(po.id);
+    let src = sumberId ? sources.find(s => s.id === String(sumberId)) : (sources.length === 1 ? sources[0] : null);
+    
+    // Jika diarahkan dari vendor request (mis. dari Buat SPK), cari sumber yang bersangkutan
+    if (!src && initialVendorId) {
+      const vReq = cmtRequests.find((r: any) => r.po_id === po.id && String(r.vendor_id) === String(initialVendorId) && (r.status === "Pending" || r.status === "Sebagian"));
+      if (vReq && vReq.transfer_id) {
+        src = sources.find(s => s.id === String(vReq.transfer_id)) || null;
+      }
+      if (!src && sources.length > 0) src = sources[0];
+    }
+    const legacy = sources.length === 0;
+
     setRiskAck(false);
     setShowAllVendors(false);
     setExpandedVendorId(null);
     setTransferModal({ po, currentStage });
     setTransferForm({
-      ke_slug: nextSt?.slug || "",
-      vendor_id: "",
-      jumlah_kirim: String(po.jumlahTerbit || ""),
+      ke_slug: src ? (src.tujuanSlug || "") : legacy ? (nextSt?.slug || "") : "",
+      vendor_id: initialVendorId ? String(initialVendorId) : "",
+      jumlah_kirim: src ? String(src.total) : legacy ? String(po.jumlahTerbit || "") : "",
       target_selesai: initialTargetDate,
-      catatan: ""
+      catatan: "",
+      sumber_id: src ? src.id : legacy ? "po" : "",
+      sizes: src ? sizesToForm(src.sizes) : legacy ? sizesToForm(po.sizeBreakdown || []) : {},
     });
+  };
+
+  const pickTransferSource = (src: any) => {
+    setConflict(null);
+    setTransferForm(f => ({
+      ...f,
+      sumber_id: src.id,
+      ke_slug: src.tujuanSlug || f.ke_slug,
+      vendor_id: "",
+      sizes: sizesToForm(src.sizes),
+      jumlah_kirim: String(src.total),
+    }));
   };
 
   // Submit Transfer to Next Stage
   const handleSubmitTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!transferModal || !transferForm.ke_slug || !transferForm.jumlah_kirim) {
-      toast.error("Harap lengkapi tujuan tahap dan jumlah kirim");
+    await submitTransfer();
+  };
+
+  const submitTransfer = async (resolveRequests?: "tolak") => {
+    if (!transferModal) return;
+    const sources = getTransferSources(transferModal.po.id);
+    const src = sources.find(s => s.id === transferForm.sumber_id) || null;
+    const isLegacy = transferForm.sumber_id === "po";
+    if (!src && !isLegacy) {
+      toast.error("Pilih dulu barang mana yang akan dikirim");
       return;
     }
-    if (Number(transferForm.jumlah_kirim) > Number(transferModal.po.jumlahTerbit || 0)) {
-      toast.error(`Jumlah kirim melebihi kuota PO (${transferModal.po.jumlahTerbit} pcs)`);
+    if (!transferForm.ke_slug) {
+      toast.error("Pilih pos tujuan pengiriman");
+      return;
+    }
+    const maxSizes: any[] = src ? src.sizes : (transferModal.po.sizeBreakdown || []);
+    const hasSizes = maxSizes.length > 0;
+    const sizeBreakdown = hasSizes
+      ? Object.entries(transferForm.sizes).map(([size, j]) => ({ size, jumlah: Number(j) || 0 })).filter(s => s.jumlah > 0)
+      : [];
+    const jumlah = hasSizes ? sizeBreakdown.reduce((s, x) => s + x.jumlah, 0) : Number(transferForm.jumlah_kirim || 0);
+    if (jumlah <= 0) {
+      toast.error("Isi jumlah yang dikirim");
+      return;
+    }
+    if (hasSizes) {
+      for (const s of sizeBreakdown) {
+        const max = Number(maxSizes.find((m: any) => String(m.size) === s.size)?.jumlah || 0);
+        if (s.jumlah > max) { toast.error(`Size ${s.size} maksimal ${max} pcs`); return; }
+      }
+    }
+    const maxTotal = src ? src.total : Number(transferModal.po.jumlahTerbit || 0);
+    if (jumlah > maxTotal) {
+      toast.error(`Jumlah kirim melebihi barang yang tersedia (${maxTotal} pcs)`);
       return;
     }
     if (transferForm.vendor_id) {
@@ -703,27 +1115,66 @@ export default function AlurProduksiPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           po_id: transferModal.po.id,
-          dari: transferModal.currentStage?.slug || "potong_bahan",
+          dari: src ? src.fromSlug : (transferModal.currentStage?.slug || "potong_bahan"),
           ke: transferForm.ke_slug,
           vendor_id: transferForm.vendor_id ? Number(transferForm.vendor_id) : null,
           target_selesai: transferForm.target_selesai || null,
-          jumlah_kirim: Number(transferForm.jumlah_kirim),
-          catatan: transferForm.catatan
+          jumlah_kirim: jumlah,
+          sizeBreakdown,
+          transfer_id_asal: src ? Number(src.id) : undefined,
+          // Optimistic lock: stok yang sedang dilihat admin. Jika berubah (vendor minta / admin lain kirim) → 409
+          expected_total: src ? src.total : undefined,
+          resolve_requests: resolveRequests,
+          actor: "Admin",
+          catatan: transferForm.catatan || (src ? `Hasil ${src.fromNama}${src.asalVendor ? ` (${src.asalVendor})` : ""} → ${stageNameBySlug(transferForm.ke_slug)}` : "")
         })
       });
 
       if (res.ok) {
-        toast.success(`Berhasil mendistribusikan ${transferForm.jumlah_kirim} pcs ke tahap berikutnya!`);
+        const out = await res.json().catch(() => ({}));
+        const upd: any[] = out.requests_updated || [];
+        const fulfilled = upd.filter(u => u.status !== "Ditolak").length;
+        const rejected = upd.filter(u => u.status === "Ditolak").length;
+        toast.success(`Berhasil mengirim ${jumlah} pcs${src ? ` hasil ${src.fromNama}${src.asalVendor ? ` (${src.asalVendor})` : ""}` : ""} ke ${stageNameBySlug(transferForm.ke_slug)}!`, {
+          description: [fulfilled ? `${fulfilled} permintaan vendor otomatis terpenuhi` : "", rejected ? `${rejected} permintaan vendor ditolak & vendor sudah diberi tahu` : ""].filter(Boolean).join(" · ") || undefined,
+        });
+        setConflict(null);
         setTransferModal(null);
         fetchAll();
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Gagal melakukan transfer barang");
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 409 && (err.code === "STALE" || err.code === "RESERVED")) {
+          setConflict(err);
+          fetchAll(true); // ambil stok terbaru
+          toast.warning(err.code === "RESERVED" ? "Bentrok dengan permintaan vendor" : "Stok sudah berubah", { description: err.error });
+        } else {
+          toast.error(err.error || "Gagal melakukan transfer barang");
+        }
       }
     } catch {
       toast.error("Terjadi kesalahan sistem saat transfer barang");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifikasiGudang = async (tf: any) => {
+    try {
+      const res = await fetch("/api/produksi-transfer", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: tf.id,
+          jumlah_diterima: Number(tf.jumlah_kirim || 0),
+          sizeBreakdown_diterima: tf.sizeBreakdown,
+          catatan_terima: "Diverifikasi langsung dari Alur Produksi"
+        })
+      });
+      if (!res.ok) throw new Error("Gagal verifikasi barang masuk gudang");
+      toast.success(`${tf.noPo || "PO"}: ${Number(tf.jumlah_kirim || 0).toLocaleString("id-ID")} pcs diverifikasi masuk Gudang!`);
+      fetchAll(true);
+    } catch (e: any) {
+      toast.error(e.message || "Gagal verifikasi barang");
     }
   };
 
@@ -1444,9 +1895,28 @@ export default function AlurProduksiPage() {
                           title="Klik untuk mengubah status pos ini"
                         >
                           <div style={{ width: 6, height: 6, borderRadius: "50%", background: sc.dot }} />
-                          <span style={{ fontSize: 10.5, fontWeight: 800, color: sc.text }}>{sc.label}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: sc.text }}>{activeStageObj?.nama}: {sc.label}</span>
                           <Edit3 size={10} style={{ opacity: 0.6 }} />
                         </button>
+
+                        {/* Overall PO Active Work Status Chip */}
+                        {liveStatus && !liveStatus.isPipelineFullyDone && (
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "3px 8px",
+                            borderRadius: 12,
+                            background: liveStatus.effectiveStatus === "Dikerjakan" ? "#FEF3C7" : "#EFF6FF",
+                            border: liveStatus.effectiveStatus === "Dikerjakan" ? "1px solid #FCD34D" : "1px solid #BFDBFE",
+                            color: liveStatus.effectiveStatus === "Dikerjakan" ? "#92400E" : "#1D4ED8",
+                            fontSize: 10.5,
+                            fontWeight: 800
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: liveStatus.effectiveStatus === "Dikerjakan" ? "#F59E0B" : "#3B82F6" }} />
+                            {liveStatus.effectiveStatus === "Dikerjakan" ? "Sedang Dikerjakan" : "Dalam Proses"}
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -1455,27 +1925,99 @@ export default function AlurProduksiPage() {
                         <span style={{ color: "#2563EB", fontWeight: 800 }}>Total {po.jumlahTerbit.toLocaleString("id-ID")} pcs</span>
                         {liveStatus && (
                           <span style={{ 
-                            background: liveStatus.sisaPcs > 0 ? "#FEF3C7" : "#DCFCE7", 
-                            color: liveStatus.sisaPcs > 0 ? "#92400E" : "#166534", 
-                            border: liveStatus.sisaPcs > 0 ? "1px solid #FDE68A" : "1px solid #BBF7D0", 
-                            padding: "1px 7px", 
-                            borderRadius: 4, 
-                            fontSize: 10.5, 
+                            background: liveStatus.isPipelineFullyDone ? "#DCFCE7" : liveStatus.effectiveStatus === "Dikerjakan" ? "#FEF3C7" : "#EFF6FF", 
+                            color: liveStatus.isPipelineFullyDone ? "#166534" : liveStatus.effectiveStatus === "Dikerjakan" ? "#92400E" : "#1D4ED8", 
+                            border: liveStatus.isPipelineFullyDone ? "1px solid #BBF7D0" : liveStatus.effectiveStatus === "Dikerjakan" ? "1px solid #FDE68A" : "1px solid #BFDBFE", 
+                            padding: "2px 8px", 
+                            borderRadius: 5, 
+                            fontSize: 11, 
                             fontWeight: 800 
                           }}>
-                            {liveStatus.sisaPcs > 0 ? `Sisa: ${liveStatus.sisaPcs.toLocaleString("id-ID")} pcs` : "Lengkap (100%)"}
+                            {liveStatus.effectiveLabel}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Radial Progress Gauge */}
+                    {/* Radial Progress Gauge (Mencerminkan Progres Sebenarnya) */}
                     {liveStatus && (
-                      <div style={{ flexShrink: 0 }}>
-                        <RadialProgress pct={liveStatus.pct} size={54} stroke={5} color="#2563EB" />
+                      <div style={{ flexShrink: 0 }} title={`Progres Nyata: ${liveStatus.effectivePct}%`}>
+                        <RadialProgress 
+                          pct={liveStatus.effectivePct} 
+                          size={54} 
+                          stroke={5} 
+                          color={liveStatus.isPipelineFullyDone ? "#10B981" : liveStatus.effectiveStatus === "Dikerjakan" ? "#F59E0B" : "#2563EB"} 
+                        />
                       </div>
                     )}
                   </div>
+
+                  {/* RINCIAN POSISI BARANG — penjelasan agar tidak bingung membaca angka */}
+                  {liveStatus?.posisi && liveStatus.posisi.total > 0 && (() => {
+                    const p = liveStatus.posisi;
+                    const fmtN = (n: number) => n.toLocaleString("id-ID");
+                    const pctOf = (n: number) => (p.total > 0 ? Math.min(100, (n / p.total) * 100) : 0);
+                    const rows = [
+                      { key: "stok", label: "Masuk Gudang & Stok", qty: p.masukStok, color: "#10B981", bg: "#ECFDF5", ket: "Barang jadi yang sudah siap dijual (sudah punya SKU)." },
+                      { key: "menunggu", label: "Menunggu Tindak Lanjut", qty: p.menunggu, color: "#3B82F6", bg: "#EFF6FF", ket: "Sudah selesai di pos sebelumnya, belum dikirim ke vendor berikutnya / belum dimasukkan stok." },
+                      { key: "vendor", label: "Sedang di Vendor", qty: p.diVendor, color: "#F59E0B", bg: "#FFFBEB", ket: "Masih dikerjakan vendor (washing, bersih benang, dll) dan belum disetor." },
+                      { key: "belum", label: "Masih di CMT / Belum Dikirim", qty: p.belum, color: "#94A3B8", bg: "#F8FAFC", ket: "Belum keluar dari penjahit (CMT) atau belum dikirim ke pos lanjutan." },
+                      { key: "reject", label: "Reject (tidak dihitung stok)", qty: p.reject, color: "#EF4444", bg: "#FEF2F2", ket: "Barang cacat yang sudah dibuatkan Nota Reject / klaim ke vendor." },
+                    ];
+                    return (
+                      <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: "10px 12px", marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 900, color: "#0F172A" }}>📍 Posisi Barang Saat Ini</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: "#475569" }}>Total PO: {fmtN(p.total)} pcs</span>
+                        </div>
+                        {/* Bar komposisi */}
+                        <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", background: "#F1F5F9", marginBottom: 8 }}>
+                          {rows.filter(r => r.qty > 0).map(r => (
+                            <div key={r.key} title={`${r.label}: ${fmtN(r.qty)} pcs`} style={{ width: `${pctOf(r.qty)}%`, background: r.color }} />
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {rows.filter(r => r.qty > 0 || r.key === "stok").map(r => (
+                            <div key={r.key} style={{ background: r.bg, borderRadius: 7, padding: "5px 8px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "#0F172A" }}>
+                                  <span style={{ width: 8, height: 8, borderRadius: 2, background: r.color, flexShrink: 0 }} />
+                                  {r.label}
+                                </span>
+                                <span style={{ fontSize: 11.5, fontWeight: 900, color: "#0F172A", whiteSpace: "nowrap" }}>
+                                  {fmtN(r.qty)} pcs <span style={{ fontSize: 9.5, color: "#64748B", fontWeight: 700 }}>({Math.round(pctOf(r.qty))}%)</span>
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 9.5, color: "#64748B", marginTop: 1, paddingLeft: 14 }}>{r.ket}</div>
+                              {r.key === "vendor" && p.diVendorList.length > 0 && (
+                                <div style={{ paddingLeft: 14, marginTop: 2 }}>
+                                  {p.diVendorList.map((v: any, i: number) => (
+                                    <div key={i} style={{ fontSize: 10, color: "#92400E", fontWeight: 700 }}>• {v.nama} ({v.tahap}): {fmtN(v.qty)} pcs — {v.status}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {r.key === "menunggu" && p.menungguList.length > 0 && (
+                                <div style={{ paddingLeft: 14, marginTop: 2 }}>
+                                  {p.menungguList.map((m: any, i: number) => (
+                                    <div key={i} style={{ fontSize: 10, color: "#1D4ED8", fontWeight: 700 }}>• {m.tahap}: {fmtN(m.qty)} pcs — {m.ket}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {p.selisihLebih > 0 && (
+                          <div style={{ marginTop: 6, fontSize: 10, fontWeight: 800, color: "#B91C1C", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 6, padding: "4px 8px" }}>
+                            ⚠️ Jumlah tercatat melebihi total PO sebanyak {fmtN(p.selisihLebih)} pcs — kemungkinan ada kiriman ganda, mohon cek riwayat pengiriman.
+                          </div>
+                        )}
+                        <div style={{ marginTop: 6, fontSize: 9.5, color: "#64748B", lineHeight: 1.45, borderTop: "1px dashed #E2E8F0", paddingTop: 5 }}>
+                          💡 <b>Cara membaca:</b> semua angka adalah bagian dari total PO ({fmtN(p.total)} pcs), sehingga jika dijumlahkan hasilnya sama dengan total PO.
+                          Persentase pada lingkaran kanan atas = barang yang sudah <b>selesai di pos terakhir</b> dibanding total PO.
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* ACTIVE CMT / VENDOR PANEL (Consistent with CMT Portal Concept) */}
                   {liveStatus && liveStatus.vendorNama && (
@@ -1490,20 +2032,98 @@ export default function AlurProduksiPage() {
                       {/* Vendor Identity Row */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: 8, background: "#1E293B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#1E293B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             <Building2 size={16} color="#38BDF8" />
                           </div>
                           <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 13, fontWeight: 900, color: "#FFFFFF" }}>{liveStatus.vendorNama}</span>
                               {liveStatus.vendorKode && (
                                 <span style={{ fontSize: 9.5, fontWeight: 800, color: "#38BDF8", background: "#0369A130", border: "1px solid #0284C750", padding: "1px 5px", borderRadius: 4 }}>
                                   {liveStatus.vendorKode}
                                 </span>
                               )}
+
+                              {/* REALTIME WORK STATUS BADGE (Sesuaikan dengan konsep Vendor Portal) */}
+                              {po.status === "Dikerjakan" ? (
+                                <span style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  padding: "2px 7px",
+                                  borderRadius: 5,
+                                  background: "#064E3B",
+                                  border: "1px solid #059669",
+                                  color: "#34D399",
+                                  fontSize: 9.5,
+                                  fontWeight: 800,
+                                  letterSpacing: "0.02em"
+                                }}>
+                                  <span style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: "50%",
+                                    background: "#10B981",
+                                    boxShadow: "0 0 6px #10B981"
+                                  }} />
+                                  SEDANG DIKERJAKAN
+                                </span>
+                              ) : liveStatus.hasPendingAcc ? (
+                                <span style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  padding: "2px 7px",
+                                  borderRadius: 5,
+                                  background: "#78350F60",
+                                  border: "1px solid #D97706",
+                                  color: "#FCD34D",
+                                  fontSize: 9.5,
+                                  fontWeight: 800
+                                }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B" }} />
+                                  MENUNGGU ACC ADMIN
+                                </span>
+                              ) : liveStatus.isDone ? (
+                                <span style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  padding: "2px 7px",
+                                  borderRadius: 5,
+                                  background: "#065F4640",
+                                  border: "1px solid #10B98160",
+                                  color: "#6EE7B7",
+                                  fontSize: 9.5,
+                                  fontWeight: 800
+                                }}>
+                                  ✓ SELESAI
+                                </span>
+                              ) : (
+                                <span style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  padding: "2px 7px",
+                                  borderRadius: 5,
+                                  background: "#1E293B",
+                                  border: "1px solid #334155",
+                                  color: "#94A3B8",
+                                  fontSize: 9.5,
+                                  fontWeight: 700
+                                }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#64748B" }} />
+                                  BELUM DIMULAI
+                                </span>
+                              )}
                             </div>
-                            <div style={{ fontSize: 10.5, color: "#94A3B8" }}>
-                              Mitra CMT Jahit {liveStatus.vendorKontak ? `• 0${liveStatus.vendorKontak.replace(/^0+/, '')}` : ""}
+                            <div style={{ fontSize: 10.5, color: "#94A3B8", display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                              <span>Mitra CMT Jahit {liveStatus.vendorKontak ? `• 0${liveStatus.vendorKontak.replace(/^0+/, '')}` : ""}</span>
+                              {po.status === "Dikerjakan" && po.mulai_kerja_at && (
+                                <span style={{ color: "#34D399", fontSize: 9.5, fontWeight: 700 }}>
+                                  • Mulai pk {new Date(po.mulai_kerja_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1626,8 +2246,44 @@ export default function AlurProduksiPage() {
                     </div>
                   )}
 
-                  {/* Context: Initial Cutting Done & Assigned Info */}
-                  {isInitialCutting && (
+                  {/* Context: Realtime Working Banner OR Initial Cutting Done */}
+                  {po.status === "Dikerjakan" ? (
+                    <div style={{
+                      background: "#F0FDF4",
+                      border: "1.5px solid #86EFAC",
+                      borderRadius: 10,
+                      padding: "9px 12px",
+                      marginBottom: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      boxShadow: "0 1px 4px rgba(16,185,129,0.08)"
+                    }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Play size={14} color="#16A34A" />
+                      </div>
+                      <div style={{ flex: 1, fontSize: 11.5 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, color: "#166534" }}>
+                          <span>Sedang Dikerjakan oleh {liveStatus?.vendorNama || "CMT"}</span>
+                          <span style={{
+                            fontSize: 9,
+                            fontWeight: 900,
+                            background: "#16A34A",
+                            color: "#FFFFFF",
+                            padding: "1px 6px",
+                            borderRadius: 4,
+                            letterSpacing: "0.03em"
+                          }}>
+                            REALTIME
+                          </span>
+                        </div>
+                        <div style={{ color: "#374151", marginTop: 2 }}>
+                          Vendor telah mengonfirmasi <strong>Mulai Mengerjakan</strong> di Portal Vendor.
+                          {po.mulai_kerja_at ? ` Waktu mulai: pk ${new Date(po.mulai_kerja_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB.` : " Progres pengerjaan berjalan live."}
+                        </div>
+                      </div>
+                    </div>
+                  ) : isInitialCutting ? (
                     <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "9px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 28, height: 28, borderRadius: 8, background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <Scissors size={15} color="#16A34A" />
@@ -1641,38 +2297,214 @@ export default function AlurProduksiPage() {
                         </div>
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
-                  {/* Context: Forwarded to Washing (Transfers) */}
+                  {/* Context: Forwarded Downstream Transfers (Washing, Gudang, dll) */}
                   {(() => {
-                    const validWash = (liveStatus?.washTransfers || []).filter((tf: any) => Number(tf.jumlah_kirim) > 0 && tf.status !== "Ditarik Penuh");
-                    if (validWash.length === 0) return null;
-                    const totalWash = validWash.reduce((s: number, t: any) => s + Number(t.jumlah_kirim || 0), 0);
+                    const allTfs = (liveStatus?.allPoTransfers || []).filter((tf: any) => Number(tf.jumlah_kirim) > 0 && tf.status !== "Ditarik Penuh");
+                    if (allTfs.length === 0) return null;
+
+                    // Kelompokkan transfer berdasarkan pos tujuan (washing, gudang, dll)
+                    const stageGroups: Record<string, any[]> = {};
+                    allTfs.forEach((tf: any) => {
+                      const st = tfIsGudang(tf) ? "gudang" : normalizeStage(tf.ke);
+                      if (!stageGroups[st]) stageGroups[st] = [];
+                      stageGroups[st].push(tf);
+                    });
 
                     return (
-                      <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: "#0F172A" }}>
-                            <Droplets size={13} color="#2563EB" />
-                            <span>Dialihkan ke Pos Washing</span>
-                          </div>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB" }}>
-                            {totalWash.toLocaleString("id-ID")} pcs
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          {validWash.map((tf: any, i: number) => (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#475569", background: "#FFFFFF", padding: "4px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
-                              <span>&bull; {getVendorName(tf.vendor_id)}</span>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <strong style={{ color: "#0F172A" }}>{tf.jumlah_kirim} pcs</strong>
-                                <span style={{ fontSize: 9.5, padding: "1px 5px", borderRadius: 4, background: tf.status === "Dikerjakan" ? "#EFF6FF" : "#F1F5F9", color: tf.status === "Dikerjakan" ? "#1D4ED8" : "#64748B", fontWeight: 700 }}>
-                                  {tf.status}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                        {Object.entries(stageGroups).map(([stKey, tfs]) => {
+                          const isWashing = stKey === "washing";
+                          const isGudang = stKey === "gudang" || stKey === "qc_bahan";
+                          const stageTitle = isWashing ? "Dialihkan ke Pos Washing" : isGudang ? "Dialihkan ke Gudang Produksi" : `Dialihkan ke Pos ${tfStageName(tfs[0])}`;
+                          const totalStagePcs = tfs.reduce((s: number, t: any) => s + Number(t.jumlah_kirim || 0), 0);
+                          const headerColor = isWashing ? "#2563EB" : isGudang ? "#6366F1" : "#059669";
+                          const HeaderIcon = isWashing ? Droplets : isGudang ? Package : Truck;
+
+                          return (
+                            <div key={stKey} style={{ background: isGudang ? "#EEF2FF" : "#F8FAFC", border: `1px solid ${isGudang ? "#C7D2FE" : "#E2E8F0"}`, borderRadius: 10, padding: "9px 12px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: "#0F172A" }}>
+                                  <HeaderIcon size={14} color={headerColor} />
+                                  <span>{stageTitle}</span>
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 800, color: headerColor }}>
+                                  {totalStagePcs.toLocaleString("id-ID")} pcs
                                 </span>
                               </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {tfs.map((tf: any, i: number) => {
+                                  const info = transferStatusInfo(tf);
+                                  const ready = tf.vendor_id == null
+                                    ? getTransferSources(po.id).filter(s => s.id === String(tf.id))
+                                    : getReadyFromJob(tf);
+                                  const readyTotal = ready.reduce((s, r) => s + r.total, 0);
+                                  const isReject = tf.status === "Reject" || (Number(tf.jumlah_reject || 0) >= Number(tf.jumlah_kirim || 0) && Number(tf.jumlah_kirim || 0) > 0) || (Boolean(tf.no_nota_reject) && Number(tf.progress?.approved || 0) <= 0);
+                                  const isRework = !isReject && (tf.status === "Retur Perbaikan" || tf.is_rework || String(tf.status || "").toLowerCase().includes("retur"));
+                                  const isGudangTf = isGudang || normalizeStage(tf.ke) === "gudang" || tf.ke === "qc_bahan";
+                                  const isMenungguVerifikasi = !isReject && !isRework && isGudangTf && (tf.status === "Kirim" || tf.status === "Pending");
+                                  const isSudahVerifikasi = !isReject && !isRework && isGudangTf && (tf.status === "Diverifikasi" || tf.status === "Selesai");
+
+                                  return (
+                                    <div key={i} title={info.hint} style={{ 
+                                      display: "flex", 
+                                      justifyContent: "space-between", 
+                                      alignItems: "center", 
+                                      fontSize: 11, 
+                                      color: "#475569", 
+                                      background: isReject ? "#FFFBFB" : isRework ? "#FFFBEB" : "#FFFFFF", 
+                                      padding: "6px 8px", 
+                                      borderRadius: 6, 
+                                      border: `1.5px solid ${isReject ? "#FCA5A5" : isRework ? "#FCD34D" : isMenungguVerifikasi ? "#FCD34D" : "#E2E8F0"}`, 
+                                      gap: 6,
+                                      flexWrap: "wrap"
+                                    }}>
+                                      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                                          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            &bull;{" "}
+                                            {tf.vendor_id != null ? (
+                                              <>
+                                                <strong style={{ color: isReject ? "#991B1B" : isRework ? "#92400E" : "#0F172A", fontWeight: 800 }}>{getVendorName(tf.vendor_id)}</strong>
+                                                {tf.catatan && !["ACC Request", "Otomatis dari ACC Progres"].includes(tf.catatan) && !isRework && !isReject && (
+                                                  <span style={{ color: "#64748B", fontSize: 10, marginLeft: 5 }}>({tf.catatan})</span>
+                                                )}
+                                              </>
+                                            ) : tf.catatan ? (
+                                              <span style={{ color: "#475569" }}>{tf.catatan}</span>
+                                            ) : (
+                                              <em style={{ color: "#B45309" }}>Standby (belum ada vendor)</em>
+                                            )}
+                                          </span>
+                                        </div>
+                                        {isReject && (
+                                          <div style={{ fontSize: 10, color: "#DC2626", fontWeight: 700, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                                            <span>🛑 Barang Rusak / Reject{tf.reject_log?.[0]?.alasan ? `: ${tf.reject_log[0].alasan}` : tf.alasan_reject ? `: ${tf.alasan_reject}` : ""} · Diterbitkan Nota Klaim Ganti Rugi</span>
+                                          </div>
+                                        )}
+                                        {isRework && (
+                                          <div style={{ fontSize: 10, color: "#B45309", fontWeight: 700, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                                            <span>⚠️ Perbaikan / Rework{tf.alasan_retur ? `: ${tf.alasan_retur}` : tf.catatan ? `: ${tf.catatan}` : ""}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                                        <strong style={{ color: isReject ? "#DC2626" : isRework ? "#92400E" : "#0F172A" }}>{Number(tf.jumlah_kirim || 0).toLocaleString("id-ID")} pcs</strong>
+                                        
+                                        {/* Status Chip */}
+                                        {isReject ? (
+                                          <span
+                                            onClick={(e) => {
+                                              if (tf.no_nota_reject) {
+                                                e.stopPropagation();
+                                                handleOpenNotaReject(tf);
+                                              }
+                                            }}
+                                            style={{ 
+                                              fontSize: 9.5, 
+                                              padding: "2px 7px", 
+                                              borderRadius: 4, 
+                                              background: "#FEF2F2", 
+                                              color: "#991B1B", 
+                                              border: "1px solid #F87171", 
+                                              fontWeight: 800, 
+                                              whiteSpace: "nowrap",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: 4,
+                                              cursor: tf.no_nota_reject ? "pointer" : "default"
+                                            }}
+                                            title={tf.no_nota_reject ? `Klik untuk melihat / cetak Nota Klaim ${tf.no_nota_reject}` : "Barang Rusak Permanen / Reject"}
+                                          >
+                                            <AlertOctagon size={10} color="#DC2626" />
+                                            Reject {tf.no_nota_reject ? `(${tf.no_nota_reject})` : ""}
+                                          </span>
+                                        ) : (
+                                          <span style={{ 
+                                            fontSize: 9.5, 
+                                            padding: "2px 7px", 
+                                            borderRadius: 4, 
+                                            background: isRework ? "#FEF3C7" : isMenungguVerifikasi ? "#FEF3C7" : isSudahVerifikasi ? "#DCFCE7" : info.bg, 
+                                            color: isRework ? "#92400E" : isMenungguVerifikasi ? "#92400E" : isSudahVerifikasi ? "#166534" : info.color, 
+                                            border: `1px solid ${isRework ? "#F59E0B" : isMenungguVerifikasi ? "#FCD34D" : isSudahVerifikasi ? "#BBF7D0" : info.border}`, 
+                                            fontWeight: 800, 
+                                            whiteSpace: "nowrap",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: 4
+                                          }}>
+                                            {isRework ? (
+                                              <>
+                                                <RotateCcw size={10} color="#D97706" />
+                                                Retur Perbaikan {tf.rework_count && tf.rework_count > 1 ? `(Ke-${tf.rework_count})` : ""}
+                                              </>
+                                            ) : isMenungguVerifikasi ? (
+                                              <>
+                                                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#F59E0B" }} />
+                                                Menunggu Verifikasi Gudang
+                                              </>
+                                            ) : isSudahVerifikasi ? (
+                                              <>
+                                                <Check size={10} color="#166534" />
+                                                Masuk Gudang (Selesai)
+                                              </>
+                                            ) : (
+                                              <>
+                                                {tf.status === "Dikerjakan" && <span style={{ width: 5, height: 5, borderRadius: "50%", background: info.color }} />}
+                                                {info.short}
+                                              </>
+                                            )}
+                                          </span>
+                                        )}
+
+                                        {/* Tombol Langsung Verifikasi Terima di Gudang */}
+                                        {isMenungguVerifikasi && (
+                                          <button
+                                            type="button"
+                                            id={`verif-gudang-${tf.id}`}
+                                            title="Verifikasi terima barang ini masuk ke stok Gudang"
+                                            onClick={() => handleVerifikasiGudang(tf)}
+                                            style={{
+                                              fontSize: 9.5,
+                                              fontWeight: 800,
+                                              padding: "3px 8px",
+                                              borderRadius: 5,
+                                              border: "none",
+                                              background: "linear-gradient(135deg, #059669 0%, #10B981 100%)",
+                                              color: "#FFFFFF",
+                                              cursor: "pointer",
+                                              whiteSpace: "nowrap",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: 4,
+                                              boxShadow: "0 1px 3px rgba(16,185,129,0.3)"
+                                            }}
+                                          >
+                                            <CheckCircle2 size={11} /> Verifikasi Terima
+                                          </button>
+                                        )}
+
+                                        {/* Forward button if ready */}
+                                        {!isReject && readyTotal > 0 && (
+                                          <button
+                                            type="button"
+                                            id={`kirim-hasil-${tf.id}`}
+                                            title={`Kirim ${readyTotal} pcs hasil ${tf.vendor_id == null ? "standby" : getVendorName(tf.vendor_id)} ke pos berikutnya`}
+                                            onClick={() => openTransferModal(po, activeStageObj, ready[0].id)}
+                                            style={{ fontSize: 9.5, fontWeight: 800, padding: "2px 7px", borderRadius: 4, border: "none", background: "#2563EB", color: "#fff", cursor: "pointer", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3 }}
+                                          >
+                                            <Send size={9} /> Kirim {readyTotal}
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}
@@ -1693,8 +2525,22 @@ export default function AlurProduksiPage() {
                             </div>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748B" }}>
                               <span>Target: {fmtDate(d.target_selesai)}</span>
-                              <span style={{ fontWeight: 700, color: d.status === "Dikerjakan" ? "#2563EB" : "#10B981" }}>{d.status}</span>
+                              <span style={{ 
+                                fontWeight: 700, 
+                                color: (d as any).info?.color || (d.status === "Selesai" ? "#10B981" : d.status === "Dikerjakan" ? "#2563EB" : "#2563EB"),
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4
+                              }}>
+                                {d.status === "Dikerjakan" && (
+                                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#2563EB" }} />
+                                )}
+                                {d.status === "Dikerjakan" ? "Sedang Dikerjakan" : d.status}
+                              </span>
                             </div>
+                            {(d as any).info?.hint && (
+                              <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 3 }}>{(d as any).info.hint}</div>
+                            )}
                           </div>
                         ))
                       )}
@@ -1918,15 +2764,322 @@ export default function AlurProduksiPage() {
             {/* Form */}
             {(() => {
               const selectedVendorWorkload = transferForm.vendor_id ? getVendorWorkload(Number(transferForm.vendor_id)) : null;
+              const tfSources = getTransferSources(transferModal.po.id);
+              const tfSrc = tfSources.find(s => s.id === transferForm.sumber_id) || null;
+              const tfLegacy = transferForm.sumber_id === "po";
+              const tfMaxSizes: any[] = tfSrc ? tfSrc.sizes : tfLegacy ? (transferModal.po.sizeBreakdown || []) : [];
+              const tfTotal = tfMaxSizes.length
+                ? Object.values(transferForm.sizes).reduce((s, v) => s + (Number(v) || 0), 0)
+                : Number(transferForm.jumlah_kirim || 0);
+              const tfMaxTotal = tfSrc ? tfSrc.total : Number(transferModal.po.jumlahTerbit || 0);
+              const minUrutan = tfSrc ? tfSrc.fromUrutan : (transferModal.currentStage?.urutan || 0);
 
               return (
                 <form onSubmit={handleSubmitTransfer} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                   <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, overflowY: "auto", flex: 1, minHeight: 0 }}>
-                    
+
+                    {/* LIVE REALTIME NOTICE (saat modal sedang terbuka) */}
+                    {liveNotice && (
+                      <div style={{
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        background: liveNotice.tone === "warn" ? "#FEF3C7" : "#EFF6FF",
+                        border: `1.5px solid ${liveNotice.tone === "warn" ? "#F59E0B" : "#3B82F6"}`,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite"
+                      }}>
+                        <Zap size={18} color={liveNotice.tone === "warn" ? "#D97706" : "#2563EB"} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 800, color: liveNotice.tone === "warn" ? "#92400E" : "#1E40AF" }}>
+                            ⚡ Peringatan Realtime (Aktivitas Bersamaan)
+                          </div>
+                          <div style={{ fontSize: 11.5, color: liveNotice.tone === "warn" ? "#78350F" : "#1E3A8A", marginTop: 2, lineHeight: 1.45 }}>
+                            {liveNotice.text}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLiveNotice(null)}
+                          style={{ background: "none", border: "none", color: "#92400E", cursor: "pointer", fontSize: 11, fontWeight: 700 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+
+                    {/* CONFLICT / RACE-CONDITION RESOLUTION PANEL (HTTP 409) */}
+                    {conflict && conflict.code === "RESERVED" && (
+                      <div style={{
+                        padding: "16px",
+                        borderRadius: 12,
+                        background: "#FEF2F2",
+                        border: "2px solid #EF4444",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                        boxShadow: "0 4px 12px rgba(239, 68, 68, 0.15)"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                          <AlertTriangle size={22} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 900, color: "#991B1B" }}>
+                              ⚠️ Bentrok Data Terdeteksi: Vendor Sedang Meminta Stok Ini!
+                            </div>
+                            <div style={{ fontSize: 12, color: "#7F1D1D", marginTop: 4, lineHeight: 1.5 }}>
+                              {conflict.error}
+                            </div>
+                            {conflict.reservations && conflict.reservations.length > 0 && (
+                              <div style={{ marginTop: 8, padding: "8px 10px", background: "#FFF", borderRadius: 8, border: "1px solid #FECACA" }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: "#991B1B", marginBottom: 4 }}>Daftar Permohonan Vendor yang Masuk:</div>
+                                {conflict.reservations.map((r: any) => (
+                                  <div key={r.id} style={{ fontSize: 11.5, color: "#475569", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 0" }}>
+                                    <span style={{ fontWeight: 700, color: "#0F172A" }}>• {r.vendor_nama}</span>
+                                    <span style={{ fontWeight: 800, color: "#DC2626" }}>{r.sisa} pcs (Pending)</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11.5, color: "#475569", marginTop: 6 }}>
+                              Stok bebas tanpa menabrak antrean: <b>{conflict.free} pcs</b>. Silakan pilih solusi:
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons for resolution */}
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", paddingTop: 4 }}>
+                          {conflict.reservations && conflict.reservations.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const first = conflict.reservations[0];
+                                setTransferForm(prev => ({
+                                  ...prev,
+                                  vendor_id: String(first.vendor_id),
+                                  jumlah_kirim: String(first.sisa)
+                                }));
+                                setConflict(null);
+                                toast.info(`Vendor diubah ke ${first.vendor_nama} (${first.sisa} pcs) untuk memenuhi permintaannya. Klik "Kirimkan Barang" untuk konfirmasi.`);
+                              }}
+                              style={{
+                                padding: "7px 12px",
+                                borderRadius: 7,
+                                border: "1px solid #059669",
+                                background: "#10B981",
+                                color: "#FFF",
+                                fontSize: 11.5,
+                                fontWeight: 800,
+                                cursor: "pointer"
+                              }}
+                            >
+                              ✓ Penuhi Permintaan {conflict.reservations[0].vendor_nama}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => submitTransfer("tolak")}
+                            style={{
+                              padding: "7px 12px",
+                              borderRadius: 7,
+                              border: "1px solid #DC2626",
+                              background: "#EF4444",
+                              color: "#FFF",
+                              fontSize: 11.5,
+                              fontWeight: 800,
+                              cursor: "pointer"
+                            }}
+                          >
+                            ✕ Tolak Permintaan Vendor &amp; Tetap Kirim
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (conflict.free > 0 && tfSrc) {
+                                setTransferForm(prev => ({ ...prev, jumlah_kirim: String(conflict.free) }));
+                              }
+                              setConflict(null);
+                            }}
+                            style={{
+                              padding: "7px 12px",
+                              borderRadius: 7,
+                              border: "1px solid #CBD5E1",
+                              background: "#FFF",
+                              color: "#475569",
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: "pointer"
+                            }}
+                          >
+                            Sesuaikan Stok Bebas ({conflict.free} pcs)
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CONFLICT STALE PANEL (Stok sudah berkurang) */}
+                    {conflict && conflict.code === "STALE" && (
+                      <div style={{
+                        padding: "14px 16px",
+                        borderRadius: 12,
+                        background: "#FFFBEB",
+                        border: "1.5px solid #F59E0B",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10
+                      }}>
+                        <Clock size={20} color="#D97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>
+                            Stok Sumber Sudah Berubah di Sistem
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "#78350F", marginTop: 2 }}>
+                            {conflict.error}
+                            {conflict.last_change ? (
+                              <div style={{ marginTop: 4, fontWeight: 600 }}>
+                                Terakhir diubah: <i>{conflict.last_change.desc}</i> oleh <b>{conflict.last_change.by}</b>
+                              </div>
+                            ) : null}
+                          </div>
+                          <div style={{ marginTop: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (conflict.current_sizes && conflict.current_sizes.length) {
+                                  setTransferForm(prev => ({
+                                    ...prev,
+                                    sizes: sizesToForm(conflict.current_sizes),
+                                    jumlah_kirim: String(conflict.current_total)
+                                  }));
+                                } else {
+                                  setTransferForm(prev => ({ ...prev, jumlah_kirim: String(conflict.current_total || 0) }));
+                                }
+                                setConflict(null);
+                              }}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: 6,
+                                border: "none",
+                                background: "#D97706",
+                                color: "#FFF",
+                                fontSize: 11.5,
+                                fontWeight: 800,
+                                cursor: "pointer"
+                              }}
+                            >
+                              Gunakan Stok Terkini ({conflict.current_total ?? 0} pcs)
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STEP 1: Pilih barang yang dikirim */}
+                    <div>
+                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 800, color: "#334155", marginBottom: 4 }}>
+                        1. Barang Mana yang Dikirim? <span style={{ color: "#EF4444" }}>*</span>
+                      </label>
+                      <div style={{ fontSize: 11, color: "#64748B", marginBottom: 8 }}>
+                        Pilih hasil pekerjaan yang sudah selesai &amp; di-ACC. Asal tahap, vendor dan rincian size akan ikut tercatat.
+                      </div>
+                      {tfSources.length === 0 ? (
+                        <div style={{ padding: "10px 12px", borderRadius: 10, background: "#F8FAFC", border: "1px dashed #CBD5E1", fontSize: 12, color: "#475569" }}>
+                          Belum ada hasil tahap yang selesai &amp; di-ACC untuk PO ini. Pengiriman akan diambil dari <b>kuota PO / hasil potong</b> ({transferModal.po.jumlahTerbit} pcs).
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {tfSources.map(s => {
+                            const active = transferForm.sumber_id === s.id;
+                            const resList = (s.transfer && s.transfer.reservations) || [];
+                            const activeVendorPresence = presenceList.filter(
+                              p => p.role === "vendor" && (String(p.transfer_id) === String(s.id) || (p.po_id != null && Number(p.po_id) === Number(transferModal.po.id)))
+                            );
+
+                            return (
+                              <button
+                                type="button"
+                                key={s.id}
+                                id={`sumber-${s.id}`}
+                                onClick={() => pickTransferSource(s)}
+                                style={{
+                                  textAlign: "left",
+                                  cursor: "pointer",
+                                  padding: "12px 14px",
+                                  borderRadius: 10,
+                                  border: active ? "2px solid #2563EB" : (resList.length > 0 ? "1.5px solid #FCD34D" : "1px solid #E2E8F0"),
+                                  background: active ? "#EFF6FF" : (resList.length > 0 ? "#FFFDF5" : "#FFFFFF"),
+                                  display: "flex",
+                                  gap: 10,
+                                  alignItems: "flex-start",
+                                  transition: "all .15s"
+                                }}
+                              >
+                                <span style={{ width: 16, height: 16, borderRadius: "50%", border: active ? "5px solid #2563EB" : "2px solid #CBD5E1", flexShrink: 0, marginTop: 2, background: "#fff" }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>
+                                      Hasil {s.fromNama}{s.asalVendor ? <> · <span style={{ color: "#2563EB" }}>{s.asalVendor}</span></> : null}
+                                    </div>
+                                    <div style={{ fontSize: 14, fontWeight: 900, color: "#059669", whiteSpace: "nowrap" }}>{s.total.toLocaleString("id-ID")} pcs</div>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#047857", fontWeight: 600, marginTop: 2 }}>✓ {s.statusText}</div>
+
+                                  {/* Peringatan Permintaan Vendor yang sedang Pending pada sumber ini */}
+                                  {resList.length > 0 && (
+                                    <div style={{
+                                      marginTop: 6,
+                                      padding: "4px 8px",
+                                      borderRadius: 6,
+                                      background: "#FEF3C7",
+                                      border: "1px solid #FDE68A",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                      fontSize: 10.5,
+                                      color: "#92400E",
+                                      fontWeight: 700
+                                    }}>
+                                      <span>⚠️ Permintaan Aktif:</span>
+                                      <span>{resList.map((r: any) => `${r.vendor_nama} (${r.sisa} pcs)`).join(", ")}</span>
+                                    </div>
+                                  )}
+
+                                  {/* Indikator Presence Vendor sedang aktif membuka form permintaan */}
+                                  {activeVendorPresence.length > 0 && (
+                                    <div style={{
+                                      marginTop: 4,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 5,
+                                      fontSize: 10.5,
+                                      color: "#2563EB",
+                                      fontWeight: 700
+                                    }}>
+                                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563EB", display: "inline-block", animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite" }} />
+                                      <span>Live: {activeVendorPresence.map(p => p.name || "Vendor").join(", ")} sedang aktif pada PO ini</span>
+                                    </div>
+                                  )}
+
+                                  {s.sizes.length > 0 && (
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+                                      {s.sizes.map((z: any) => (
+                                        <span key={z.size} style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 5, background: "#F1F5F9", color: "#334155", border: "1px solid #E2E8F0" }}>{z.size}: {z.jumlah}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {(tfSrc || tfLegacy) && (<>
                     {/* Target Stage Select */}
                     <div>
-                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                        Pilih Pos Tujuan Pengiriman <span style={{ color: "#EF4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 800, color: "#334155", marginBottom: 6 }}>
+                        2. Kirim ke Pos Tujuan <span style={{ color: "#EF4444" }}>*</span>
                       </label>
                       <select
                         required
@@ -1935,10 +3088,15 @@ export default function AlurProduksiPage() {
                         onChange={e => setTransferForm({ ...transferForm, ke_slug: e.target.value })}
                       >
                         <option value="">-- Pilih Pos Tahap Selanjutnya --</option>
-                        {stages.filter(s => s.urutan > (transferModal.currentStage?.urutan || 0)).map(s => (
+                        {stages.filter(s => s.urutan > minUrutan).map(s => (
                           <option key={s.id} value={s.slug}>Pos #{s.urutan}: {s.nama} ({s.slug})</option>
                         ))}
                       </select>
+                      {tfSrc && transferForm.ke_slug && (
+                        <div style={{ fontSize: 11, color: "#1E40AF", marginTop: 6, background: "#EFF6FF", padding: "6px 10px", borderRadius: 8, border: "1px solid #BFDBFE" }}>
+                          Ringkasan: <b>{tfTotal.toLocaleString("id-ID")} pcs</b> hasil <b>{tfSrc.fromNama}</b>{tfSrc.asalVendor ? <> dari <b>{tfSrc.asalVendor}</b></> : null} → <b>{stageNameBySlug(transferForm.ke_slug)}</b>
+                        </div>
+                      )}
                     </div>
 
                     {/* ===== VENDOR PICKER: DETAIL KAPASITAS, TUNGGAKAN & KETERLAMBATAN ===== */}
@@ -2043,6 +3201,16 @@ export default function AlurProduksiPage() {
                                         {w.vendorId === bestId && w.capacityLevel !== "overloaded" && (
                                           <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "#DBEAFE", color: "#1D4ED8" }}>⭐ Paling Layak</span>
                                         )}
+                                        {(() => {
+                                          const vReq = cmtRequests.find((r: any) => r.po_id === transferModal?.po?.id && r.vendor_id === w.vendorId && (r.status === "Pending" || r.status === "Sebagian"));
+                                          if (!vReq) return null;
+                                          const sisaReq = Math.max(0, Number(vReq.total_request || 0) - Number(vReq.total_dipenuhi || 0));
+                                          return (
+                                            <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 7px", borderRadius: 4, background: "#FEF3C7", color: "#92400E", border: "1px solid #FCD34D" }}>
+                                              📥 Meminta Pekerjaan Ini ({sisaReq} pcs)
+                                            </span>
+                                          );
+                                        })()}
                                       </div>
                                       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                                         <span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 7px", borderRadius: 5, background: c.chip, color: c.fg }}>{c.icon} {w.capacityLabel}</span>
@@ -2052,6 +3220,16 @@ export default function AlurProduksiPage() {
                                           <span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 7px", borderRadius: 5, background: "#FEE2E2", color: "#DC2626", border: "1px solid #FCA5A5" }}>🚨 {w.overdueCount} terlambat · maks +{w.maxOverdueDays} hr</span>
                                         )}
                                       </div>
+                                      {selected && (() => {
+                                        const vReq = cmtRequests.find((r: any) => r.po_id === transferModal?.po?.id && r.vendor_id === w.vendorId && (r.status === "Pending" || r.status === "Sebagian"));
+                                        if (!vReq) return null;
+                                        const sisaReq = Math.max(0, Number(vReq.total_request || 0) - Number(vReq.total_dipenuhi || 0));
+                                        return (
+                                          <div style={{ marginTop: 6, fontSize: 11, color: "#166534", background: "#F0FDF4", padding: "4px 8px", borderRadius: 6, border: "1px solid #BBF7D0", fontWeight: 700 }}>
+                                            ✓ Memilih vendor ini otomatis memenuhi permohonan <strong>{w.vendorNama} ({sisaReq} pcs)</strong> dan meneruskan alur produksi.
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     {/* Skor */}
                                     <div style={{ textAlign: "center", flexShrink: 0 }}>
@@ -2222,23 +3400,64 @@ export default function AlurProduksiPage() {
                       </div>
                     </div>
 
-                    {/* Jumlah Kirim */}
+                    {/* Jumlah Kirim per Size */}
                     <div>
-                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                        Jumlah Barang Dikirim (Pcs) <span style={{ color: "#EF4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: 12.5, fontWeight: 800, color: "#334155", marginBottom: 6 }}>
+                        3. Jumlah yang Dikirim {tfMaxSizes.length ? "per Size" : "(Pcs)"} <span style={{ color: "#EF4444" }}>*</span>
                       </label>
-                      <input
-                        required
-                        type="number"
-                        min="1"
-                        placeholder="e.g. 500"
-                        style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", boxSizing: "border-box", fontWeight: 800, color: "#2563EB" }}
-                        value={transferForm.jumlah_kirim}
-                        onChange={e => setTransferForm({ ...transferForm, jumlah_kirim: e.target.value })}
-                      />
-                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
-                        Maksimum kuota PO ini: {transferModal.po.jumlahTerbit} pcs
-                      </div>
+                      {tfMaxSizes.length > 0 ? (
+                        <>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8 }}>
+                            {tfMaxSizes.map((z: any) => {
+                              const max = Number(z.jumlah || 0);
+                              const val = transferForm.sizes[String(z.size)] ?? "";
+                              const over = Number(val) > max;
+                              return (
+                                <div key={z.size} style={{ border: `1.5px solid ${over ? "#EF4444" : "#CBD5E1"}`, borderRadius: 8, padding: "6px 8px", background: "#FFFFFF" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 800, color: "#0F172A" }}>
+                                    <span>{z.size}</span><span style={{ color: "#94A3B8", fontWeight: 700 }}>maks {max}</span>
+                                  </div>
+                                  <input
+                                    id={`kirim-size-${z.size}`}
+                                    type="number"
+                                    min="0"
+                                    max={max}
+                                    value={val}
+                                    onChange={e => setTransferForm({ ...transferForm, sizes: { ...transferForm.sizes, [String(z.size)]: e.target.value } })}
+                                    style={{ width: "100%", border: "none", outline: "none", fontSize: 15, fontWeight: 900, color: over ? "#DC2626" : "#2563EB", padding: "2px 0", boxSizing: "border-box" }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 11.5 }}>
+                            <span style={{ color: "#64748B" }}>
+                              Total dikirim: <b style={{ color: tfTotal > tfMaxTotal ? "#DC2626" : "#0F172A" }}>{tfTotal.toLocaleString("id-ID")}</b> / {tfMaxTotal.toLocaleString("id-ID")} pcs tersedia
+                              {tfSrc && tfTotal < tfMaxTotal && tfTotal > 0 && <> · sisa {(tfMaxTotal - tfTotal).toLocaleString("id-ID")} pcs tetap standby</>}
+                            </span>
+                            <span style={{ display: "flex", gap: 6 }}>
+                              <button type="button" onClick={() => setTransferForm({ ...transferForm, sizes: sizesToForm(tfMaxSizes) })} style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 4, border: "1px solid #CBD5E1", background: "#F8FAFC", color: "#475569", cursor: "pointer" }}>Semua</button>
+                              <button type="button" onClick={() => setTransferForm({ ...transferForm, sizes: {} })} style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 4, border: "1px solid #CBD5E1", background: "#F8FAFC", color: "#475569", cursor: "pointer" }}>Kosongkan</button>
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            required
+                            type="number"
+                            min="1"
+                            max={tfMaxTotal}
+                            placeholder="e.g. 500"
+                            style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 13, outline: "none", boxSizing: "border-box", fontWeight: 800, color: "#2563EB" }}
+                            value={transferForm.jumlah_kirim}
+                            onChange={e => setTransferForm({ ...transferForm, jumlah_kirim: e.target.value })}
+                          />
+                          <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                            Maksimum tersedia: {tfMaxTotal} pcs
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Catatan */}
@@ -2254,6 +3473,7 @@ export default function AlurProduksiPage() {
                         onChange={e => setTransferForm({ ...transferForm, catatan: e.target.value })}
                       />
                     </div>
+                    </>)}
                   </div>
 
                   {/* Modal Footer */}
@@ -2301,6 +3521,23 @@ export default function AlurProduksiPage() {
             })()}
           </div>
         </div>
+      )}
+
+      {/* Modal Nota Reject & Klaim Vendor */}
+      {notaRejectModal && (
+        <NotaRejectModal
+          nota={notaRejectModal}
+          onClose={() => setNotaRejectModal(null)}
+          vendorKontak={vendors.find((v: any) => v.id === notaRejectModal.vendor_id)?.kontak}
+          onSettled={() => {
+            fetchAll(true);
+            setNotaRejectModal(null);
+          }}
+          onCancelReject={() => {
+            fetchAll(true);
+            setNotaRejectModal(null);
+          }}
+        />
       )}
     </div>
   );

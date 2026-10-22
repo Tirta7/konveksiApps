@@ -3,8 +3,8 @@ import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function POST(req: NextRequest) {
   try {
-    const data = readData();
     const body = await req.json();
+    const data = readData();
     const { poId, dari_vendor_id, ke_vendor_id, jumlah, catatan, sizeBreakdown } = body;
 
     if (!poId || !dari_vendor_id || !ke_vendor_id || !jumlah) {

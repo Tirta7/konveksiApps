@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
+import { vendorStageSummary, transferStageName } from "@/lib/stock";
+import { cmtReports } from "@/lib/po-lifecycle";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
       .filter((t: any) => String(t.po_id) === String(po.id))
       .map((t: any) => {
         const vendorKe = vendors.find((v: any) => v.id === t.vendor_id || v.id === t.ke_vendor_id);
-        return { ...t, vendor_ke_nama: vendorKe ? vendorKe.nama : t.ke || "Gudang" };
+        return { ...t, vendor_ke_nama: vendorKe ? vendorKe.nama : (transferStageName(data, t) || "Gudang"), ke_nama_tahap: transferStageName(data, t) };
       })
       .sort((a: any, b: any) => new Date(a.tanggal_kirim).getTime() - new Date(b.tanggal_kirim).getTime());
 
@@ -77,24 +79,33 @@ export async function GET(req: NextRequest) {
       .sort((a: any, b: any) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
 
     // 8. Compute aggregate stats
-    const approvedCMT = cmtRecords.filter((r: any) => r.status === "Diverifikasi" || r.status === "Diterima");
-    const pendingCMT = cmtRecords.filter((r: any) => r.status === "Menunggu" || r.status === "Pending");
-    const totalDilaporkan = cmtRecords.reduce((s: number, r: any) =>
+    // Statistik CMT hanya dari laporan jahit CMT (laporan vendor washing punya transfer_id)
+    const cmtOnlyIds = new Set(cmtReports(data, po).map((r: any) => String(r.id)));
+    const cmtOnly = cmtRecords.filter((r: any) => cmtOnlyIds.has(String(r.id)));
+    const approvedCMT = cmtOnly.filter((r: any) => r.status === "Diverifikasi" || r.status === "Diterima");
+    const pendingCMT = cmtOnly.filter((r: any) => r.status === "Menunggu" || r.status === "Pending");
+    const totalDilaporkan = cmtOnly.reduce((s: number, r: any) =>
       s + (r.items || []).reduce((s2: number, i: any) => s2 + Number(i.jumlah || 0), 0), 0);
     const totalDisetujui = approvedCMT.reduce((s: number, r: any) =>
       s + (r.items || []).reduce((s2: number, i: any) => s2 + Number(i.jumlah || 0), 0), 0);
     const totalPending = pendingCMT.reduce((s: number, r: any) =>
       s + (r.items || []).reduce((s2: number, i: any) => s2 + Number(i.jumlah || 0), 0), 0);
 
-    const washingTransfers = transfers.filter((t: any) => t.ke === "washing");
-    const totalWashing = washingTransfers.reduce((s: number, t: any) => s + (t.jumlah_kirim || 0), 0);
-    const totalWashingDone = washingTransfers
-      .filter((t: any) => t.status === "Diverifikasi")
-      .reduce((s: number, t: any) => s + (t.jumlah_diterima || t.jumlah_kirim || 0), 0);
+    // Washing: hanya transfer ke vendor washing (pool ACC tidak dihitung ganda)
+    const washSum = vendorStageSummary(data, po.id, "washing");
+    const totalWashing = washSum.kirim;
+    const totalWashingDone = washSum.approved;
+    const totalWashingReject = washSum.reject;
+    const totalWashingProses = washSum.proses;
 
-    const totalDiGudang = ledgers
-      .filter((l: any) => l.ke_vendor_id === "GUDANG")
-      .reduce((s: number, l: any) => s + Number(l.jumlah || 0), 0);
+    // Pcs yang benar-benar masuk Gudang & Stok (stock_movements "masuk").
+    // po_ledgers GUDANG tidak dipakai karena ACC → gudang + penarikan kembali tercatat ganda.
+    const totalDiGudang = (data.stock_movements || [])
+      .filter((m: any) => String(m.po_id) === String(po.id) && m.jenis === "masuk")
+      .reduce((s: number, m: any) => s + Number(m.jumlah || 0), 0);
+    const totalReject = (data.stock_movements || [])
+      .filter((m: any) => String(m.po_id) === String(po.id) && m.jenis === "reject")
+      .reduce((s: number, m: any) => s + Number(m.jumlah || 0), 0);
 
     return {
       // PO Info
@@ -110,7 +121,7 @@ export async function GET(req: NextRequest) {
       // Vendor CMT
       vendorCMT: vendorCMT ? { id: vendorCMT.id, nama: vendorCMT.nama, tipe: vendorCMT.tipe, jenis_pekerjaan: vendorCMT.jenis_pekerjaan } : null,
 
-      // Pemotongan Kain (asal usul bahan)
+      // Pemotongan Kain (asal usul bahan & spesifikasi teknis)
       pemotongan: pemotongan ? {
         id: pemotongan.id,
         tanggal: pemotongan.tanggal,
@@ -121,6 +132,11 @@ export async function GET(req: NextRequest) {
         total_pcs: pemotongan.total_pcs,
         sizeBreakdown: pemotongan.sizeBreakdown,
         sisa_sizeBreakdown: pemotongan.sizeBreakdown, // real-time sisa
+        jenis_jahitan: pemotongan.jenis_jahitan || "",
+        tipe_benang: pemotongan.tipe_benang || "",
+        tipe_resleting: pemotongan.tipe_resleting || "",
+        catatan_jahitan: pemotongan.catatan_jahitan || "",
+        item_pendukung_used: pemotongan.item_pendukung_used || [],
         // Tukang Potong
         tukang: tukang ? { id: tukang.id, nama: tukang.nama, kode: tukang.kode, kontak: tukang.kontak } : null,
         // Kain
@@ -155,9 +171,12 @@ export async function GET(req: NextRequest) {
         pctDisetujui: po.jumlahTerbit > 0 ? Math.round((totalDisetujui / po.jumlahTerbit) * 100) : 0,
         totalWashing,
         totalWashingDone,
+        totalWashingReject,
+        totalWashingProses,
         pctWashing: po.jumlahTerbit > 0 ? Math.round((totalWashing / po.jumlahTerbit) * 100) : 0,
         totalDiGudang,
-        pctGudang: po.jumlahTerbit > 0 ? Math.round((totalDiGudang / po.jumlahTerbit) * 100) : 0,
+        totalReject,
+        pctGudang: po.jumlahTerbit > 0 ? Math.min(100, Math.round((totalDiGudang / po.jumlahTerbit) * 100)) : 0,
       }
     };
   });

@@ -13,6 +13,8 @@ export async function GET() {
     const pendingByKey: Record<string, number> = {};   // "poId-size" -> count pending
 
     for (const rec of (data.cmt_progres || [])) {
+      // Laporan vendor lanjutan (washing dll) punya transfer_id — bukan laporan jahit CMT
+      if (rec.transfer_id) continue;
       const isApproved = rec.status === "Diterima" || rec.status === "Diverifikasi";
       const isPending = rec.status === "Menunggu" || rec.status === "Pending";
       for (const item of (rec.items || [])) {
@@ -30,6 +32,10 @@ export async function GET() {
       groups[key].push(b);
     }
 
+    // Status yang sudah "lebih maju" (masuk stok, terjual, retur, reject) tidak boleh ditimpa
+    const FINAL = ["siap_jual", "terjual", "retur_banding", "reject", "washing", "benang", "finishing"];
+    const isAdvanced = (s: string) => FINAL.includes(s) || String(s || "").endsWith("_dikerjakan");
+
     // For each group, assign effective status based on counts
     const effectiveStatus: Record<number, string> = {};
     for (const [key, items] of Object.entries(groups)) {
@@ -38,29 +44,15 @@ export async function GET() {
       // Sort by id so assignment is deterministic
       const sorted = [...items].sort((a, b) => a.id - b.id);
       let i = 0;
-      // First `approved` barcodes  gudang (or better if already advanced)
+      // First `approved` barcodes → gudang (or better if already advanced)
       for (; i < sorted.length && i < approved; i++) {
         const stored = sorted[i].status;
-        if (
-          ["siap_jual", "washing", "benang", "finishing"].includes(stored) ||
-          stored.endsWith("_dikerjakan")
-        ) {
-          effectiveStatus[sorted[i].id] = stored; // keep more advanced status
-        } else {
-          effectiveStatus[sorted[i].id] = "gudang";
-        }
+        effectiveStatus[sorted[i].id] = isAdvanced(stored) ? stored : "gudang";
       }
       // Next `pending` barcodes  cmt
       for (; i < sorted.length && i < approved + pending; i++) {
         const stored = sorted[i].status;
-        if (
-          ["siap_jual", "washing", "benang", "finishing", "gudang"].includes(stored) ||
-          stored.endsWith("_dikerjakan")
-        ) {
-          effectiveStatus[sorted[i].id] = stored;
-        } else {
-          effectiveStatus[sorted[i].id] = "cmt";
-        }
+        effectiveStatus[sorted[i].id] = isAdvanced(stored) || stored === "gudang" ? stored : "cmt";
       }
       // Rest  use stored status
       for (; i < sorted.length; i++) {
@@ -69,16 +61,25 @@ export async function GET() {
     }
 
     const poMap = new Map(data.po_produksi.map((p: any) => [p.id, p]));
+    const barangMap = new Map((data.data_barang || []).map((x: any) => [String(x.id), x]));
+    const saleMap = new Map(((data as any).penjualan_barcode || []).map((s: any) => [String(s.id), s]));
     
     const list = data.barcode_item.map((b: any) => {
       const po = poMap.get(b.poId);
+      const barang: any = b.barang_id != null ? barangMap.get(String(b.barang_id)) : null;
+      const sale: any = b.penjualan_id != null ? saleMap.get(String(b.penjualan_id)) : null;
+      const line = sale?.items?.find((it: any) => String(it.kode).toUpperCase() === String(b.kodeBarcode).toUpperCase());
       return {
         ...b,
         status: effectiveStatus[b.id] || b.status,
         noPo: po ? po.noPo : "Unknown",
         model: po ? po.model : "Unknown",
         tanggalTerbit: po ? po.tanggalTerbit : null,
-        statusPo: po ? po.status : "Unknown"
+        statusPo: po ? po.status : "Unknown",
+        nama_barang: barang?.nama_barang || null,
+        kode_barang: barang?.kode || null,
+        pelanggan: sale?.pelanggan || null,
+        harga_terjual: line?.harga ?? null,
       };
     }).reverse();
       

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readData, writeData } from "@/lib/data-store";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const body = await req.json();
   const data = readData();
   if (!data.pemotongan_kain) data.pemotongan_kain = [];
   
@@ -14,7 +15,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const existingData = data.pemotongan_kain[index];
-  const body = await req.json();
   const { tanggal, nama_barang, meter_kain, pemakaian_cm, tukang_potong_id, model, total_pcs, sizeBreakdown, status } = body;
 
   const finalStatus = status || existingData.status || "Selesai";

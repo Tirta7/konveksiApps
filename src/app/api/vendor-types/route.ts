@@ -22,9 +22,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.vendor_types) data.vendor_types = [];
-  const body = await req.json();
   const { nama, slug, emoji, perlu_portal, portal_path, perlu_gaji, perlu_throttle } = body;
   if (!nama || !slug) return NextResponse.json({ error: "Nama dan slug wajib diisi" }, { status: 400 });
   const duplicate = data.vendor_types.find((t: any) => t.slug === slug);
@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const body = await req.json();
   const data = readData();
   if (!data.vendor_types) data.vendor_types = [];
-  const body = await req.json();
   const { id, ...updates } = body;
   const idx = data.vendor_types.findIndex((t: any) => String(t.id) === String(id));
   if (idx === -1) return NextResponse.json({ error: "Tipe tidak ditemukan" }, { status: 404 });

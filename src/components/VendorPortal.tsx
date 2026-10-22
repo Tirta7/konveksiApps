@@ -22,10 +22,28 @@ import {
   AlertTriangle,
   ShieldCheck,
   Zap,
-  Info
+  Info,
+  AlertOctagon,
+  MessageCircle,
+  RotateCcw,
+  Scissors,
+  Droplets,
+  Layers,
+  Truck,
+  ClipboardList
 } from "lucide-react";
+import NotaRejectModal from "@/components/NotaRejectModal";
 import { toast } from "sonner";
-import { subscribeRealtime, subscribeRealtimeStatus, visiblePoll } from "@/lib/realtime-client";
+import {
+  subscribeRealtime,
+  subscribeRealtimeStatus,
+  subscribeRealtimeEvent,
+  subscribePresence,
+  setPresence,
+  getRealtimeTransport,
+  type PresenceEntry,
+  visiblePoll
+} from "@/lib/realtime-client";
 
 // Radial Progress Component
 function RadialProgress({
@@ -100,16 +118,22 @@ function formatRupiah(num: number) {
 interface VendorPortalProps {
   vendorId?: string;
   defaultTipe?: string;
+  /** Siapa yang membuka portal: vendor ybs, atau owner/admin (pratinjau). */
+  viewer?: "vendor" | "user";
 }
 
-export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: VendorPortalProps) {
+export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt", viewer = "vendor" }: VendorPortalProps) {
   const id = vendorId;
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState<"connected" | "connecting" | "offline">("connecting");
-  const [activeTab, setActiveTab] = useState<"dashboard" | "riwayat" | "gaji" | "requests">("dashboard");
+  const [transport, setTransport] = useState<string | null>(null);
+  const [presenceList, setPresenceList] = useState<PresenceEntry[]>([]);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "riwayat" | "gaji" | "requests" | "reject">("dashboard");
+  const [selectedNota, setSelectedNota] = useState<any | null>(null);
+  const [rejectFilter, setRejectFilter] = useState<string>("Semua");
 
   // Modal states
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -123,6 +147,7 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
   const [progresCatatan, setProgresCatatan] = useState("");
 
   const [detailPoModal, setDetailPoModal] = useState<any | null>(null);
+  const [showCmtRef, setShowCmtRef] = useState(false);
   const [poReportsModal, setPoReportsModal] = useState<any | null>(null);
   const [printDocModal, setPrintDocModal] = useState<{ type: "gaji" | "spk"; item: any } | null>(null);
   const [confirmCancelModal, setConfirmCancelModal] = useState<any | null>(null);
@@ -162,17 +187,63 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
   useEffect(() => {
     const unsubStatus = subscribeRealtimeStatus((s) => {
       setRealtimeStatus(s === "live" ? "connected" : s);
+      setTransport(getRealtimeTransport());
     });
-    const unsubSync = subscribeRealtime(() => fetchDataRef.current(true));
+    const unsubSync = subscribeRealtime(() => {
+      fetchDataRef.current(true);
+      setTransport(getRealtimeTransport());
+    });
+    const unsubPresence = subscribePresence(setPresenceList);
+    const unsubEvents = subscribeRealtimeEvent((event, d) => {
+      if (!d) return;
+      if (event === "requestUpdated" && Number(d.vendor_id) === Number(id)) {
+        if (d.status === "Selesai" || d.status === "Sebagian") {
+          toast.success(`🎉 Permohonan Anda disetujui Admin! (${d.total_dipenuhi} pcs dialokasikan${d.no_po ? ` untuk ${d.no_po}` : ""})`);
+        } else if (d.status === "Ditolak") {
+          toast.warning(`ℹ️ Permohonan kerjaan Anda ditolak Admin: ${d.alasan || "Stok dialokasikan ke pos lain"}`);
+        }
+        fetchDataRef.current(true);
+      } else if (event === "reportReviewed" && Number(d.vendor_id) === Number(id)) {
+        if (d.status === "Diterima") {
+          toast.success(`✓ Laporan pengerjaan (${d.jumlah} pcs) telah diverifikasi & di-ACC Admin!`);
+        } else if (d.status === "Ditolak") {
+          toast.error(`✕ Laporan pengerjaan (${d.jumlah} pcs) ditolak Admin.`);
+        }
+        fetchDataRef.current(true);
+      } else if (event === "poolAllocated") {
+        fetchDataRef.current(true);
+      }
+    });
+
     // Fallback poll only (realtime handles normal updates); skipped while tab hidden
     const stopPoll = visiblePoll(() => fetchDataRef.current(true), 30000);
 
     return () => {
       unsubStatus();
       unsubSync();
+      unsubPresence();
+      unsubEvents();
       stopPoll();
     };
   }, [id]);
+
+  // Presence: laporkan saat vendor sedang membuka form Minta Kerjaan
+  useEffect(() => {
+    if (!showRequestModal) return;
+    const sel = (data?.pemotonganReady || []).find((p: any) => String(p.id) === requestForm.pemotongan_id);
+    const key = `minta:${id}`;
+    setPresence(key, {
+      key,
+      role: "vendor",
+      vendor_id: Number(id),
+      name: data?.vendor?.nama || "Vendor",
+      action: "minta",
+      transfer_id: sel?.is_transfer ? Number(sel.id) : null,
+      po_id: sel?.po_id || null,
+      label: `${data?.vendor?.nama || "Vendor"} membuka permohonan kerjaan`
+    });
+    return () => setPresence(key, null);
+  }, [showRequestModal, requestForm.pemotongan_id, id, data?.vendor?.nama, data?.pemotonganReady]);
 
   // 3. Scroll unlocker for standalone portal (Top-level Hook)
   // Hanya <html> yang menjadi scroll container. Body TIDAK boleh overflow:auto,
@@ -264,7 +335,15 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           transfer_id: isTransfer ? Number(requestForm.pemotongan_id) : null
         })
       });
-      if (!res.ok) throw new Error("Gagal mengirim permohonan kerjaan");
+      const resJson = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 409) {
+          fetchData(true);
+          toast.warning(resJson.error || "Stok sudah tidak tersedia atau bentrok dengan alokasi Admin");
+          return;
+        }
+        throw new Error(resJson.error || "Gagal mengirim permohonan kerjaan");
+      }
 
       toast.success("Permohonan berhasil dikirim ke Admin!");
       setShowRequestModal(false);
@@ -306,7 +385,8 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
     setSubmitting(true);
     try {
       const res = await fetch(`/api/cmt-request?id=${confirmCancelModal.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal membatalkan request");
+      const resJson = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resJson.error || "Gagal membatalkan request");
       toast.success("Permohonan berhasil dibatalkan!");
       setConfirmCancelModal(null);
       fetchData(true);
@@ -387,9 +467,48 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
   }
 
   const vendor = data.vendor;
+  const rawTipe = String(vendor?.tipe || vendor?.jenis_pekerjaan || defaultTipe || "").toLowerCase();
+  const rawNama = String(vendor?.nama || "").toLowerCase();
+  const combinedVendor = `${rawTipe} ${rawNama}`;
+
+  // Multi-tier Intelligent Detection:
+  // Layer 1: Pilihan Tipe Vendor resmi di database (slug / tipe)
+  // Layer 2: Deteksi kata kunci nama & alias usaha (Cuci, Laundry, Benang, QC Packing, dll)
+  // Layer 3: Deteksi pos tahap pekerjaan per-PO (ke_tahap: "washing", "bersih_benang", dll)
+  const isWashingVendor = /wash|cuci|laundr|loundr|bleach|celup|dye|stone|pewarnaan/i.test(combinedVendor);
+  const isBersihBenangVendor = /benang|buang.*benang|potong.*benang|trim/i.test(combinedVendor);
+  const isFinishingVendor = /finish|pack|qc|quality|gosok|setrika|steam|hangtag/i.test(combinedVendor);
+  const isSablonBordirVendor = /sablon|screen|print|bordir|embroidery/i.test(combinedVendor);
+  const isCmtVendor = !isWashingVendor && !isBersihBenangVendor && !isFinishingVendor && !isSablonBordirVendor;
+
+  // Helper cerdas mendeteksi stage per individual job/PO
+  const getJobStage = (poItem?: any) => {
+    const jobTahap = String(poItem?.ke_tahap || poItem?.tahap || "").toLowerCase();
+    const effectiveStr = `${combinedVendor} ${jobTahap}`;
+    const jobWashing = /wash|cuci|laundr|loundr|bleach|celup|dye|stone|pewarnaan/i.test(effectiveStr);
+    const jobBenang = /benang|buang.*benang|potong.*benang|trim/i.test(effectiveStr);
+    const jobFinishing = /finish|pack|qc|quality|gosok|setrika|steam|hangtag/i.test(effectiveStr);
+    const jobSablon = /sablon|screen|print|bordir|embroidery/i.test(effectiveStr);
+    const jobCmt = !jobWashing && !jobBenang && !jobFinishing && !jobSablon;
+    return {
+      isWashing: jobWashing,
+      isBersihBenang: jobBenang,
+      isFinishing: jobFinishing,
+      isSablonBordir: jobSablon,
+      isCmt: jobCmt
+    };
+  };
+
+  const isWashing = isWashingVendor;
+  const isBersihBenang = isBersihBenangVendor;
+  const isFinishing = isFinishingVendor;
+  const isSablonBordir = isSablonBordirVendor;
+  const isCmt = isCmtVendor;
   const activePOs = data.activePO || [];
   const historiPOs = data.historiPO || [];
   const gajiRecords = data.gaji || [];
+  const ringkasanGaji = data.ringkasanGaji || null;
+  const rincianGajiPerPo = data.rincianGajiPerPo || [];
   const requests = data.requests || [];
   const bi = data.blockInfo || null;
 
@@ -690,7 +809,7 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                   }}
                 >
                   <Zap size={10} />
-                  {realtimeStatus === "connected" ? "Live Realtime" : "Menghubungkan..."}
+                  {realtimeStatus === "connected" ? (transport === "websocket" ? "Live Realtime · WS" : "Live Realtime") : "Menghubungkan..."}
                 </span>
               </div>
             </div>
@@ -1026,6 +1145,68 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
           </div>
         )}
 
+        {/* Banner Peringatan Tagihan Reject Vendor */}
+        {(data?.totalKlaimTertunggak || 0) > 0 && (
+          <div
+            style={{
+              background: "linear-gradient(90deg, #450A0A 0%, #1E0707 100%)",
+              border: "1px solid #DC2626",
+              borderRadius: 14,
+              padding: "12px 18px",
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+              boxShadow: "0 2px 10px rgba(220,38,38,0.2)"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: "#7F1D1D",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#FCA5A5",
+                  flexShrink: 0
+                }}
+              >
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "#FCA5A5" }}>
+                  Terdapat Tagihan Klaim Reject: {formatRupiah(data.totalKlaimTertunggak)}
+                </div>
+                <div style={{ fontSize: 11, color: "#FECACA", marginTop: 2 }}>
+                  Ada {(data.nota_reject || []).filter((n: any) => n.status_klaim !== "Lunas").length} nota klaim ganti rugi barang reject yang perlu diselesaikan / dipotongkan pada invoice vendor.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mobile-touch-btn"
+              onClick={() => setActiveTab("reject")}
+              style={{
+                background: "#DC2626",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                padding: "7px 14px",
+                fontSize: 11.5,
+                fontWeight: 800,
+                cursor: "pointer"
+              }}
+            >
+              Lihat Tagihan Reject &rarr;
+            </button>
+          </div>
+        )}
+
         {/* ── 4 KPI SUMMARY STAT CARDS ── */}
         <div className="vendor-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 18 }}>
           {/* Card 1: Sedang Dikerjakan */}
@@ -1140,7 +1321,9 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
               {formatRupiah(totalTertunggak)}
             </div>
             <div style={{ fontSize: 10, color: totalTertunggak > 0 ? "#FCD34D" : "#10B981", fontWeight: 700, marginTop: 3 }}>
-              {totalTertunggak > 0 ? "Belum dicairkan kasir" : "Semua upah terselesaikan"}
+              {totalTertunggak > 0
+                ? `${(ringkasanGaji?.totalPcsSelesai ?? totalSelesaiPcs).toLocaleString("id-ID")} pcs siap dicairkan`
+                : "Semua upah terselesaikan"}
             </div>
           </div>
 
@@ -1201,7 +1384,8 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
             { key: "dashboard", label: "PO Aktif", count: activePOs.length },
             { key: "riwayat", label: "Riwayat Kinerja", count: historiPOs.length },
             { key: "gaji", label: "Slip & Riwayat Gaji", count: gajiRecords.length },
-            { key: "requests", label: "Riwayat Permohonan", count: requests.length }
+            { key: "requests", label: "Riwayat Permohonan", count: requests.length },
+            { key: "reject", label: "Tagihan Reject", count: (data?.nota_reject || []).length, alert: (data?.totalKlaimTertunggak || 0) > 0 }
           ].map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -1298,7 +1482,24 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                 const isOverdue = po.isOverdue;
                 const overdueDays = po.overdueDays || 0;
                 const targetSelesai = po.targetSelesai;
+                const isRework = !!po.is_rework || po.transfer_status === "Retur Perbaikan";
                 const isDikerjakan = po.transfer_status === "Dikerjakan";
+                const totalPending = Number(po.totalPending || 0);
+                const sisaBelumLapor = Math.max(0, totalTarget - totalDone - totalPending);
+                const isWaitingAcc = !isRework && (!!po.waitingAcc || (totalTarget > 0 && totalPending > 0 && sisaBelumLapor <= 0));
+                const pctPending = totalTarget > 0 ? Math.min(100 - Math.min(pct, 100), Math.round((totalPending / totalTarget) * 100)) : 0;
+                const hasReported = totalDone > 0 || totalPending > 0;
+                const statusBadge = isRework
+                  ? { text: `⚠️ RETUR PERBAIKAN ${po.rework_count && po.rework_count > 1 ? `(KE-${po.rework_count})` : ""}`.trim(), bg: "#451A03", color: "#FCD34D", border: "#D97706" }
+                  : isWaitingAcc
+                  ? { text: "MENUNGGU ACC ADMIN", bg: "#3B0764", color: "#D8B4FE", border: "#7C3AED" }
+                  : totalPending > 0
+                  ? { text: "SEBAGIAN MENUNGGU ACC", bg: "#431407", color: "#FDBA74", border: "#EA580C" }
+                  : totalDone > 0
+                  ? { text: "SETOR BERTAHAP", bg: "#082F49", color: "#7DD3FC", border: "#0284C7" }
+                  : isDikerjakan
+                  ? { text: "SEDANG DIKERJAKAN", bg: "#064E3B", color: "#34D399", border: "#059669" }
+                  : { text: "BELUM DIMULAI", bg: "#1E3A5F", color: "#60A5FA", border: "#2563EB" };
 
                 return (
                   <div
@@ -1308,15 +1509,48 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                       borderRadius: 16,
                       border: isJustSubmitted
                         ? "2px solid #10B981"
+                        : isRework
+                        ? "2px solid #D97706"
                         : isOverdue
                         ? "2px solid rgba(239, 68, 68, 0.7)"
                         : "1px solid #334155",
                       overflow: "hidden",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)"
+                      boxShadow: isRework ? "0 4px 20px rgba(217, 119, 6, 0.25)" : "0 4px 16px rgba(0,0,0,0.2)"
                     }}
                   >
+                    {/* Retur Perbaikan Alert Strip */}
+                    {isRework && (
+                      <div
+                        style={{
+                          background: "linear-gradient(135deg, #78350F 0%, #B45309 100%)",
+                          padding: "10px 16px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: 8,
+                          borderBottom: "1px solid #D97706"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <RotateCcw size={16} color="#FCD34D" />
+                          <div>
+                            <div style={{ fontWeight: 900, fontSize: 11.5, color: "#FEF3C7" }}>
+                              PERMINTAAN PERBAIKAN / REWORK {po.rework_count && po.rework_count > 1 ? `(RETUR KE-${po.rework_count})` : ""}
+                            </div>
+                            <div style={{ fontSize: 10.5, color: "#FDE68A", marginTop: 2 }}>
+                              {po.alasan_retur ? `Catatan QC: "${po.alasan_retur}"` : "Barang dikembalikan dari Gudang untuk diperbaiki / dicuci ulang."}
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 10, fontWeight: 900, padding: "3px 8px", borderRadius: 6 }}>
+                          Perbaiki & Laporkan Ulang
+                        </span>
+                      </div>
+                    )}
+
                     {/* Waiting ACC strip: semua sudah dilaporkan → hitungan terlambat berhenti */}
-                    {!isOverdue && po.waitingAcc && (
+                    {!isOverdue && isWaitingAcc && (
                       <div
                         style={{
                           background: "linear-gradient(135deg, #78350F 0%, #92400E 100%)",
@@ -1393,16 +1627,16 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                             </h2>
                             <span
                               style={{
-                                background: isDikerjakan ? "#064E3B" : "#1E3A5F",
-                                color: isDikerjakan ? "#34D399" : "#60A5FA",
-                                border: isDikerjakan ? "1px solid #059669" : "1px solid #2563EB",
+                                background: statusBadge.bg,
+                                color: statusBadge.color,
+                                border: `1px solid ${statusBadge.border}`,
                                 padding: "2px 7px",
                                 borderRadius: 6,
                                 fontSize: 10,
                                 fontWeight: 800
                               }}
                             >
-                              {isDikerjakan ? "SEDANG DIKERJAKAN" : "TERDAFTAR"}
+                              {statusBadge.text}
                             </span>
                           </div>
 
@@ -1420,19 +1654,51 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                             <div>
                               Model: <strong style={{ color: "white" }}>{po.model}</strong>
                             </div>
+                            {po.nama_kain && po.nama_kain !== "-" && (
+                              <>
+                                <span>·</span>
+                                <div>
+                                  Kain: <strong style={{ color: "#38BDF8" }}>{po.nama_kain}</strong>
+                                </div>
+                              </>
+                            )}
+                            {po.asal_vendor && (
+                              <>
+                                <span>·</span>
+                                <div>
+                                  Dari: <strong style={{ color: "#E2E8F0" }}>{po.asal_vendor}</strong>
+                                </div>
+                              </>
+                            )}
                             <span>·</span>
                             <div
                               style={{
-                                background: "#451A03",
-                                color: "#FCD34D",
+                                background: isWaitingAcc ? "#3B0764" : "#451A03",
+                                color: isWaitingAcc ? "#D8B4FE" : "#FCD34D",
                                 padding: "1px 6px",
                                 borderRadius: 5,
                                 fontSize: 10,
                                 fontWeight: 700
                               }}
                             >
-                              Sisa: {Math.max(0, totalTarget - totalDone)} pcs
+                              {isWaitingAcc
+                                ? `Semua dilaporkan · ${totalPending.toLocaleString("id-ID")} pcs menunggu ACC`
+                                : `Belum dilaporkan: ${sisaBelumLapor.toLocaleString("id-ID")} pcs`}
                             </div>
+                            {!isWaitingAcc && totalPending > 0 && (
+                              <div
+                                style={{
+                                  background: "#431407",
+                                  color: "#FDBA74",
+                                  padding: "1px 6px",
+                                  borderRadius: 5,
+                                  fontSize: 10,
+                                  fontWeight: 700
+                                }}
+                              >
+                                Menunggu ACC: {totalPending.toLocaleString("id-ID")} pcs
+                              </div>
+                            )}
                             {targetSelesai && !isOverdue && (
                               <div
                                 style={{
@@ -1491,7 +1757,7 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                           <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 800, textTransform: "uppercase" }}>
-                            Progres Diserahkan
+                            Progres Di-ACC Admin
                           </span>
                           <span
                             style={{
@@ -1503,18 +1769,34 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                             {totalDone.toLocaleString("id-ID")} / {totalTarget.toLocaleString("id-ID")} pcs ({pct}%)
                           </span>
                         </div>
-                        <div style={{ width: "100%", background: "#1E293B", height: 7, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: "100%", background: "#1E293B", height: 7, borderRadius: 4, overflow: "hidden", display: "flex" }}>
                           <div
                             style={{
                               background:
                                 pct >= 100 ? "#10B981" : "linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%)",
                               height: "100%",
                               width: `${Math.min(pct, 100)}%`,
-                              transition: "width 0.8s cubic-bezier(.4,2,.6,1)",
-                              borderRadius: 4
+                              transition: "width 0.8s cubic-bezier(.4,2,.6,1)"
                             }}
                           />
+                          {pctPending > 0 && (
+                            <div
+                              style={{
+                                background: "repeating-linear-gradient(45deg, #F59E0B 0 6px, #D97706 6px 12px)",
+                                height: "100%",
+                                width: `${pctPending}%`,
+                                transition: "width 0.8s"
+                              }}
+                            />
+                          )}
                         </div>
+                        {hasReported && (
+                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6, fontSize: 10.5, fontWeight: 700 }}>
+                            <span style={{ color: "#34D399" }}>✓ {totalDone.toLocaleString("id-ID")} di-ACC</span>
+                            {totalPending > 0 && <span style={{ color: "#FBBF24" }}>⏳ {totalPending.toLocaleString("id-ID")} menunggu ACC admin</span>}
+                            {sisaBelumLapor > 0 && <span style={{ color: "#94A3B8" }}>{sisaBelumLapor.toLocaleString("id-ID")} belum dilaporkan</span>}
+                          </div>
+                        )}
                       </div>
 
                       {/* Breakdown per Size */}
@@ -1559,8 +1841,8 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                                     {sDone}/{totalSizeTarget}
                                   </div>
                                   {sPending > 0 && (
-                                    <div style={{ fontSize: 9, color: "#F59E0B", fontWeight: 800, marginTop: 1 }}>
-                                      +{sPending}
+                                    <div style={{ fontSize: 9, color: "#F59E0B", fontWeight: 800, marginTop: 1 }} title="Menunggu ACC admin">
+                                      ⏳ {sPending} tunggu ACC
                                     </div>
                                   )}
                                   <div
@@ -1587,6 +1869,163 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                           </div>
                         </div>
                       )}
+
+                      {/* ── CATATAN / INSTRUKSI KHUSUS PENGIRIMAN ── */}
+                      {po.catatan && po.catatan !== "ACC Request" && (
+                        <div
+                          style={{
+                            background: "rgba(245, 158, 11, 0.12)",
+                            border: "1px solid rgba(245, 158, 11, 0.35)",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            marginBottom: 12,
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8
+                          }}
+                        >
+                          <ClipboardList size={15} color="#FBBF24" style={{ flexShrink: 0, marginTop: 2 }} />
+                          {(() => {
+                            const poStage = getJobStage(po);
+                            return (
+                              <div style={{ fontSize: 11.5, color: "#FEF3C7", lineHeight: 1.45 }}>
+                                <strong style={{ color: "#FBBF24", marginRight: 5 }}>
+                                  {poStage.isWashing ? "Catatan Washing / Pengiriman:" : poStage.isBersihBenang ? "Catatan Bersih Benang:" : poStage.isFinishing ? "Catatan Finishing / QC:" : poStage.isCmt ? "Catatan SPK Jahit:" : "Catatan Pengiriman:"}
+                                </strong>
+                                "{po.catatan}"
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* ── SPESIFIKASI KHUSUS PREVIEW PILLS ── */}
+                      {(() => {
+                        const poStage = getJobStage(po);
+                        if (poStage.isWashing) {
+                          return (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, fontSize: 11 }}>
+                              <span style={{ background: "#1E3A8A", color: "#93C5FD", padding: "3px 8px", borderRadius: 6, border: "1px solid #3B82F6", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <Droplets size={11} color="#60A5FA" /> <strong>Pos:</strong> Washing / Laundry
+                              </span>
+                              {po.nama_kain && po.nama_kain !== "-" && (
+                                <span style={{ background: "#0F172A", color: "#38BDF8", padding: "3px 8px", borderRadius: 6, border: "1px solid #0284C7", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Layers size={11} color="#38BDF8" /> <strong>Kain:</strong> {po.nama_kain}
+                                </span>
+                              )}
+                              {po.asal_vendor && (
+                                <span style={{ background: "#0F172A", color: "#CBD5E1", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Truck size={11} color="#94A3B8" /> <strong>Dari:</strong> {po.asal_vendor}
+                                </span>
+                              )}
+                              {po.catatan && po.catatan !== "ACC Request" && (
+                                <span style={{ background: "#451A03", color: "#FCD34D", padding: "3px 8px", borderRadius: 6, border: "1px solid #B45309", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <ClipboardList size={11} /> <strong>Instruksi Khusus</strong>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (poStage.isBersihBenang) {
+                          return (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, fontSize: 11 }}>
+                              <span style={{ background: "#581C87", color: "#E9D5FF", padding: "3px 8px", borderRadius: 6, border: "1px solid #9333EA", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <Scissors size={11} color="#C084FC" /> <strong>Pos:</strong> Bersih Benang
+                              </span>
+                              {po.nama_kain && po.nama_kain !== "-" && (
+                                <span style={{ background: "#0F172A", color: "#38BDF8", padding: "3px 8px", borderRadius: 6, border: "1px solid #0284C7", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Layers size={11} color="#38BDF8" /> <strong>Kain:</strong> {po.nama_kain}
+                                </span>
+                              )}
+                              {po.asal_vendor && (
+                                <span style={{ background: "#0F172A", color: "#CBD5E1", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Truck size={11} color="#94A3B8" /> <strong>Dari:</strong> {po.asal_vendor}
+                                </span>
+                              )}
+                              {po.catatan && po.catatan !== "ACC Request" && (
+                                <span style={{ background: "#451A03", color: "#FCD34D", padding: "3px 8px", borderRadius: 6, border: "1px solid #B45309", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <ClipboardList size={11} /> <strong>Instruksi Khusus</strong>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (poStage.isFinishing) {
+                          return (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, fontSize: 11 }}>
+                              <span style={{ background: "#064E3B", color: "#A7F3D0", padding: "3px 8px", borderRadius: 6, border: "1px solid #059669", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <CheckCircle2 size={11} color="#34D399" /> <strong>Pos:</strong> Finishing & Packing
+                              </span>
+                              {po.nama_kain && po.nama_kain !== "-" && (
+                                <span style={{ background: "#0F172A", color: "#38BDF8", padding: "3px 8px", borderRadius: 6, border: "1px solid #0284C7", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Layers size={11} color="#38BDF8" /> <strong>Kain:</strong> {po.nama_kain}
+                                </span>
+                              )}
+                              {po.asal_vendor && (
+                                <span style={{ background: "#0F172A", color: "#CBD5E1", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Truck size={11} color="#94A3B8" /> <strong>Dari:</strong> {po.asal_vendor}
+                                </span>
+                              )}
+                              {po.catatan && po.catatan !== "ACC Request" && (
+                                <span style={{ background: "#451A03", color: "#FCD34D", padding: "3px 8px", borderRadius: 6, border: "1px solid #B45309", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <ClipboardList size={11} /> <strong>Instruksi Khusus</strong>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (poStage.isSablonBordir) {
+                          return (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, fontSize: 11 }}>
+                              <span style={{ background: "#831843", color: "#FCE7F3", padding: "3px 8px", borderRadius: 6, border: "1px solid #DB2777", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <Zap size={11} color="#F472B6" /> <strong>Pos:</strong> Sablon / Bordir
+                              </span>
+                              {po.nama_kain && po.nama_kain !== "-" && (
+                                <span style={{ background: "#0F172A", color: "#38BDF8", padding: "3px 8px", borderRadius: 6, border: "1px solid #0284C7", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Layers size={11} color="#38BDF8" /> <strong>Kain:</strong> {po.nama_kain}
+                                </span>
+                              )}
+                              {po.asal_vendor && (
+                                <span style={{ background: "#0F172A", color: "#CBD5E1", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Truck size={11} color="#94A3B8" /> <strong>Dari:</strong> {po.asal_vendor}
+                                </span>
+                              )}
+                              {po.catatan && po.catatan !== "ACC Request" && (
+                                <span style={{ background: "#451A03", color: "#FCD34D", padding: "3px 8px", borderRadius: 6, border: "1px solid #B45309", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <ClipboardList size={11} /> <strong>Instruksi Khusus</strong>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                          /* ── SPESIFIKASI JAHITAN & AKSESORIS PREVIEW PILLS (CMT) ── */
+                          (po.jenis_jahitan || po.tipe_benang || po.tipe_resleting || (po.item_pendukung_used && po.item_pendukung_used.length > 0)) ? (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, fontSize: 11 }}>
+                              {po.jenis_jahitan && (
+                                <span style={{ background: "#0F172A", color: "#CBD5E1", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <Scissors size={11} color="#818CF8" /> <strong>Jahit:</strong> {po.jenis_jahitan}
+                                </span>
+                              )}
+                              {po.tipe_benang && (
+                                <span style={{ background: "#0F172A", color: "#FCD34D", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155" }}>
+                                  <strong>Benang:</strong> {po.tipe_benang}
+                                </span>
+                              )}
+                              {po.tipe_resleting && (
+                                <span style={{ background: "#0F172A", color: "#38BDF8", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155" }}>
+                                  <strong>Resleting:</strong> {po.tipe_resleting}
+                                </span>
+                              )}
+                              {po.item_pendukung_used && po.item_pendukung_used.length > 0 && (
+                                <span style={{ background: "#0F172A", color: "#A7F3D0", padding: "3px 8px", borderRadius: 6, border: "1px solid #334155" }}>
+                                  <strong>Aksesoris:</strong> {po.item_pendukung_used.map((it: any) => it.nama_barang || it.nama).filter(Boolean).join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          ) : null
+                        );
+                      })()}
 
                       {/* ── ACTION BUTTONS TOOLBAR ── */}
                       <div
@@ -1650,7 +2089,7 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
 
                         {/* Primary actions */}
                         <div className="vendor-primary-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          {!isDikerjakan ? (
+                          {hasReported ? null : !isDikerjakan ? (
                             <button
                               type="button"
                               className="mobile-touch-btn"
@@ -1697,6 +2136,25 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                             </button>
                           )}
 
+                          {isWaitingAcc ? (
+                            <div
+                              style={{
+                                background: "#2E1065",
+                                color: "#D8B4FE",
+                                border: "1px solid #7C3AED",
+                                padding: "9px 16px",
+                                borderRadius: 8,
+                                fontWeight: 800,
+                                fontSize: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                minHeight: 40
+                              }}
+                            >
+                              <Clock size={14} /> Menunggu ACC Admin
+                            </div>
+                          ) : (
                           <button
                             type="button"
                             className="mobile-touch-btn"
@@ -1743,10 +2201,11 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                               </>
                             ) : (
                               <>
-                                <TrendingUp size={14} /> Lapor Progres Selesai
+                                <TrendingUp size={14} /> {hasReported ? "Lapor Progres Berikutnya" : "Lapor Progres Selesai"}
                               </>
                             )}
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1940,176 +2399,521 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            TAB 3: SLIP & RIWAYAT GAJI
+            TAB 3: SLIP & RIWAYAT GAJI (REALTIME)
            ══════════════════════════════════════════════════════════════ */}
         {activeTab === "gaji" && (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* 1. Ringkasan Realtime (4 KPI Cards) */}
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 10,
-                marginBottom: 14
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12
               }}
             >
-              <div style={{ display: "flex", gap: 5 }}>
-                {["Semua", "Lunas", "Belum Lunas"].map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    className="mobile-touch-btn"
-                    onClick={() => setGajiFilter(f)}
+              {/* Card 1: Total Hak Upah Dihasilkan */}
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+                  borderRadius: 14,
+                  padding: "16px 18px",
+                  border: "1px solid #334155",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8" }}>TOTAL HAK UPAH</span>
+                  <div
                     style={{
-                      padding: "5px 10px",
-                      borderRadius: 6,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      background: gajiFilter === f ? "#3B82F6" : "#1E293B",
-                      color: gajiFilter === f ? "white" : "#94A3B8",
-                      border: "1px solid #334155"
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: "#064E3B",
+                      color: "#34D399",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
                     }}
                   >
-                    {f}
-                  </button>
-                ))}
+                    <TrendingUp size={15} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
+                  {formatRupiah(ringkasanGaji?.totalHakGaji ?? totalTertunggak)}
+                </div>
+                <div style={{ fontSize: 10, color: "#34D399", fontWeight: 700, marginTop: 4 }}>
+                  {(ringkasanGaji?.totalPcsSelesai ?? totalSelesaiPcs).toLocaleString("id-ID")} pcs selesai diverifikasi
+                </div>
               </div>
 
-              <div style={{ fontSize: 11, color: "#94A3B8" }}>
-                Tertunggak:{" "}
-                <strong style={{ color: totalTertunggak > 0 ? "#FCD34D" : "#10B981" }}>
+              {/* Card 2: Sudah Dicairkan */}
+              <div
+                style={{
+                  background: "#1E293B",
+                  borderRadius: 14,
+                  padding: "16px 18px",
+                  border: "1px solid #334155",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8" }}>SUDAH DICAIRKAN</span>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: "#1E3A8A",
+                      color: "#60A5FA",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <CheckCircle2 size={15} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#93C5FD", letterSpacing: "-0.02em" }}>
+                  {formatRupiah(ringkasanGaji?.totalSudahDibayar ?? 0)}
+                </div>
+                <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700, marginTop: 4 }}>
+                  Tercatat di pembukuan kasir
+                </div>
+              </div>
+
+              {/* Card 3: Sisa Upah Siap Cair / Tertunggak */}
+              <div
+                style={{
+                  background: totalTertunggak > 0 ? "linear-gradient(135deg, #1E293B 0%, #451A03 100%)" : "#1E293B",
+                  borderRadius: 14,
+                  padding: "16px 18px",
+                  border: totalTertunggak > 0 ? "1px solid #F59E0B" : "1px solid #334155",
+                  boxShadow: totalTertunggak > 0 ? "0 0 15px rgba(245, 158, 11, 0.15)" : "0 2px 8px rgba(0,0,0,0.15)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: totalTertunggak > 0 ? "#FCD34D" : "#94A3B8" }}>
+                    SISA HAK UPAH (BELUM CAIR)
+                  </span>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: totalTertunggak > 0 ? "#78350F" : "#064E3B",
+                      color: totalTertunggak > 0 ? "#FCD34D" : "#34D399",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <DollarSign size={15} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: totalTertunggak > 0 ? "#FDE68A" : "#34D399", letterSpacing: "-0.02em" }}>
                   {formatRupiah(totalTertunggak)}
-                </strong>
+                </div>
+                <div style={{ fontSize: 10, color: totalTertunggak > 0 ? "#FCD34D" : "#10B981", fontWeight: 700, marginTop: 4 }}>
+                  {totalTertunggak > 0 ? "Siap ditagihkan / dicairkan" : "Semua upah terselesaikan"}
+                </div>
+              </div>
+
+              {/* Card 4: Tarif Pengerjaan */}
+              <div
+                style={{
+                  background: "#1E293B",
+                  borderRadius: 14,
+                  padding: "16px 18px",
+                  border: "1px solid #334155",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8" }}>TARIF PENGERJAAN</span>
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: "#581C87",
+                      color: "#C084FC",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <Scissors size={15} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
+                  Rp {(vendor.hargaPerPcs || 5000).toLocaleString("id-ID")}<span style={{ fontSize: 12, fontWeight: 500, color: "#94A3B8" }}> / pcs</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#C084FC", fontWeight: 700, marginTop: 4 }}>
+                  {vendor.tarifPotongan && Object.keys(vendor.tarifPotongan).length > 0
+                    ? `${Object.keys(vendor.tarifPotongan).length} tarif model spesifik`
+                    : "Tarif standar per pcs"}
+                </div>
               </div>
             </div>
 
-            {(() => {
-              const filtered = gajiRecords.filter((g: any) => {
-                if (gajiFilter === "Semua") return true;
-                if (gajiFilter === "Lunas") return g.status === "Lunas";
-                if (gajiFilter === "Belum Lunas") return g.status !== "Lunas";
-                return true;
-              });
-
-              if (filtered.length === 0) {
-                return (
-                  <div
-                    style={{
-                      background: "#1E293B",
-                      borderRadius: 14,
-                      padding: 36,
-                      textAlign: "center",
-                      border: "1px solid #334155",
-                      color: "#64748B",
-                      fontSize: 12
-                    }}
-                  >
-                    Belum ada data penggajian.
+            {/* 2. Akumulasi Upah Realtime per SPK */}
+            {rincianGajiPerPo.length > 0 && (
+              <div
+                style={{
+                  background: "#1E293B",
+                  borderRadius: 14,
+                  padding: "18px 20px",
+                  border: "1px solid #334155"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <h3 style={{ fontSize: 14, fontWeight: 800, color: "white", margin: 0 }}>
+                        Akumulasi Upah Realtime per SPK
+                      </h3>
+                      <span
+                        style={{
+                          background: "#064E3B",
+                          color: "#34D399",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: "2px 8px",
+                          borderRadius: 9999,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                      >
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34D399" }} />
+                        Realtime Otomatis
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+                      Upah dihitung langsung dari jumlah pcs yang telah disetujui / diverifikasi admin konveksi
+                    </div>
                   </div>
-                );
-              }
+                </div>
 
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {filtered.map((g: any) => {
-                    const isLunas = g.status === "Lunas";
-                    const amt = Number(g.totalGaji || g.total || 0);
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {rincianGajiPerPo.map((po: any) => {
+                    const isLunas = po.statusBayar === "Lunas";
+                    const isSiapCair = po.statusBayar === "Siap Cair";
+                    const isBerjalan = po.statusBayar === "Akumulasi Berjalan" || po.statusBayar === "Sebagian Dibayar";
+                    const pctSelesai = po.targetPcs > 0 ? Math.min(100, Math.round((po.pcsSelesai / po.targetPcs) * 100)) : 0;
+
                     return (
                       <div
-                        key={g.id}
+                        key={po.poId || po.jobId}
                         style={{
-                          background: "#1E293B",
-                          borderRadius: 14,
+                          background: "#0F172A",
+                          borderRadius: 12,
                           padding: "14px 16px",
                           border: "1px solid #334155",
                           display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          flexWrap: "wrap",
+                          flexDirection: "column",
                           gap: 10
                         }}
                       >
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                        {/* Header PO */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontWeight: 800, color: "white", fontSize: 14 }}>
-                              {g.keterangan || `Gaji Produksi #${g.poId || g.id}`}
+                              SPK {po.noPo}
                             </span>
+                            <span style={{ color: "#94A3B8", fontSize: 12 }}>· {po.model}</span>
                             <span
                               style={{
-                                background: isLunas ? "#064E3B" : "#451A03",
-                                color: isLunas ? "#34D399" : "#FCD34D",
-                                padding: "1px 6px",
-                                borderRadius: 5,
+                                background: isLunas ? "#064E3B" : isSiapCair ? "#451A03" : isBerjalan ? "#1E3A8A" : "#334155",
+                                color: isLunas ? "#34D399" : isSiapCair ? "#FCD34D" : isBerjalan ? "#93C5FD" : "#94A3B8",
+                                padding: "2px 8px",
+                                borderRadius: 6,
                                 fontSize: 10,
                                 fontWeight: 800
                               }}
                             >
-                              {g.status || "Lunas"}
+                              {po.statusBayar}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3, display: "flex", gap: 6, alignItems: "center" }}>
-                            <span>
-                              {g.tanggal
-                                ? new Date(g.tanggal).toLocaleDateString("id-ID", {
-                                    day: "numeric",
-                                    month: "short"
-                                  })
-                                : "-"}
-                            </span>
-                            <span>·</span>
-                            <span>{g.metode || "Transfer"}</span>
-                            {g.jumlahPcs && <span>· {g.jumlahPcs} pcs</span>}
-                          </div>
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <div style={{ textAlign: "right" }}>
-                            <div
-                              style={{
-                                fontSize: 16,
-                                fontWeight: 900,
-                                color: isLunas ? "#10B981" : "#F59E0B"
-                              }}
-                            >
-                              {formatRupiah(amt)}
+                            <div style={{ fontSize: 15, fontWeight: 900, color: po.subtotalHak > 0 ? (isLunas ? "#34D399" : "#FDE68A") : "#94A3B8" }}>
+                              {formatRupiah(po.subtotalHak)}
                             </div>
-                            {g.sisaTagihan > 0 && (
-                              <div style={{ fontSize: 10, color: "#F87171", fontWeight: 700 }}>
-                                Sisa: {formatRupiah(g.sisaTagihan)}
+                            {po.sisaHak > 0 && po.dibayar > 0 && (
+                              <div style={{ fontSize: 10, color: "#FCD34D", fontWeight: 700 }}>
+                                Sisa belum cair: {formatRupiah(po.sisaHak)}
                               </div>
                             )}
                           </div>
-
-                          <button
-                            type="button"
-                            className="mobile-touch-btn"
-                            onClick={() => setPrintDocModal({ type: "gaji", item: g })}
-                            style={{
-                              background: "#0F172A",
-                              border: "1px solid #334155",
-                              color: "white",
-                              padding: "6px 10px",
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 4
-                            }}
-                          >
-                            <Printer size={12} /> Cetak
-                          </button>
                         </div>
+
+                        {/* Progress Pcs & Tarif */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, fontSize: 11, color: "#94A3B8" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span>Pcs Selesai ACC:</span>
+                            <strong style={{ color: "white" }}>
+                              {po.pcsSelesai.toLocaleString("id-ID")} / {po.targetPcs.toLocaleString("id-ID")} pcs ({pctSelesai}%)
+                            </strong>
+                            {po.pcsPending > 0 && (
+                              <span style={{ color: "#FCD34D", fontSize: 10 }}>
+                                (+{po.pcsPending} pcs menunggu ACC)
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span>Tarif:</span>
+                            <strong style={{ color: "#38BDF8" }}>
+                              Rp {po.tarifPerPcs.toLocaleString("id-ID")} / pcs
+                            </strong>
+                          </div>
+                        </div>
+
+                        {/* Action buttons if pcs selesai > 0 */}
+                        {po.pcsSelesai > 0 && (
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6, borderTop: "1px solid #1E293B" }}>
+                            <button
+                              type="button"
+                              className="mobile-touch-btn"
+                              onClick={() => {
+                                setPrintDocModal({
+                                  type: "gaji",
+                                  item: {
+                                    id: `rt-po-${po.poId}`,
+                                    poId: po.poId,
+                                    noPo: po.noPo,
+                                    model: po.model,
+                                    keterangan: `Upah SPK ${po.noPo} (${po.model})`,
+                                    jumlahPcs: po.pcsSelesai,
+                                    targetPcs: po.targetPcs,
+                                    tarifPerPcs: po.tarifPerPcs,
+                                    totalGaji: po.subtotalHak,
+                                    dibayar: po.dibayar,
+                                    sisaTagihan: po.sisaHak,
+                                    status: po.statusBayar,
+                                    metode: "Transfer Bank",
+                                    tanggal: po.tanggalSelesai || new Date().toISOString()
+                                  }
+                                });
+                              }}
+                              style={{
+                                background: "#1E293B",
+                                border: "1px solid #334155",
+                                color: "white",
+                                padding: "5px 12px",
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6
+                              }}
+                            >
+                              <Printer size={12} /> Cetak Slip SPK Ini
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-              );
-            })()}
+              </div>
+            )}
+
+            {/* 3. Riwayat Slip Pembayaran & Bukti Pencairan */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  marginBottom: 12
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: "white", margin: 0 }}>
+                    Riwayat Slip & Bukti Pembayaran
+                  </h3>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+                    Daftar slip pembayaran resmi dan slip upah pengerjaan
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 5 }}>
+                  {["Semua", "Siap Cair / Belum Lunas", "Lunas"].map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      className="mobile-touch-btn"
+                      onClick={() => setGajiFilter(f === "Siap Cair / Belum Lunas" ? "Belum Lunas" : f)}
+                      style={{
+                        padding: "5px 10px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        background:
+                          (f === "Siap Cair / Belum Lunas" && gajiFilter === "Belum Lunas") || gajiFilter === f
+                            ? "#3B82F6"
+                            : "#1E293B",
+                        color:
+                          (f === "Siap Cair / Belum Lunas" && gajiFilter === "Belum Lunas") || gajiFilter === f
+                            ? "white"
+                            : "#94A3B8",
+                        border: "1px solid #334155"
+                      }}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(() => {
+                const filtered = gajiRecords.filter((g: any) => {
+                  if (gajiFilter === "Semua") return true;
+                  if (gajiFilter === "Lunas") return g.status === "Lunas";
+                  if (gajiFilter === "Belum Lunas") return g.status !== "Lunas";
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div
+                      style={{
+                        background: "#1E293B",
+                        borderRadius: 14,
+                        padding: 36,
+                        textAlign: "center",
+                        border: "1px solid #334155",
+                        color: "#64748B",
+                        fontSize: 12
+                      }}
+                    >
+                      Belum ada slip pembayaran untuk filter ini.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {filtered.map((g: any) => {
+                      const isLunas = g.status === "Lunas";
+                      const amt = Number(g.totalGaji || g.total || 0);
+                      return (
+                        <div
+                          key={g.id}
+                          style={{
+                            background: "#1E293B",
+                            borderRadius: 14,
+                            padding: "14px 16px",
+                            border: "1px solid #334155",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: 10
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: 800, color: "white", fontSize: 14 }}>
+                                {g.keterangan || `Gaji Produksi #${g.poId || g.id}`}
+                              </span>
+                              <span
+                                style={{
+                                  background: isLunas ? "#064E3B" : "#451A03",
+                                  color: isLunas ? "#34D399" : "#FCD34D",
+                                  padding: "2px 7px",
+                                  borderRadius: 5,
+                                  fontSize: 10,
+                                  fontWeight: 800
+                                }}
+                              >
+                                {g.status || "Lunas"}
+                              </span>
+                              {g.isRealtime && (
+                                <span
+                                  style={{
+                                    background: "#1E3A8A",
+                                    color: "#93C5FD",
+                                    padding: "2px 6px",
+                                    borderRadius: 4,
+                                    fontSize: 9,
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  Akumulasi Live
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                              <span>
+                                {g.tanggal
+                                  ? new Date(g.tanggal).toLocaleDateString("id-ID", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric"
+                                    })
+                                  : "-"}
+                              </span>
+                              <span>·</span>
+                              <span>{g.metode || "Transfer"}</span>
+                              {g.jumlahPcs && <span>· {g.jumlahPcs.toLocaleString("id-ID")} pcs</span>}
+                              {g.tarifPerPcs && <span>· @Rp {g.tarifPerPcs.toLocaleString("id-ID")}</span>}
+                            </div>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ textAlign: "right" }}>
+                              <div
+                                style={{
+                                  fontSize: 16,
+                                  fontWeight: 900,
+                                  color: isLunas ? "#10B981" : "#F59E0B"
+                                }}
+                              >
+                                {formatRupiah(amt)}
+                              </div>
+                              {g.sisaTagihan > 0 && (
+                                <div style={{ fontSize: 10, color: "#F87171", fontWeight: 700 }}>
+                                  Sisa: {formatRupiah(g.sisaTagihan)}
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="mobile-touch-btn"
+                              onClick={() => setPrintDocModal({ type: "gaji", item: g })}
+                              style={{
+                                background: "#0F172A",
+                                border: "1px solid #334155",
+                                color: "white",
+                                padding: "6px 12px",
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4
+                              }}
+                            >
+                              <Printer size={12} /> Cetak
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
 
@@ -2330,6 +3134,392 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
             })()}
           </div>
         )}
+
+        {/* ══════════════════════════════════════════════════════════════
+            TAB: TAGIHAN REJECT
+           ══════════════════════════════════════════════════════════════ */}
+        {activeTab === "reject" && (
+          <div>
+            {/* Header info */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 10,
+                marginBottom: 16
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <AlertOctagon size={20} color="#EF4444" />
+                  <h2 style={{ fontSize: 17, fontWeight: 900, color: "white", margin: 0 }}>
+                    Klaim Ganti Rugi & Tagihan Reject
+                  </h2>
+                </div>
+                <p style={{ fontSize: 11.5, color: "#94A3B8", margin: "4px 0 0" }}>
+                  Catatan kerusakan / barang reject hasil verifikasi QC Gudang yang dibebankan kepada vendor beserta riwayat pelunasannya.
+                </p>
+              </div>
+
+              {/* Filter Buttons */}
+              <div style={{ display: "flex", gap: 5 }}>
+                {["Semua", "Belum Lunas", "Lunas"].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    className="mobile-touch-btn"
+                    onClick={() => setRejectFilter(f)}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      background: rejectFilter === f ? "#EF4444" : "#1E293B",
+                      color: rejectFilter === f ? "white" : "#94A3B8",
+                      border: "1px solid #334155"
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 4 KPI Summary Cards for Reject */}
+            {(() => {
+              const allNotes = data?.nota_reject || [];
+              const totalPcs = allNotes.reduce((s: number, n: any) => s + Number(n.jumlah_reject || 0), 0);
+              const totalKlaim = allNotes.reduce((s: number, n: any) => s + Number(n.total_klaim || 0), 0);
+              const lunasNotes = allNotes.filter((n: any) => n.status_klaim === "Lunas" || n.status_klaim === "Selesai");
+              const totalLunas = lunasNotes.reduce((s: number, n: any) => s + Number(n.nominal_dibayar || n.total_klaim || 0), 0);
+              const sisaTertunggak = Math.max(0, totalKlaim - totalLunas);
+
+              return (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 10,
+                    marginBottom: 18
+                  }}
+                >
+                  <div style={{ background: "#1E293B", padding: "12px 14px", borderRadius: 10, border: "1px solid #334155" }}>
+                    <div style={{ fontSize: 10.5, color: "#94A3B8", fontWeight: 700 }}>TOTAL REJECT (PCS)</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#F87171", marginTop: 4 }}>
+                      {totalPcs.toLocaleString("id-ID")} <span style={{ fontSize: 11, color: "#94A3B8" }}>pcs</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>{allNotes.length} nota diterbitkan</div>
+                  </div>
+
+                  <div style={{ background: "#1E293B", padding: "12px 14px", borderRadius: 10, border: "1px solid #334155" }}>
+                    <div style={{ fontSize: 10.5, color: "#94A3B8", fontWeight: 700 }}>TOTAL KLAIM GANTI RUGI</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginTop: 4 }}>
+                      {formatRupiah(totalKlaim)}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Nilai kerugian barang</div>
+                  </div>
+
+                  <div style={{ background: "#1E293B", padding: "12px 14px", borderRadius: 10, border: "1px solid #065F46" }}>
+                    <div style={{ fontSize: 10.5, color: "#34D399", fontWeight: 700 }}>SUDAH LUNAS / DIPOTONG</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#10B981", marginTop: 4 }}>
+                      {formatRupiah(totalLunas)}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#059669", marginTop: 2 }}>{lunasNotes.length} nota selesai / ada bukti</div>
+                  </div>
+
+                  <div style={{ background: sisaTertunggak > 0 ? "#450A0A" : "#1E293B", padding: "12px 14px", borderRadius: 10, border: `1px solid ${sisaTertunggak > 0 ? "#DC2626" : "#334155"}` }}>
+                    <div style={{ fontSize: 10.5, color: sisaTertunggak > 0 ? "#FCA5A5" : "#94A3B8", fontWeight: 700 }}>SISA BELUM DIBAYAR</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: sisaTertunggak > 0 ? "#EF4444" : "#10B981", marginTop: 4 }}>
+                      {formatRupiah(sisaTertunggak)}
+                    </div>
+                    <div style={{ fontSize: 10, color: sisaTertunggak > 0 ? "#FECACA" : "#64748B", marginTop: 2 }}>
+                      {sisaTertunggak > 0 ? "Perlu diselesaikan / potong gaji" : "Tidak ada tanggungan"}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* List of Reject Claims */}
+            {(() => {
+              const allNotes = data?.nota_reject || [];
+              const filtered = allNotes.filter((n: any) => {
+                const isLunas = n.status_klaim === "Lunas" || n.status_klaim === "Selesai";
+                if (rejectFilter === "Lunas") return isLunas;
+                if (rejectFilter === "Belum Lunas") return !isLunas;
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div
+                    style={{
+                      background: "#1E293B",
+                      borderRadius: 14,
+                      padding: "40px 20px",
+                      textAlign: "center",
+                      border: "1px solid #334155"
+                    }}
+                  >
+                    <CheckCircle2 size={36} color="#10B981" style={{ margin: "0 auto 10px" }} />
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>
+                      Tidak Ada Data Tagihan Reject
+                    </div>
+                    <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>
+                      {rejectFilter !== "Semua"
+                        ? `Tidak ada nota reject dengan status ${rejectFilter}.`
+                        : "Seluruh pengerjaan vendor bersih dan tidak ada beban klaim ganti rugi barang reject."}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {filtered.map((nota: any) => {
+                    const isLunas = nota.status_klaim === "Lunas" || nota.status_klaim === "Selesai";
+                    const formattedDate = nota.tanggal_klaim
+                      ? new Date(nota.tanggal_klaim).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric"
+                        })
+                      : "-";
+                    const settledDate = nota.tanggal_selesai
+                      ? new Date(nota.tanggal_selesai).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })
+                      : "-";
+
+                    return (
+                      <div
+                        key={nota.id || nota.no_nota}
+                        style={{
+                          background: "#1E293B",
+                          borderRadius: 14,
+                          padding: "16px 18px",
+                          border: `1px solid ${isLunas ? "#059669" : "#DC2626"}`,
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
+                        }}
+                      >
+                        {/* Header Row */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            flexWrap: "wrap",
+                            gap: 8,
+                            paddingBottom: 12,
+                            borderBottom: "1px solid #334155"
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 13, fontWeight: 900, color: "white", fontFamily: "monospace" }}>
+                                {nota.no_nota}
+                              </span>
+                              <span
+                                style={{
+                                  background: isLunas ? "#064E3B" : "#450A0A",
+                                  color: isLunas ? "#34D399" : "#FCA5A5",
+                                  border: `1px solid ${isLunas ? "#059669" : "#DC2626"}`,
+                                  padding: "2px 8px",
+                                  borderRadius: 6,
+                                  fontSize: 10,
+                                  fontWeight: 800
+                                }}
+                              >
+                                {isLunas ? "✓ LUNAS / SELESAI" : "BELUM DIBAYAR"}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>
+                              Tanggal Klaim: {formattedDate} • SPK: <strong style={{ color: "#38BDF8" }}>{nota.noPo || nota.no_spk || "-"}</strong> ({nota.model || "-"})
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700 }}>NILAI KLAIM</div>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: isLunas ? "#10B981" : "#EF4444" }}>
+                              {formatRupiah(nota.total_klaim || 0)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Rincian Reject & Alasan */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                            gap: 12,
+                            padding: "12px 0",
+                            borderBottom: "1px solid #334155",
+                            fontSize: 11.5
+                          }}
+                        >
+                          <div>
+                            <div style={{ color: "#94A3B8", fontSize: 10, fontWeight: 700 }}>POSISI KERUSAKAN</div>
+                            <div style={{ color: "white", fontWeight: 700, marginTop: 2 }}>
+                              {nota.pos_asal || "WASHING"} &rarr; {nota.pos_tujuan || "GUDANG"}
+                            </div>
+                            <div style={{ color: "#94A3B8", fontSize: 10, marginTop: 4 }}>
+                              Alasan: <strong style={{ color: "#FCD34D" }}>{nota.alasan_reject || "Barang kotor / cacat"}</strong>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ color: "#94A3B8", fontSize: 10, fontWeight: 700 }}>RINCIAN QTY REJECT</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                              <span style={{ color: "#EF4444", fontWeight: 900, fontSize: 13 }}>
+                                {nota.jumlah_reject} pcs
+                              </span>
+                              <span style={{ color: "#64748B", fontSize: 11 }}>
+                                (@ {formatRupiah(nota.biaya_per_pcs || 0)}/pcs)
+                              </span>
+                              {Array.isArray(nota.rincian_reject) && nota.rincian_reject.map((r: any, idx: number) => (
+                                <span
+                                  key={idx}
+                                  style={{
+                                    background: "#0F172A",
+                                    border: "1px solid #334155",
+                                    color: "#FCA5A5",
+                                    padding: "1px 6px",
+                                    borderRadius: 4,
+                                    fontSize: 10,
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  {r.size}: {r.reject || r.jumlah || 0} pcs
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RECORD PEMBAYARAN / PELUNASAN TERPERINCI (Bila Lunas) */}
+                        {isLunas && (
+                          <div
+                            style={{
+                              background: "rgba(16, 185, 129, 0.08)",
+                              border: "1px dashed #059669",
+                              borderRadius: 8,
+                              padding: "10px 14px",
+                              marginTop: 12,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 10
+                            }}
+                          >
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <CheckCircle2 size={13} color="#10B981" />
+                                <span style={{ fontSize: 11, fontWeight: 900, color: "#34D399" }}>
+                                  RECORD PEMBAYARAN TERSIMPAN • INV-LUNAS-{nota.no_nota}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 10.5, color: "#A7F3D0", marginTop: 3 }}>
+                                Metode: <strong>{nota.metode_pembayaran || "Ganti Rugi Tunai"}</strong> • Waktu: {settledDate}
+                              </div>
+                              {nota.catatan_penyelesaian && (
+                                <div style={{ fontSize: 10, color: "#6EE7B7", marginTop: 2, fontStyle: "italic" }}>
+                                  Catatan: &ldquo;{nota.catatan_penyelesaian}&rdquo;
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: 9.5, color: "#A7F3D0", fontWeight: 700 }}>NOMINAL DILUNASI</div>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: "#10B981" }}>
+                                {formatRupiah(nota.nominal_dibayar || nota.total_klaim || 0)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
+                            gap: 8,
+                            marginTop: 12,
+                            flexWrap: "wrap"
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="mobile-touch-btn"
+                            onClick={() => {
+                              const phone = (data?.vendor?.kontak || data?.vendor?.no_telepon || "").replace(/\D/g, "");
+                              const targetPhone = phone.startsWith("0") ? "62" + phone.slice(1) : phone;
+                              const msg = `*KONFIRMASI ${isLunas ? "INVOICE LUNAS" : "KLAIM"} REJECT VENDOR*\n\n` +
+                                `No. Nota: *${nota.no_nota}*\n` +
+                                `Status: *${isLunas ? "LUNAS / SELESAI" : "BELUM DIBAYAR"}*\n` +
+                                `SPK: ${nota.noPo || "-"}\n` +
+                                `Model: ${nota.model || "-"}\n` +
+                                `Total Reject: ${nota.jumlah_reject} pcs\n` +
+                                `Total Klaim: Rp ${Number(nota.total_klaim || 0).toLocaleString("id-ID")}\n` +
+                                (isLunas ? `Metode Bayar: ${nota.metode_pembayaran || "-"}\nNominal: Rp ${Number(nota.nominal_dibayar || nota.total_klaim || 0).toLocaleString("id-ID")}\nCatatan: ${nota.catatan_penyelesaian || "-"}\n` : "") +
+                                `\n_Tirta Bintang Jeans - QC & Gudang_`;
+                              window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+                            }}
+                            style={{
+                              background: "#065F46",
+                              color: "#34D399",
+                              border: "1px solid #059669",
+                              padding: "6px 12px",
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5
+                            }}
+                          >
+                            <MessageCircle size={12} /> WhatsApp
+                          </button>
+
+                          <button
+                            type="button"
+                            className="mobile-touch-btn"
+                            onClick={() => setSelectedNota(nota)}
+                            style={{
+                              background: isLunas ? "#10B981" : "#EF4444",
+                              color: "white",
+                              border: "none",
+                              padding: "6px 14px",
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5
+                            }}
+                          >
+                            <Printer size={12} />
+                            {isLunas ? "Cetak Invoice Lunas" : "Lihat / Cetak Nota Klaim"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </main>
 
       {/* ══════════════════════════════════════════════════════════════
@@ -2409,6 +3599,34 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                 </div>
               )}
 
+              {/* Live Admin presence warning */}
+              {(() => {
+                const sel = (data?.pemotonganReady || []).find((p: any) => String(p.id) === requestForm.pemotongan_id);
+                const adminActive = presenceList.find(p => p.role === "admin" && (
+                  (sel?.po_id != null && Number(p.po_id) === Number(sel.po_id)) ||
+                  (sel?.is_transfer && p.transfer_id != null && Number(p.transfer_id) === Number(sel.id))
+                ));
+                if (!adminActive) return null;
+                return (
+                  <div style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: "#FEF3C7",
+                    border: "1.5px solid #F59E0B",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 11.5,
+                    color: "#92400E"
+                  }}>
+                    <Zap size={14} color="#D97706" style={{ flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700 }}>
+                      ⚡ Admin sedang aktif membagikan stok PO ini di Alur Produksi. Permohonan Anda akan langsung terpantau di layar Admin secara realtime!
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* Step 1: Fabric Selection */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
@@ -2474,16 +3692,28 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                           >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <div>
-                                <div style={{ fontWeight: 800, color: "white", fontSize: 13 }}>{p.nama_barang}</div>
+                                <div style={{ fontWeight: 800, color: "white", fontSize: 13 }}>
+                                  {p.nama_barang}
+                                  {p.dari_vendor ? <span style={{ fontSize: 11, color: "#38BDF8", fontWeight: 700, marginLeft: 6 }}>({p.dari_tahap ? `${p.dari_tahap} ` : ''}{p.dari_vendor})</span> : null}
+                                </div>
                                 <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>
                                   Model: <strong style={{ color: "white" }}>{p.model}</strong> · {new Date(p.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                                 </div>
+                                {p.pending_requests && p.pending_requests.length > 0 && (
+                                  <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                    {p.pending_requests.map((pr: any, idx: number) => (
+                                      <span key={idx} style={{ fontSize: 9.5, padding: "1px 6px", borderRadius: 4, background: pr.is_mine ? "#1E3A8A" : "#334155", color: pr.is_mine ? "#93C5FD" : "#CBD5E1" }}>
+                                        {pr.is_mine ? `Permohonan Anda: ${pr.total_request} pcs` : `${pr.vendor_nama}: ${pr.total_request} pcs`}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               <div style={{ textAlign: "right" }}>
                                 <div style={{ fontSize: 16, fontWeight: 900, color: isSelected ? "#38BDF8" : "#10B981" }}>
                                   {p.sisa_total.toLocaleString("id-ID")}
                                 </div>
-                                <div style={{ fontSize: 9, color: "#64748B", fontWeight: 700 }}>sisa pcs</div>
+                                <div style={{ fontSize: 9, color: "#64748B", fontWeight: 700 }}>bebas pcs</div>
                               </div>
                             </div>
                           </div>
@@ -2926,12 +4156,16 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
               background: "#1E293B",
               borderRadius: 16,
               width: "100%",
-              maxWidth: 500,
-              overflow: "hidden",
+              maxWidth: 580,
+              maxHeight: "90vh",
+              overflowY: "auto",
               border: "1px solid #334155",
-              boxShadow: "0 25px 50px rgba(0,0,0,0.5)"
+              boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column"
             }}
           >
+            {/* Modal Header */}
             <div
               style={{
                 padding: "14px 18px",
@@ -2939,13 +4173,21 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                background: "#0F172A"
+                background: "#0F172A",
+                position: "sticky",
+                top: 0,
+                zIndex: 10
               }}
             >
               <div>
-                <h3 style={{ margin: 0, color: "white", fontSize: 16, fontWeight: 900 }}>Rincian Dokumen SPK</h3>
-                <div style={{ fontSize: 11, color: "#38BDF8", marginTop: 2, fontFamily: "monospace" }}>
-                  {detailPoModal.no_po || detailPoModal.noPo}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <h3 style={{ margin: 0, color: "white", fontSize: 16, fontWeight: 900 }}>Rincian Dokumen SPK</h3>
+                  <span style={{ fontSize: 11, background: "#0284C7", color: "white", padding: "2px 8px", borderRadius: 4, fontWeight: 800, fontFamily: "monospace" }}>
+                    {detailPoModal.no_po || detailPoModal.noPo}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+                  Petunjuk teknis perakitan jahitan, bahan baku & aksesoris CMT
                 </div>
               </div>
               <button
@@ -2958,62 +4200,334 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
               </button>
             </div>
 
-            <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Modal Body */}
+            <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+              
+              {/* 1. INFORMASI UTAMA & BAHAN (4-grid) */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div style={{ background: "#0F172A", padding: 8, borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>MODEL</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "white", marginTop: 1 }}>{detailPoModal.model}</div>
+                <div style={{ background: "#0F172A", padding: "8px 10px", borderRadius: 8, border: "1px solid #1E293B" }}>
+                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>MODEL PAKAIAN</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "white", marginTop: 2 }}>{detailPoModal.model}</div>
                 </div>
-                <div style={{ background: "#0F172A", padding: 8, borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>TOTAL TARGET</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#10B981", marginTop: 1 }}>
+                <div style={{ background: "#0F172A", padding: "8px 10px", borderRadius: 8, border: "1px solid #1E293B" }}>
+                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>KAIN / BAHAN BAKU</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: "#38BDF8", marginTop: 2 }}>
+                    {detailPoModal.nama_kain || detailPoModal.nama_barang || "-"}
+                  </div>
+                </div>
+                <div style={{ background: "#0F172A", padding: "8px 10px", borderRadius: 8, border: "1px solid #1E293B" }}>
+                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>TOTAL TARGET PO</div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "#10B981", marginTop: 2 }}>
                     {(detailPoModal.jumlah_terbit || detailPoModal.jumlahTerbit || 0).toLocaleString("id-ID")} pcs
                   </div>
                 </div>
-                <div style={{ background: "#0F172A", padding: 8, borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>TANGGAL TERBIT</div>
-                  <div style={{ fontSize: 11, color: "white", marginTop: 1 }}>
-                    {detailPoModal.tanggalTerbit
-                      ? new Date(detailPoModal.tanggalTerbit).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
-                      : "-"}
-                  </div>
-                </div>
-                <div style={{ background: "#0F172A", padding: 8, borderRadius: 8 }}>
+                <div style={{ background: "#0F172A", padding: "8px 10px", borderRadius: 8, border: "1px solid #1E293B" }}>
                   <div style={{ fontSize: 10, color: "#64748B", fontWeight: 700 }}>TARGET SELESAI</div>
                   <div
                     style={{
-                      fontSize: 11,
-                      fontWeight: 700,
+                      fontSize: 12,
+                      fontWeight: 800,
                       color: detailPoModal.isOverdue ? "#EF4444" : "white",
-                      marginTop: 1
+                      marginTop: 2
                     }}
                   >
                     {detailPoModal.targetSelesai
-                      ? new Date(detailPoModal.targetSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                      ? new Date(detailPoModal.targetSelesai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
                       : "Antrean"}
+                    {detailPoModal.isOverdue && (
+                      <span style={{ fontSize: 10, background: "#7F1D1D", color: "#FCA5A5", padding: "1px 5px", borderRadius: 4, marginLeft: 6 }}>
+                        +{detailPoModal.overdueDays} hr
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {detailPoModal.catatan && (
-                <div style={{ background: "#0F172A", padding: 8, borderRadius: 8, fontSize: 11, color: "#CBD5E1" }}>
-                  <div style={{ fontSize: 9, color: "#64748B", fontWeight: 800, marginBottom: 2 }}>CATATAN:</div>
-                  "{detailPoModal.catatan}"
-                </div>
+              {/* 2. SPESIFIKASI & INSTRUKSI PENUGASAN (POS LANJUTAN VS CMT) */}
+              {!getJobStage(detailPoModal).isCmt ? (
+                (() => {
+                  const modalStage = getJobStage(detailPoModal);
+                  const stageInfo = modalStage.isWashing ? {
+                  title: "Instruksi & Penugasan Pos Washing",
+                  badge: "Tahap Laundry / Washing",
+                  color: "#60A5FA",
+                  border: "#1D4ED8",
+                  bgBadge: "#1E3A8A",
+                  textBadge: "#BFDBFE",
+                  Icon: Droplets,
+                  standards: [
+                    `Lakukan proses washing/cuci sesuai karakter kain ${detailPoModal.nama_kain || "denim"}.`,
+                    "Periksa kondisi fisik celana sebelum & sesudah pengerjaan agar bebas dari cacat luntur/sobek.",
+                    "Laporkan hasil pengerjaan secara bertahap via tombol 'Lapor Progres Selesai'."
+                  ]
+                } : modalStage.isBersihBenang ? {
+                  title: "Instruksi & Penugasan Pos Bersih Benang",
+                  badge: "Tahap Bersih Benang / Trimming",
+                  color: "#C084FC",
+                  border: "#7E22CE",
+                  bgBadge: "#581C87",
+                  textBadge: "#F3E8FF",
+                  Icon: Scissors,
+                  standards: [
+                    "Potong dan bersihkan seluruh sisa serat benang jahit/obras pada bagian luar & dalam celana.",
+                    "Pasang kancing, rivet, atau label kelengkapan yang ditentukan jika ada.",
+                    "Periksa celana dari jahitan yang terlepas atau bolong sebelum diserahkan ke pos berikutnya."
+                  ]
+                } : modalStage.isFinishing ? {
+                  title: "Instruksi & Penugasan Pos Finishing & QC",
+                  badge: "Tahap Finishing / Packing",
+                  color: "#34D399",
+                  border: "#059669",
+                  bgBadge: "#064E3B",
+                  textBadge: "#D1FAE5",
+                  Icon: CheckCircle2,
+                  standards: [
+                    "Lakukan Quality Control (QC) akhir: kelancaran resleting, kekuatan kancing, dan ukuran size celana.",
+                    "Lakukan proses setrika uap / gosok hingga rapi.",
+                    "Pasang hangtag, price tag, dan lipat rapi ke dalam polybag sesuai standar toko."
+                  ]
+                } : modalStage.isSablonBordir ? {
+                  title: "Instruksi & Penugasan Pos Sablon / Bordir",
+                  badge: "Tahap Sablon & Bordir",
+                  color: "#F472B6",
+                  border: "#BE185D",
+                  bgBadge: "#831843",
+                  textBadge: "#FCE7F3",
+                  Icon: Zap,
+                  standards: [
+                    "Cetak sablon / bordir presisi sesuai dengan posisi cetak pada model pola.",
+                    "Pastikan kerapian benang bordir dan ketahanan tinta sablon sebelum dikirim kembali.",
+                    "Laporkan hasil pengerjaan yang lolos QC."
+                  ]
+                } : {
+                  title: `Instruksi & Penugasan Pos ${vendor.tipe?.toUpperCase() || "Vendor Lanjutan"}`,
+                  badge: `Tahap ${vendor.tipe?.toUpperCase() || "Lanjutan"}`,
+                  color: "#60A5FA",
+                  border: "#1D4ED8",
+                  bgBadge: "#1E3A8A",
+                  textBadge: "#BFDBFE",
+                  Icon: Package,
+                  standards: [
+                    `Kerjakan pesanan sesuai spesifikasi produk ${detailPoModal?.model || ""}.`,
+                    "Periksa kondisi barang dan laporkan hasil pengerjaan secara berkala via portal."
+                  ]
+                };
+
+                  const StageIcon = stageInfo.Icon;
+
+                  return (
+                    <>
+                      <div style={{ background: "#0F172A", borderRadius: 10, padding: "12px 14px", border: `1px solid ${stageInfo.border}` }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, borderBottom: "1px solid #1E293B", paddingBottom: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <StageIcon size={15} color={stageInfo.color} />
+                            <span style={{ fontSize: 11, fontWeight: 800, color: stageInfo.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                              {stageInfo.title}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 10, background: stageInfo.bgBadge, color: stageInfo.textBadge, padding: "2px 8px", borderRadius: 6, fontWeight: 800 }}>
+                            {stageInfo.badge}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11.5 }}>
+                          {/* Catatan Instruksi Khusus */}
+                          {detailPoModal.catatan ? (
+                            <div style={{ background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.4)", borderRadius: 8, padding: "10px 12px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: "#FBBF24", marginBottom: 3, display: "flex", alignItems: "center", gap: 5 }}>
+                                <ClipboardList size={13} /> Catatan Pengiriman & Instruksi Khusus:
+                              </div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#FEF3C7", lineHeight: 1.5 }}>
+                                "{detailPoModal.catatan}"
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ background: "#1E293B", padding: "8px 10px", borderRadius: 6, color: "#94A3B8" }}>
+                              Tidak ada catatan khusus tambahan untuk pengiriman ini.
+                            </div>
+                          )}
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div style={{ background: "#1E293B", padding: "8px 10px", borderRadius: 6 }}>
+                              <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700 }}>BAHAN / KAIN DENIM</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: "#38BDF8", marginTop: 2 }}>{detailPoModal.nama_kain || "-"}</div>
+                            </div>
+                            <div style={{ background: "#1E293B", padding: "8px 10px", borderRadius: 6 }}>
+                              <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700 }}>ASAL PENGIRIMAN</div>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: "white", marginTop: 2 }}>{detailPoModal.asal_vendor || "CMT Jahit"}</div>
+                            </div>
+                          </div>
+
+                          <div style={{ background: "#1E293B", borderRadius: 6, padding: "8px 10px" }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: "#A5B4FC", marginBottom: 4 }}>STANDAR PENGERJAAN:</div>
+                            <ul style={{ margin: 0, paddingLeft: 16, color: "#CBD5E1", fontSize: 11, lineHeight: 1.5 }}>
+                              {stageInfo.standards.map((std: string, idx: number) => (
+                                <li key={idx}>{std}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. REFERENSI JAHITAN CMT (COLLAPSIBLE UNTUK POS LANJUTAN) */}
+                      <div style={{ background: "#0F172A", borderRadius: 10, border: "1px solid #334155", overflow: "hidden" }}>
+                        <div
+                          onClick={() => setShowCmtRef(!showCmtRef)}
+                          style={{
+                            padding: "10px 14px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            cursor: "pointer",
+                            background: "#1E293B"
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <Scissors size={13} color="#94A3B8" />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#CBD5E1" }}>
+                              Referensi Hasil Jahitan CMT (Sebelum Masuk Pos Ini)
+                            </span>
+                            <span style={{ fontSize: 9.5, background: "#0F172A", color: "#94A3B8", padding: "1px 6px", borderRadius: 4 }}>
+                              Sudah Dijahit
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 11, color: "#94A3B8", display: "flex", alignItems: "center", gap: 4 }}>
+                            {showCmtRef ? "Tutup" : "Lihat"} {showCmtRef ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </span>
+                        </div>
+
+                        {showCmtRef && (
+                          <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6, fontSize: 11, borderTop: "1px solid #334155" }}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <span style={{ color: "#94A3B8", minWidth: 90 }}>Jenis Jahitan:</span>
+                              <span style={{ color: "white" }}>{detailPoModal.jenis_jahitan || "-"}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <span style={{ color: "#94A3B8", minWidth: 90 }}>Tipe Benang:</span>
+                              <span style={{ color: "#FCD34D" }}>{detailPoModal.tipe_benang || "-"}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <span style={{ color: "#94A3B8", minWidth: 90 }}>Tipe Resleting:</span>
+                              <span style={{ color: "#38BDF8" }}>{detailPoModal.tipe_resleting || "-"}</span>
+                            </div>
+                            {detailPoModal.item_pendukung_used && detailPoModal.item_pendukung_used.length > 0 && (
+                              <div style={{ marginTop: 4, paddingTop: 6, borderTop: "1px dashed #334155" }}>
+                                <span style={{ color: "#94A3B8", display: "block", marginBottom: 4 }}>Aksesoris Terpasang:</span>
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                  {detailPoModal.item_pendukung_used.map((it: any, idx: number) => (
+                                    <span key={idx} style={{ background: "#1E293B", color: "#34D399", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>
+                                      {it.nama_item || it.nama} ({it.qty} {it.satuan})
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()
+              ) : (
+                <>
+                  {/* SPESIFIKASI TEKNIS JAHITAN (CMT) */}
+                  <div style={{ background: "#0F172A", borderRadius: 10, padding: "12px 14px", border: "1px solid #334155" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, borderBottom: "1px solid #1E293B", paddingBottom: 6 }}>
+                      <Scissors size={14} color="#818CF8" />
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#A5B4FC", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Spesifikasi Jahitan (Standar CMT)
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 11.5 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                        <span style={{ color: "#94A3B8", minWidth: 100, fontWeight: 700 }}>Jenis Jahitan:</span>
+                        <span style={{ color: "white", fontWeight: 700 }}>
+                          {detailPoModal.jenis_jahitan || "Rantai (Chainstitch), Obras 5 Benang, Make-up Jeans, Double Stitch, Bartack"}
+                        </span>
+                      </div>
+                      
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                        <span style={{ color: "#94A3B8", minWidth: 100, fontWeight: 700 }}>Tipe Benang:</span>
+                        <span style={{ color: "#FCD34D", fontWeight: 700 }}>
+                          {detailPoModal.tipe_benang || "Benang Astra Jeans 20/2 (Gold / Kuning Emas)"}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                        <span style={{ color: "#94A3B8", minWidth: 100, fontWeight: 700 }}>Tipe Resleting:</span>
+                        <span style={{ color: "#38BDF8", fontWeight: 700 }}>
+                          {detailPoModal.tipe_resleting || "Resleting YKK Metal Brass No. 5 (Gigi Kuningan 5\")"}
+                        </span>
+                      </div>
+
+                      {(detailPoModal.catatan_jahitan || detailPoModal.catatan) && (
+                        <div style={{ marginTop: 4, background: "#1E293B", padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", color: "#E2E8F0" }}>
+                          <span style={{ color: "#F59E0B", fontWeight: 800, marginRight: 4 }}>Instruksi Khusus:</span>
+                          "{detailPoModal.catatan || detailPoModal.catatan_jahitan}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* BAHAN PENDUKUNG & AKSESORIS */}
+                  <div style={{ background: "#0F172A", borderRadius: 10, padding: "12px 14px", border: "1px solid #334155" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, borderBottom: "1px solid #1E293B", paddingBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Package size={14} color="#10B981" />
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#6EE7B7", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                          Bahan Pendukung & Aksesoris Diserahkan
+                        </span>
+                      </div>
+                      {detailPoModal.item_pendukung_used && detailPoModal.item_pendukung_used.length > 0 && (
+                        <span style={{ fontSize: 10, background: "#064E3B", color: "#34D399", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
+                          {detailPoModal.item_pendukung_used.length} item
+                        </span>
+                      )}
+                    </div>
+
+                    {detailPoModal.item_pendukung_used && detailPoModal.item_pendukung_used.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {detailPoModal.item_pendukung_used.map((item: any, idx: number) => (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1E293B", padding: "6px 10px", borderRadius: 6, border: "1px solid #334155" }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: "white" }}>
+                                {item.nama_item || item.nama}
+                              </div>
+                              {item.kategori && (
+                                <div style={{ fontSize: 9.5, color: "#94A3B8" }}>
+                                  Kategori: {item.kategori}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ background: "#0F172A", padding: "3px 8px", borderRadius: 5, border: "1px solid #334155", color: "#34D399", fontWeight: 800, fontSize: 11 }}>
+                              {item.qty} {item.satuan}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#64748B", fontStyle: "italic", padding: "4px 0" }}>
+                        Tidak ada bahan pendukung khusus tambahan (menggunakan perlengkapan standar).
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
 
+              {/* 4. DISTRIBUSI SIZE */}
               <div>
                 <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 800, marginBottom: 5, textTransform: "uppercase" }}>
-                  Distribusi Size:
+                  Distribusi Size & Rincian Target:
                 </div>
                 <div style={{ background: "#0F172A", borderRadius: 8, border: "1px solid #334155", overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 11 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #334155", color: "#64748B" }}>
-                        <th style={{ padding: "5px 10px" }}>SIZE</th>
-                        <th style={{ padding: "5px 10px" }}>TARGET</th>
-                        <th style={{ padding: "5px 10px" }}>ACC</th>
-                        <th style={{ padding: "5px 10px" }}>SISA</th>
+                        <th style={{ padding: "6px 10px" }}>SIZE</th>
+                        <th style={{ padding: "6px 10px" }}>TARGET</th>
+                        <th style={{ padding: "6px 10px" }}>ACC</th>
+                        <th style={{ padding: "6px 10px" }}>SISA</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3022,10 +4536,10 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                         const tgt = Number(s.jumlah || s.sisa || 0);
                         return (
                           <tr key={s.size} style={{ borderBottom: "1px solid #1E293B" }}>
-                            <td style={{ padding: "5px 10px", fontWeight: 800, color: "white" }}>{s.size}</td>
-                            <td style={{ padding: "5px 10px", color: "#94A3B8" }}>{tgt} pcs</td>
-                            <td style={{ padding: "5px 10px", color: "#10B981", fontWeight: 700 }}>{done} pcs</td>
-                            <td style={{ padding: "5px 10px", color: Math.max(0, tgt - done) > 0 ? "#F59E0B" : "#10B981" }}>
+                            <td style={{ padding: "6px 10px", fontWeight: 800, color: "white" }}>{s.size}</td>
+                            <td style={{ padding: "6px 10px", color: "#94A3B8" }}>{tgt} pcs</td>
+                            <td style={{ padding: "6px 10px", color: "#10B981", fontWeight: 700 }}>{done} pcs</td>
+                            <td style={{ padding: "6px 10px", color: Math.max(0, tgt - done) > 0 ? "#F59E0B" : "#10B981", fontWeight: 700 }}>
                               {Math.max(0, tgt - done)} pcs
                             </td>
                           </tr>
@@ -3036,24 +4550,47 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="mobile-touch-btn"
-                onClick={() => setDetailPoModal(null)}
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  background: "#334155",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 8,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  minHeight: 38
-                }}
-              >
-                Tutup
-              </button>
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <a
+                  href={`/cetak-po/${detailPoModal.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    flex: 1,
+                    padding: "9px 12px",
+                    background: "#0284C7",
+                    color: "white",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    fontSize: 12,
+                    textDecoration: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6
+                  }}
+                >
+                  <Printer size={13} /> Cetak / Buka Dokumen SPK Resmi ↗
+                </a>
+                <button
+                  type="button"
+                  className="mobile-touch-btn"
+                  onClick={() => setDetailPoModal(null)}
+                  style={{
+                    padding: "9px 18px",
+                    background: "#334155",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 8,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    minHeight: 38
+                  }}
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3108,11 +4645,13 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
 
             <div style={{ padding: "16px 18px", overflowY: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", gap: 8 }}>
               {(() => {
-                const cmtReports = (data.cmt_progres || []).filter(
-                  (p: any) =>
-                    p.po_id === poReportsModal.id ||
-                    p.transfer_id === poReportsModal.id ||
-                    (p.noPo && p.noPo === (poReportsModal.no_po || poReportsModal.noPo))
+                const cmtReports = (data.cmt_progres || []).filter((p: any) =>
+                  poReportsModal.is_transfer
+                    ? String(p.transfer_id) === String(poReportsModal.id)
+                    : !p.transfer_id && (
+                        String(p.po_id) === String(poReportsModal.id) ||
+                        (p.noPo && p.noPo === (poReportsModal.no_po || poReportsModal.noPo))
+                      )
                 );
 
                 if (cmtReports.length === 0) {
@@ -3287,8 +4826,32 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span>Keterangan:</span>
-                      <span>{printDocModal.item.keterangan || `Gaji PO #${printDocModal.item.poId || printDocModal.item.id}`}</span>
+                      <strong>{printDocModal.item.keterangan || `Gaji SPK #${printDocModal.item.poId || printDocModal.item.id}`}</strong>
                     </div>
+                    {printDocModal.item.noPo && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Nomor SPK:</span>
+                        <strong>{printDocModal.item.noPo}</strong>
+                      </div>
+                    )}
+                    {printDocModal.item.model && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Model:</span>
+                        <span>{printDocModal.item.model}</span>
+                      </div>
+                    )}
+                    {printDocModal.item.jumlahPcs > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Pcs Diverifikasi (ACC):</span>
+                        <strong>{Number(printDocModal.item.jumlahPcs).toLocaleString("id-ID")} pcs</strong>
+                      </div>
+                    )}
+                    {printDocModal.item.tarifPerPcs > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Tarif Satuan:</span>
+                        <span>Rp {Number(printDocModal.item.tarifPerPcs).toLocaleString("id-ID")} / pcs</span>
+                      </div>
+                    )}
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span>Metode:</span>
                       <span>{printDocModal.item.metode || "Transfer Bank"}</span>
@@ -3311,6 +4874,17 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
                       <span>Model:</span>
                       <span>{printDocModal.item.model}</span>
                     </div>
+                    {printDocModal.item.nama_kain && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Bahan/Kain:</span>
+                        <span>{printDocModal.item.nama_kain}</span>
+                      </div>
+                    )}
+                    {printDocModal.item.catatan && (
+                      <div style={{ marginTop: 6, padding: "5px 8px", background: "#FEF3C7", borderRadius: 4, fontSize: 10.5, color: "#92400E" }}>
+                        <strong>Catatan Pengiriman:</strong> {printDocModal.item.catatan}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -3418,6 +4992,26 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt" }: Ve
             </div>
           </div>
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          MODAL: NOTA REJECT & INVOICE LUNAS
+         ══════════════════════════════════════════════════════════════ */}
+      {selectedNota && (
+        <NotaRejectModal
+          nota={selectedNota}
+          readOnly={viewer === "vendor"}
+          onClose={() => setSelectedNota(null)}
+          vendorKontak={data?.vendor?.kontak || data?.vendor?.no_telepon || data?.vendor?.telepon}
+          onSettled={() => {
+            fetchData(true);
+            setSelectedNota(null);
+          }}
+          onCancelReject={() => {
+            fetchData(true);
+            setSelectedNota(null);
+          }}
+        />
       )}
     </div>
   );

@@ -38,7 +38,8 @@ export function currentVersion(): number {
 }
 
 function send(event: string, payload: Record<string, any>) {
-  const msg = `event: ${event}\ndata: ${JSON.stringify({ ...payload, ts: Date.now() })}\n\n`;
+  const data = { ...payload, ts: Date.now() };
+  const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   const encoded = encoder.encode(msg);
   for (const [id, client] of clients) {
     try {
@@ -48,6 +49,9 @@ function send(event: string, payload: Record<string, any>) {
       clients.delete(id);
     }
   }
+  // WebSocket sinks (didaftarkan oleh server.mjs) — kirim event yang sama via WebSocket
+  const sinks: Set<(e: string, d: any) => void> | undefined = g.__rtHub?.sinks;
+  if (sinks) for (const sink of sinks) { try { sink(event, data); } catch {} }
 }
 
 const COALESCE_MS = 120;

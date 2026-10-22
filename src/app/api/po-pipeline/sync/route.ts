@@ -14,8 +14,18 @@ export async function POST() {
     return NextResponse.json({ synced: 0, message: "Tidak ada stage aktif" });
   }
 
+  let directChanged = false;
+  // Pastikan transfer yang ditutup reject 100% berstatus "Reject" (bukan Selesai)
+  for (const t of (data.produksi_transfers || [])) {
+    const isRejectTotal = Number(t.jumlah_reject || 0) >= Number(t.jumlah_kirim || 0) && Number(t.jumlah_kirim || 0) > 0;
+    if (isRejectTotal && t.status !== "Reject") {
+      t.status = "Reject";
+      directChanged = true;
+    }
+  }
+
   const before = JSON.stringify(data.po_pipeline || []);
-  const changed = reconcileProduction(data);
+  const changed = reconcileProduction(data) || directChanged;
   const synced = changed ? 1 : 0;
   if (changed) writeData(data);
 

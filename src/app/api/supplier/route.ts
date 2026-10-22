@@ -23,10 +23,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const body = await req.json();
     const data = readData();
     if (!data.data_supplier) data.data_supplier = [];
     
-    const body = await req.json();
     const { id, nama_supplier, kontak, alamat, jenis_material } = body;
 
     if (!nama_supplier || !nama_supplier.trim()) {

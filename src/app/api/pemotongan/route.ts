@@ -35,10 +35,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const body = await req.json();
   const data = readData();
   if (!data.pemotongan_kain) data.pemotongan_kain = [];
   
-  const body = await req.json();
   const { tanggal, nama_barang, meter_kain, pemakaian_cm, tukang_potong_id, model, total_pcs, sizeBreakdown } = body;
 
   if (!tanggal || !nama_barang || !tukang_potong_id || !model || !total_pcs || !sizeBreakdown) {

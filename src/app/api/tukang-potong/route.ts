@@ -26,10 +26,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const body = await req.json();
   const data = readData();
   if (!data.tukang_potong) data.tukang_potong = [];
   
-  const body = await req.json();
   const { id, nama, kode, kontak } = body;
 
   if (!nama || !kode) {

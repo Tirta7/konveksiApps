@@ -9,8 +9,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const data = readData();
   const { jenisCain, jumlahMeter, jumlahPcs } = await req.json();
+  const data = readData();
   const id = nextId(data, "batches");
   const token = crypto.randomUUID();
   const kodeBatch = `BATCH-${new Date().getFullYear()}-${String(id).padStart(3, "0")}`;

@@ -8,10 +8,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const body = await req.json();
   const data = readData();
   if (!data.data_kain) data.data_kain = [];
   
-  const body = await req.json();
   const { id, nama_kain, warna, stok_meter, harga_beli } = body;
 
   if (!nama_kain) {

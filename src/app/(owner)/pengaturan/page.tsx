@@ -23,6 +23,9 @@ import {
   Download,
   Info
 } from "lucide-react";
+import UserManagement from "@/components/UserManagement";
+import MarketplaceManagement from "@/components/MarketplaceManagement";
+import LicenseInfoCard from "@/components/LicenseInfoCard";
 
 export default function PengaturanPage() {
   const [loading, setLoading] = useState(true);
@@ -188,6 +191,12 @@ export default function PengaturanPage() {
 
       {/* MAIN CONTENT AREA */}
       <div style={{ flex: 1, padding: "24px 32px", overflowY: "auto" }}>
+        
+        {/* DETAIL INFORMASI LISENSI VOC ML */}
+        <div style={{ maxWidth: 1500, margin: "0 auto 24px auto" }}>
+          <LicenseInfoCard />
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 28, maxWidth: 1500, margin: "0 auto", alignItems: "start" }}>
           
           {/* COLUMN 1: FORM PENGATURAN */}
@@ -663,6 +672,12 @@ export default function PengaturanPage() {
           </div>
 
         </div>
+
+        {/* INTEGRASI MARKETPLACE (TikTok Shop / Tokopedia / Shopee) */}
+        <MarketplaceManagement />
+
+        {/* PENGGUNA & HAK AKSES (khusus Owner) */}
+        <UserManagement />
       </div>
 
     </div>
