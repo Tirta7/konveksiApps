@@ -75,14 +75,48 @@ if [ -z "$PORT_INPUT" ]; then
     PORT_INPUT="3002"
 fi
 
-# 5. Input Token Cloudflare Tunnel (Opsional)
+# 5. Pengaturan Akses Online (Cloudflare Tunnel Otomatis via cloudflared CLI)
 echo ""
 echo -e "${CYAN}============================================================${NC}"
-echo -e "${BOLD}PENGATURAN AKSES ONLINE (CLOUDFLARE TUNNEL):${NC}"
-echo -e "Agar https://${FULL_DOMAIN} langsung aktif tanpa buka port modem/router:"
-echo "Masukkan TUNNEL_TOKEN dari Cloudflare Zero Trust (atau kosongkan jika hanya akses lokal):"
+echo -e "${BOLD}PENGATURAN AKSES ONLINE (CLOUDFLARE TUNNEL OTOMATIS):${NC}"
 echo -e "${CYAN}============================================================${NC}"
-read -p "Token Cloudflare (opsional): " TUNNEL_INPUT
+
+TUNNEL_INPUT=""
+
+if command -v cloudflared &> /dev/null && [ -f "$HOME/.cloudflared/cert.pem" ]; then
+    echo -e "${GREEN}[OK] Cloudflare CLI terhubung ke akun Anda!${NC}"
+    echo -e "Membuat Tunnel & DNS https://${FULL_DOMAIN} secara otomatis..."
+    cloudflared tunnel create "konveksi-${SUB_CLEAN}" >/dev/null 2>&1 || true
+    cloudflared tunnel route dns "konveksi-${SUB_CLEAN}" "${FULL_DOMAIN}" >/dev/null 2>&1 || true
+    TUNNEL_INPUT=$(cloudflared tunnel token "konveksi-${SUB_CLEAN}" 2>/dev/null || true)
+    if [ -n "$TUNNEL_INPUT" ]; then
+        echo -e "${GREEN}[OK] Subdomain https://${FULL_DOMAIN} & Token Tunnel berhasil dibuat 100% otomatis!${NC}"
+    fi
+elif command -v cloudflared &> /dev/null; then
+    echo -e "${YELLOW}[INFO] Cloudflare CLI terpasang, tetapi belum login ke domain vocpos.id.${NC}"
+    echo "Apakah Anda ingin menghubungkan akun Cloudflare sekarang agar pembuatan subdomain otomatis?"
+    read -p "Hubungkan sekarang? (y/t) [y]: " DO_LOGIN
+    DO_LOGIN=${DO_LOGIN:-y}
+    if [[ "$DO_LOGIN" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "Membuka browser... Silakan pilih domain 'vocpos.id' dan klik 'Authorize'."
+        cloudflared tunnel login
+        if [ -f "$HOME/.cloudflared/cert.pem" ]; then
+            echo -e "${GREEN}[OK] Berhasil terhubung! Membuat Tunnel & DNS otomatis...${NC}"
+            cloudflared tunnel create "konveksi-${SUB_CLEAN}" >/dev/null 2>&1 || true
+            cloudflared tunnel route dns "konveksi-${SUB_CLEAN}" "${FULL_DOMAIN}" >/dev/null 2>&1 || true
+            TUNNEL_INPUT=$(cloudflared tunnel token "konveksi-${SUB_CLEAN}" 2>/dev/null || true)
+            if [ -n "$TUNNEL_INPUT" ]; then
+                echo -e "${GREEN}[OK] Subdomain https://${FULL_DOMAIN} & Token Tunnel aktif otomatis!${NC}"
+            fi
+        fi
+    fi
+fi
+
+if [ -z "$TUNNEL_INPUT" ]; then
+    echo "Masukkan TUNNEL_TOKEN manual dari Cloudflare Zero Trust (atau tekan Enter untuk lewati):"
+    read -p "Token Cloudflare (opsional): " TUNNEL_INPUT
+fi
 
 # 6. Deteksi Hardware Machine ID (Fallback cerdas jika di Mac)
 echo ""
