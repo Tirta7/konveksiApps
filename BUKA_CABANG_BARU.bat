@@ -96,8 +96,8 @@ echo [2/4] Membuat konfigurasi .env untuk %STORE_INPUT%...
   echo AUTH_SECRET=konveksi_%SUB_CLEAN%_secret_session_2026
   echo.
   echo # Sistem Lisensi VOC ML
-  echo VOCML_SERVER_URL=https://lisensi.domainanda.com
-  echo VOCML_PRODUCT=konveksi
+  echo VOCML_SERVER_URL=https://vocml.vocpos.id
+  echo VOCML_PRODUCT=pos
   echo VOCML_MACHINE_ID=%MACHINE_ID%
   echo VOCML_DISABLED=false
   echo.
@@ -124,8 +124,8 @@ echo [3/4] Menyiapkan docker-compose.yml khusus cabang...
   echo       TZ: Asia/Jakarta
   echo       STORE_NAME: "%STORE_INPUT%"
   echo       VOCML_MACHINE_ID: "%MACHINE_ID%"
-  echo       VOCML_SERVER_URL: "${VOCML_SERVER_URL:-https://lisensi.domainanda.com}"
-  echo       VOCML_PRODUCT: "konveksi"
+  echo       VOCML_SERVER_URL: "${VOCML_SERVER_URL:-https://vocml.vocpos.id}"
+  echo       VOCML_PRODUCT: "pos"
   echo     volumes:
   echo       - ./data:/data
   echo     healthcheck:
