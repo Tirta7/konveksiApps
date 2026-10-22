@@ -195,9 +195,37 @@ cat <<EOF >> "${BRANCH_DIR}/docker-compose.yml"
     depends_on:
       - app
 EOF
-fi
+# 10. Buat Script Kontrol di dalam folder cabang
+cat <<EOF > "${BRANCH_DIR}/START_CABANG.command"
+#!/usr/bin/env bash
+cd "\$(dirname "\$0")"
+docker compose pull || true
+docker compose up -d
+sleep 3
+open "http://localhost:${PORT_INPUT}"
+EOF
+chmod +x "${BRANCH_DIR}/START_CABANG.command"
 
-# 10. Jalankan Kontainer Cabang
+cat <<EOF > "${BRANCH_DIR}/STOP_CABANG.command"
+#!/usr/bin/env bash
+cd "\$(dirname "\$0")"
+docker compose down
+echo "Cabang ${STORE_INPUT} telah dimatikan."
+read -p "Tekan [Enter] untuk keluar..."
+EOF
+chmod +x "${BRANCH_DIR}/STOP_CABANG.command"
+
+cat <<EOF > "${BRANCH_DIR}/BUKA_APLIKASI.command"
+#!/usr/bin/env bash
+EOF
+if [ -n "$TUNNEL_INPUT" ]; then
+    echo "open \"https://${FULL_DOMAIN}\"" >> "${BRANCH_DIR}/BUKA_APLIKASI.command"
+else
+    echo "open \"http://localhost:${PORT_INPUT}\"" >> "${BRANCH_DIR}/BUKA_APLIKASI.command"
+fi
+chmod +x "${BRANCH_DIR}/BUKA_APLIKASI.command"
+
+# 11. Jalankan Kontainer Cabang
 echo ""
 echo -e "${BOLD}[4/4] Menjalankan server cabang ${STORE_INPUT}...${NC}"
 (
