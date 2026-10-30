@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   UploadCloud, Search, ShoppingCart, User, FileText, ChevronRight, CreditCard, Box, 
   Calendar, Truck, MapPin, TableIcon, BarChart2, X, Eye, Clock, RefreshCw,
@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import Papa from "papaparse";
 import ScanJualPanel from "@/components/ScanJualPanel";
+import { subscribeRealtime, subscribeRealtimeEvent } from "@/lib/realtime-client";
 
 export default function PenjualanOnlinePage() {
   const [data, setData] = useState<any[]>([]);
@@ -39,9 +40,9 @@ export default function PenjualanOnlinePage() {
     }
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/penjualan-online");
+      const res = await fetch(`/api/penjualan-online?_t=${Date.now()}`);
       const json = await res.json();
       setData(json);
       if (Array.isArray(json)) setSelectedPenjualan((prev: any) => (prev ? json.find((x: any) => x.id === prev.id) || null : null));
@@ -50,11 +51,27 @@ export default function PenjualanOnlinePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+    const unSync = subscribeRealtime(() => fetchData());
+    const unEvent = subscribeRealtimeEvent((ev) => {
+      if (
+        ev === "retur_processed" ||
+        ev === "retur_online_updated" ||
+        ev === "retur_banding_updated" ||
+        ev === "retur_ke_stok" ||
+        ev === "retur_deleted"
+      ) {
+        fetchData();
+      }
+    });
+    return () => {
+      unSync();
+      unEvent();
+    };
+  }, [fetchData]);
 
   const [cancelingKode, setCancelingKode] = useState<string | null>(null);
   const handleBatalScan = async (b: any) => {
@@ -82,43 +99,58 @@ export default function PenjualanOnlinePage() {
     if (!file) return;
 
     setUploading(true);
-    Papa.parse(file, {
+    Papa.parse(file as any, {
       header: true,
       skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as any[];
-        
-        // Exclude cancelled/refunded orders. We only want Selesai or Dikirim.
-        const filtered = rows.filter(row => {
-          const status = (row["Order Status"] || row["Status Pesanan"])?.toLowerCase() || "";
-          const cancelType = (row["Cancelation/Return Type"] || row["Alasan Pembatalan"])?.toLowerCase() || "";
-          const orderId = row["Order ID"] || row["ID Pesanan"];
-          
-          if (!orderId || orderId.includes("Platform unique")) return false;
-          if (status.includes("batal") || status.includes("cancel") || cancelType.includes("cancel") || cancelType.includes("return")) {
-            return false;
-          }
+      complete: async (results: Papa.ParseResult<any>) => {
+        const rows = (results.data || []) as any[];
+        const headers = results.meta?.fields || Object.keys(rows[0] || {});
+        const marketplace = headers.includes("No. Pesanan") ? "Shopee" : headers.includes("Order ID") ? "TikTok Shop" : "Marketplace";
+
+        const isCancelOrReturRow = (row: any) => {
+          const status = String(row["Order Status"] || row["Status Pesanan"] || "").toLowerCase();
+          const cancelType = String(
+            row["Cancelation/Return Type"] || row["Status Pembatalan/ Pengembalian"] || row["Alasan Pembatalan"] || ""
+          ).toLowerCase();
+          return (
+            status.includes("batal") ||
+            status.includes("cancel") ||
+            status.includes("retur") ||
+            status.includes("pengembalian") ||
+            cancelType.includes("cancel") ||
+            cancelType.includes("batal") ||
+            cancelType.includes("return") ||
+            cancelType.includes("refund") ||
+            cancelType.includes("pengembalian")
+          );
+        };
+
+        const validOrderRows = rows.filter((row: any) => {
+          const orderId = row["Order ID"] || row["No. Pesanan"] || row["ID Pesanan"] || row["Nomor Invoice"];
+          if (!orderId || String(orderId).includes("Platform unique")) return false;
           return true;
         });
 
-        if (filtered.length === 0) {
-          toast.info("Tidak ditemukan pesanan yang valid (selain batal) di file ini.");
+        const filtered = validOrderRows.filter((row: any) => !isCancelOrReturRow(row));
+        const cancelledOrReturRows = validOrderRows.filter((row: any) => isCancelOrReturRow(row));
+
+        if (filtered.length === 0 && cancelledOrReturRows.length === 0) {
+          toast.info("Tidak ditemukan pesanan yang valid di file ini.");
           setUploading(false);
+          e.target.value = "";
           return;
         }
 
-        const headers = results.meta?.fields || Object.keys(rows[0] || {});
-        const marketplace = headers.includes("No. Pesanan") ? "Shopee" : headers.includes("Order ID") ? "TikTok Shop" : "Marketplace";
-        const formatted = filtered.map(row => {
+        const formatted = filtered.map((row: any) => {
           return {
             marketplace,
-            order_id: row["Order ID"] || row["No. Pesanan"],
+            order_id: String(row["Order ID"] || row["No. Pesanan"] || row["ID Pesanan"] || "").trim(),
             status: row["Order Status"] || row["Status Pesanan"] || "Unknown",
             product_name: row["Product Name"] || row["Nama Produk"],
             variation: row["Variation"] || row["Nama Variasi"],
             quantity: parseInt(row["Quantity"] || row["Jumlah"]) || 1,
             order_amount: row["Order Amount"] || row["Total Harga Produk"] || row["Total Harga Pembeli"],
-            seller_sku: row["Seller SKU"] || row["Nomor Referensi SKU"],
+            seller_sku: row["Seller SKU"] || row["Nomor Referensi SKU"] || row["SKU Induk"],
             buyer_username: row["Buyer Username"] || row["Username (Pembeli)"],
             recipient: row["Recipient"] || row["Nama Penerima"],
             tanggal_pesanan: row["Created Time"] || row["Waktu Pesanan Dibuat"],
@@ -128,32 +160,76 @@ export default function PenjualanOnlinePage() {
             province: row["Province"] || row["Provinsi"],
             tracking_id: row["Tracking ID"] || row["No. Resi"],
             shipping_provider: row["Shipping Provider Name"] || row["Opsi Pengiriman"],
-            payment_method: row["Payment Method"] || "Transfer",
+            payment_method: row["Payment Method"] || row["Metode Pembayaran"] || "Transfer",
             tipe_pesanan: row["Normal or Pre-order"] || "Normal",
             jatuh_tempo: row["RTS Time"] || row["RTS SLA"] || row["Ship by Date"] || row["Batas Waktu Pengiriman"] || row["Ship By Date"] || ""
           };
         });
 
+        // Otomatis teruskan baris batal/retur dalam CSV yang sama ke /api/returns/online agar selalu sinkron
+        const formattedReturs = cancelledOrReturRows.map((row: any) => {
+          let amount = row["Order Amount"] || row["Total Harga Produk"] || row["Total Harga Pembeli"] || "0";
+          if (typeof amount === "string") amount = amount.replace(/\D/g, "");
+          const cancelType = String(row["Cancelation/Return Type"] || row["Status Pembatalan/ Pengembalian"] || "");
+          const isRet = /return|refund|retur|pengembalian/i.test(cancelType) || Boolean(row["Alasan Pengembalian"]);
+          return {
+            marketplace,
+            order_id: String(row["Order ID"] || row["No. Pesanan"] || row["ID Pesanan"] || "").trim(),
+            product_name: row["Product Name"] || row["Nama Produk"] || "-",
+            variation: row["Variation"] || row["Nama Variasi"] || "-",
+            return_quantity: parseInt(row["Sku Quantity of return"] || row["Jumlah Produk Dikembalikan"] || row["Quantity"] || row["Jumlah"]) || 1,
+            return_type: isRet ? "Return/Refund" : (cancelType || "Cancel"),
+            alasan: row["Alasan Pengembalian"] || row["Cancel Reason"] || row["Alasan Pembatalan"] || "-",
+            buyer_note: row["Buyer Note"] || row["Catatan dari Pembeli"] || "-",
+            tanggal_batal: row["Cancelled Time"] || row["Waktu Pesanan Dibatalkan"] || row["Created Time"] || row["Waktu Pesanan Dibuat"] || "-",
+            buyer_username: row["Buyer Username"] || row["Username (Pembeli)"] || "-",
+            recipient: row["Recipient"] || row["Nama Penerima"] || "-",
+            phone: row["Phone #"] || row["No. Telepon"] || "-",
+            address: `${row["Detail Address"] || row["Alamat Lengkap"] || ""}, ${row["Regency and City"] || row["Kota/Kabupaten"] || ""}, ${row["Province"] || row["Provinsi"] || ""}`,
+            tracking_id: row["Tracking ID"] || row["No. Resi Pengembalian"] || row["No. Resi"] || "-",
+            shipping_provider: row["Shipping Provider Name"] || row["Opsi Pengiriman"] || "-",
+            order_amount: amount || "0",
+            payment_method: row["Payment Method"] || row["Metode Pembayaran"] || "-",
+            seller_sku: row["Seller SKU"] || row["Nomor Referensi SKU"] || row["SKU Induk"] || "-",
+          };
+        });
+
         try {
-          const res = await fetch("/api/penjualan-online", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formatted)
-          });
-          const json = await res.json();
-          if (res.ok) {
-            toast.success(`${json.added} baris pesanan baru diimpor${json.skipped ? ` (${json.skipped} sudah ada, dilewati)` : ""}. Stok berkurang saat barcode di-scan per Order ID (tombol "Scan Barcode Kirim").`);
-            fetchData();
-          } else {
-            toast.error(json.error || "Gagal menyimpan data");
+          let addedSales = 0, skippedSales = 0, addedReturs = 0;
+          if (formatted.length > 0) {
+            const res = await fetch("/api/penjualan-online", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(formatted)
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || "Gagal menyimpan data pesanan");
+            addedSales = json.added || 0;
+            skippedSales = json.skipped || 0;
           }
-        } catch (err) {
-          toast.error("Terjadi kesalahan saat menyimpan data");
+          if (formattedReturs.length > 0) {
+            const rRet = await fetch("/api/returns/online", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(formattedReturs)
+            });
+            const jRet = await rRet.json().catch(() => ({}));
+            if (rRet.ok) addedReturs = jRet.added || 0;
+          }
+          toast.success(
+            `${addedSales} pesanan diimpor${skippedSales ? ` (${skippedSales} dilewati)` : ""}${
+              addedReturs ? ` + ${addedReturs} pesanan batal/retur otomatis masuk ke Retur Online` : ""
+            }.`
+          );
+          fetchData();
+        } catch (err: any) {
+          toast.error(err.message || "Terjadi kesalahan saat menyimpan data");
         } finally {
           setUploading(false);
+          e.target.value = "";
         }
       },
-      error: () => {
+      error: (_err: any) => {
         toast.error("Gagal membaca file CSV");
         setUploading(false);
       }

@@ -394,7 +394,7 @@ export function getPoStockProgress(data: any, inbound: any[], wip: any[]) {
 export function markBarcodes(data: any, poId: any, items: SizeQty[], stageSlug: string, patch: (b: any) => void, prefer: "at_stage" | "done" = "at_stage") {
   if (!data.barcode_item) return;
   const keNorm = normalizeStage(stageSlug);
-  const blocked = new Set(["siap_jual", "terjual", "keluar", "reject", "retur_banding"]);
+  const blocked = new Set(["siap_jual", "terjual", "keluar", "reject", "retur_banding", "stok_reject", "rusak_retur"]);
   const rank = (st: string) => {
     const s = String(st);
     const dikerjakan = s.endsWith("_dikerjakan");
@@ -674,7 +674,12 @@ export function resolveScan(data: any, code: string) {
     if (c === kode) return { tipe: "induk", barang: b, size: null, sku: b.kode };
     if (c.startsWith(kode + "-")) return { tipe: "sku", barang: b, size: c.slice(kode.length + 1), sku: c };
   }
-  const prod = (data.barcode_item || []).find((x: any) => String(x.kodeBarcode).toUpperCase() === c);
+  const norm = (s: string) => s.replace(/[^A-Z0-9]/g, "");
+  const target = norm(c);
+  const prod = (data.barcode_item || []).find((x: any) => {
+    const k = String(x.kodeBarcode || "").toUpperCase();
+    return k === c || (target && norm(k) === target);
+  });
   if (prod) {
     const b = prod.barang_id != null ? (data.data_barang || []).find((x: any) => String(x.id) === String(prod.barang_id)) : null;
     return { tipe: "produksi", barang: b || null, size: prod.size, sku: prod.sku || null, barcode: { kode: prod.kodeBarcode, status: prod.status, poId: prod.poId } };

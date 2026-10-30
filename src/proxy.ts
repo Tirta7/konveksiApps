@@ -25,6 +25,10 @@ function isPublic(pathname: string, method: string): boolean {
   if (PORTAL_PAGE.test(pathname)) return true; // halaman portal: gate login vendor di sisi halaman
   if (pathname === "/api/pengaturan" && method === "GET") return true; // nama usaha & logo untuk halaman login/portal
   if (/^\/api\/marketplace\/(tiktok|shopee)\/(callback|webhook)$/.test(pathname)) return true; // callback & webhook marketplace
+  if (pathname === "/portal-retur" || pathname.startsWith("/portal-retur/")) return true; // portal khusus staf gudang retur
+  if (pathname.startsWith("/api/retur-marketplace")) return true;
+  if (pathname === "/api/events" || pathname.startsWith("/api/events/")) return true; // SSE real-time untuk portal & dashboard
+  if (pathname === "/api/presence" || pathname.startsWith("/api/presence/")) return true; // indikator kehadiran staf portal
   if (pathname === "/manifest.webmanifest" || pathname === "/sw.js") return true;
   return false;
 }
@@ -41,6 +45,8 @@ const VENDOR_API: Array<[string[], RegExp]> = [
 /** Hanya Owner (Admin/Gudang ditolak). */
 const OWNER_PAGES = [/^\/laporan(\/|$)/, /^\/hutang(\/|$)/, /^\/piutang(\/|$)/, /^\/karyawan(\/|$)/, /^\/pengaturan(\/|$)/];
 function ownerOnlyApi(pathname: string, method: string) {
+  // Sinkronisasi pesanan & retur marketplace boleh dijalankan oleh Admin/Gudang
+  if (pathname === "/api/marketplace/sync") return false;
   if (/^\/api\/(hutang|settlement|laporan|users|marketplace)(\/|$)/.test(pathname)) return true;
   if (pathname === "/api/pengaturan" && method !== "GET") return true;
   return false;

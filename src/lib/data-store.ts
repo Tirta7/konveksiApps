@@ -25,8 +25,13 @@ export interface DataStore {
   stock_movements: any[];
   purchase_orders: any[];
   retail_sales: any[];
+  penjualan_online?: any[];
+  penjualan_barcode?: any[];
+  pembatalan_scan?: any[];
   retur_produksi: any[];
   retur_online: any[];
+  retur_marketplace?: any[];
+  settlement_online?: any[];
   kategori_produk: any[];
   data_barang: any[];
   data_supplier: any[];
@@ -51,7 +56,8 @@ function getInitialData(): DataStore {
   return {
     vendors: [], tukang_potong: [], pemotongan_kain: [], data_kain: [], hutang: [], batches: [], bundles: [], spk: [], spk_progres: [], gaji_cmt: [],
     tracking_logs: [], stock: [], stock_movements: [], purchase_orders: [], retail_sales: [],
-    retur_produksi: [], retur_online: [], kategori_produk: [], data_barang: [], data_supplier: [],
+    penjualan_online: [], penjualan_barcode: [], pembatalan_scan: [],
+    retur_produksi: [], retur_online: [], retur_marketplace: [], settlement_online: [], kategori_produk: [], data_barang: [], data_supplier: [],
     data_pelanggan: [],
     po_produksi: [], po_pengambilan: [], barcode_item: [], cmt_requests: [], cmt_progres: [], vendor_types: [], produksi_transfers: [], po_ledgers: [],
     pipeline_stages: [], po_pipeline: [], item_pendukung: [], nota_reject_vendor: [],

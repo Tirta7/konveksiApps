@@ -26,7 +26,7 @@ function CetakLabelInner() {
   const [namaUsaha, setNamaUsaha] = useState("");
   const [perPcs, setPerPcs] = useState(true);
   const [withParent, setWithParent] = useState(true);
-  const [labelW, setLabelW] = useState(50);
+  const [labelW, setLabelW] = useState(40);
   const [labelH, setLabelH] = useState(30);
 
   useEffect(() => {
@@ -95,14 +95,25 @@ function CetakLabelInner() {
   return (
     <div style={{ background: "#E2E8F0", minHeight: "100vh", padding: "18px 14px", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <style>{`
-        @page { size: auto; margin: 4mm; }
+        @page { size: ${labelW}mm ${labelH}mm; margin: 0; }
         @media print {
-          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
           body * { visibility: hidden; }
           .print-container, .print-container * { visibility: visible; }
-          .print-container { position: absolute; left: 0; top: 0; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; background: #fff !important; }
+          .print-container { position: absolute; left: 0; top: 0; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; background: #fff !important; display: block !important; }
           .no-print { display: none !important; }
-          .sku-label { break-inside: avoid; page-break-inside: avoid; }
+          .sku-label { 
+            width: ${labelW}mm !important; 
+            height: ${labelH}mm !important; 
+            max-width: ${labelW}mm !important; 
+            max-height: ${labelH}mm !important; 
+            border: none !important; 
+            margin: 0 !important; 
+            break-inside: avoid !important; 
+            page-break-inside: avoid !important; 
+            break-after: page !important; 
+            page-break-after: always !important; 
+          }
         }
       `}</style>
 
@@ -131,9 +142,9 @@ function CetakLabelInner() {
           </label>
           <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
             Ukuran
-            <select id="sel-label-size" value={`${labelW}x${labelH}`} onChange={(e) => { const [w, h] = e.target.value.split("x").map(Number); setLabelW(w); setLabelH(h); }} style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #CBD5E1" }}>
-              <option value="50x30">50 × 30 mm</option>
-              <option value="40x30">40 × 30 mm</option>
+            <select id="sel-label-size" value={`${labelW}x${labelH}`} onChange={(e) => { const [w, h] = e.target.value.split("x").map(Number); setLabelW(w); setLabelH(h); }} style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #CBD5E1", fontWeight: 700 }}>
+              <option value="40x30">40 × 30 mm (Zebra ZD230 · Hangtag)</option>
+              <option value="50x30">50 × 30 mm (Standar)</option>
               <option value="33x15">33 × 15 mm</option>
               <option value="60x40">60 × 40 mm</option>
             </select>

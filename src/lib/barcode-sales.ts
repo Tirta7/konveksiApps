@@ -25,12 +25,19 @@ export type ScanLookup =
 export function lookupBarcodeForSale(data: any, code: string): ScanLookup {
   const kode = String(code || "").trim().toUpperCase();
   if (!kode) return { ok: false, kode, error: "Kode kosong" };
-  const b = (data.barcode_item || []).find((x: any) => String(x.kodeBarcode).toUpperCase() === kode);
+  const norm = (s: string) => s.replace(/[^A-Z0-9]/g, "");
+  const target = norm(kode);
+  const b = (data.barcode_item || []).find((x: any) => {
+    const k = String(x.kodeBarcode || "").toUpperCase();
+    return k === kode || (target && norm(k) === target);
+  });
   if (!b) {
     const isSku = (data.data_barang || []).some((x: any) => x.kode && kode.startsWith(String(x.kode).toUpperCase()));
     return { ok: false, kode, error: isSku ? "Ini kode SKU, bukan barcode per pcs. Scan barcode pada hangtag (contoh SJ-02-XL-001)." : "Barcode tidak dikenal" };
   }
   if (b.status === "terjual") return { ok: false, kode, error: `Sudah terjual${b.terjual_kanal ? ` (${b.terjual_kanal}` : ""}${b.terjual_at ? `, ${new Date(b.terjual_at).toLocaleDateString("id-ID")})` : b.terjual_kanal ? ")" : ""}` };
+  if (b.status === "retur_banding") return { ok: false, kode, error: "Pcs ini sedang dalam proses Banding Retur Marketplace (belum dikembalikan ke stok layak jual)" };
+  if (b.status === "stok_reject" || b.status === "rusak_retur") return { ok: false, kode, error: "Pcs ini berstatus Retur Reject / Write-off, tidak boleh dijual reguler" };
   if (b.status === "reject") return { ok: false, kode, error: "Pcs ini berstatus REJECT, tidak boleh dijual" };
   if (b.status !== "siap_jual" || b.barang_id == null) return { ok: false, kode, error: "Pcs ini belum masuk Gudang & Stok (masih dalam proses produksi)" };
   const barang = (data.data_barang || []).find((x: any) => String(x.id) === String(b.barang_id));
@@ -173,7 +180,12 @@ export function cancelBarcodeSale(data: any, saleId: any) {
  */
 export function cancelBarcodeLine(data: any, code: string, meta: { alasan?: string; now: string }) {
   const kode = String(code || "").trim().toUpperCase();
-  const b = (data.barcode_item || []).find((x: any) => String(x.kodeBarcode).toUpperCase() === kode);
+  const norm = (s: string) => s.replace(/[^A-Z0-9]/g, "");
+  const target = norm(kode);
+  const b = (data.barcode_item || []).find((x: any) => {
+    const k = String(x.kodeBarcode || "").toUpperCase();
+    return k === kode || (target && norm(k) === target);
+  });
   if (!b) throw new Error("Barcode tidak dikenal");
   if (b.status !== "terjual" || b.penjualan_id == null) throw new Error(`Pcs ini tidak berstatus terjual (status: ${b.status})`);
   const list = data.penjualan_barcode || [];
@@ -232,7 +244,7 @@ export function cancelBarcodeLine(data: any, code: string, meta: { alasan?: stri
 /** Semua pcs (barcode) milik satu barang jadi + ringkasan per size. */
 export function getBarangBarcodes(data: any, barangId: any) {
   const pcs = (data.barcode_item || [])
-    .filter((b: any) => String(b.barang_id) === String(barangId) && ["siap_jual", "terjual"].includes(b.status))
+    .filter((b: any) => String(b.barang_id) === String(barangId) && ["siap_jual", "terjual", "retur_banding", "stok_reject"].includes(b.status))
     .map((b: any) => {
       const po = (data.po_produksi || []).find((p: any) => String(p.id) === String(b.poId));
       return {

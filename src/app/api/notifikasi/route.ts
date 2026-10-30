@@ -165,6 +165,27 @@ export async function GET() {
     });
   }
 
+  // 6. Retur Marketplace yang Perlu Diajukan Banding (SLA Penting)
+  const pendingBanding = ((data as any).retur_marketplace || [])
+    .filter((r: any) => r.status === "Perlu Diajukan")
+    .slice(0, 5);
+  for (const r of pendingBanding) {
+    notifs.push({
+      id: `retur-banding-${r.id}`,
+      rawId: r.id,
+      type: "retur_banding",
+      title: `Banding Retur: ${r.no_retur}`,
+      desc: `${r.nama_barang || "Produk"} (${r.jenis_masalah || "Tidak Sesuai"})${r.order_id ? ` · Order ${r.order_id}` : ""}`,
+      detail: r.catatan ? `"${r.catatan}"` : undefined,
+      badge: "Perlu Banding",
+      badgeColor: "#EF4444",
+      timestamp: r.tanggal || new Date().toISOString(),
+      url: `/retur-online`,
+      jumlah: 1,
+      urgency: "high"
+    });
+  }
+
   // Sort by timestamp descending
   notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -174,8 +195,9 @@ export async function GET() {
     pools: openPools.length,
     cuts: readyCuts.length,
     working: activeWorking.length + activeTransfers.length,
+    returBanding: pendingBanding.length,
     total: notifs.length,
-    actionRequired: pendingRequests.length + pendingReports.length
+    actionRequired: pendingRequests.length + pendingReports.length + pendingBanding.length
   };
 
   return NextResponse.json({

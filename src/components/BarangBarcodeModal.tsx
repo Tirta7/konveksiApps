@@ -4,7 +4,7 @@ import { X, Printer, Barcode as BarcodeIcon, CheckCircle2, ShoppingBag, Package,
 import { toast } from "sonner";
 import { printBarangLabels } from "@/components/barang-label-print";
 
-type Pcs = { kode: string; size: string; sku: string | null; status: "siap_jual" | "terjual"; noPo: string; masuk_at: string | null; terjual_at: string | null; terjual_kanal: string | null; no_transaksi: string | null };
+type Pcs = { kode: string; size: string; sku: string | null; status: "siap_jual" | "terjual" | "retur_banding" | "stok_reject"; noPo: string; masuk_at: string | null; terjual_at: string | null; terjual_kanal: string | null; no_transaksi: string | null };
 type Resp = { pcs: Pcs[]; sizes: { size: string; total: number; tersedia: number; terjual: number }[]; total: number; tersedia: number; terjual: number };
 
 const fmtTgl = (s?: string | null) => (s ? new Date(s).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-");
@@ -35,11 +35,59 @@ export default function BarangBarcodeModal({ barang, onClose }: { barang: any; o
     return (data?.pcs || []).filter((p) => (status === "semua" || p.status === status) && (size === "semua" || p.size === size) && (!s || p.kode.toUpperCase().includes(s)));
   }, [data, status, size, q]);
 
+  const [printingZebra, setPrintingZebra] = useState(false);
+  const [printOpts, setPrintOpts] = useState({
+    showNama: true,
+    showSize: true,
+    showSku: true,
+    showHarga: true,
+    useQr: false,
+    rotate180: false,
+  });
+
   const toLabel = (p: Pcs) => ({ kode: p.kode, nama_barang: barang.nama_barang, size: p.size, sku: p.sku, harga_jual: Number(barang.harga_jual || 0), noPo: p.noPo });
   const doPrint = (pcs: Pcs[]) => {
     const avail = pcs.filter((p) => p.status === "siap_jual");
     if (!avail.length) return toast.error("Tidak ada pcs tersedia untuk dicetak");
-    if (!printBarangLabels(avail.map(toLabel))) toast.error("Pop-up diblokir browser. Izinkan pop-up untuk mencetak.");
+    if (
+      !printBarangLabels(avail.map(toLabel), {
+        ukuran: "40x30",
+        namaUsaha: barang.nama_barang,
+        showNama: printOpts.showNama,
+        showSize: printOpts.showSize,
+        showSku: printOpts.showSku,
+        showHarga: printOpts.showHarga,
+        showQr: printOpts.useQr,
+      })
+    )
+      toast.error("Pop-up diblokir browser. Izinkan pop-up untuk mencetak.");
+  };
+
+  const doDirectZebra = async (pcs: Pcs[]) => {
+    const avail = pcs.filter((p) => p.status === "siap_jual");
+    if (!avail.length) return toast.error("Tidak ada pcs tersedia untuk dicetak");
+
+    try {
+      setPrintingZebra(true);
+      const res = await fetch("/api/print-zebra", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          labels: avail.map(toLabel),
+          format: "40x30",
+          options: printOpts,
+        }),
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.ok) {
+        throw new Error(resData.error || "Gagal mencetak ke Zebra");
+      }
+      toast.success(resData.message || `Berhasil mengirim ${avail.length} label langsung ke Zebra!`);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mencetak langsung ke Zebra");
+    } finally {
+      setPrintingZebra(false);
+    }
   };
 
   const toggle = (kode: string) => setSelected((prev) => { const n = new Set(prev); n.has(kode) ? n.delete(kode) : n.add(kode); return n; });
@@ -177,6 +225,14 @@ export default function BarangBarcodeModal({ barang, onClose }: { barang: any; o
                         <td style={{ padding: "6px 10px" }}>
                           {p.status === "siap_jual" ? (
                             <span style={{ fontSize: 10.5, fontWeight: 800, color: "#047857", background: "#D1FAE5", padding: "2px 7px", borderRadius: 5 }}>Tersedia</span>
+                          ) : p.status === "retur_banding" ? (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#B45309", background: "#FEF3C7", padding: "2px 7px", borderRadius: 5 }}>
+                              Retur · Banding Marketplace
+                            </span>
+                          ) : p.status === "stok_reject" ? (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#92400E", background: "#FDE68A", padding: "2px 7px", borderRadius: 5 }}>
+                              Retur · Stok Reject (Grade B)
+                            </span>
                           ) : (
                             <span style={{ fontSize: 10.5, fontWeight: 800, color: "#B91C1C", background: "#FEE2E2", padding: "2px 7px", borderRadius: 5 }} title={p.no_transaksi || ""}>
                               Terjual · {p.terjual_kanal || "-"} · {fmtTgl(p.terjual_at)}
@@ -196,15 +252,77 @@ export default function BarangBarcodeModal({ barang, onClose }: { barang: any; o
 
         {/* Footer */}
         {data && data.total > 0 && (
-          <div style={{ padding: "12px 20px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#F8FAFC" }}>
-            <span style={{ fontSize: 12, color: "#475569" }}>Dipilih: <b>{selected.size}</b> pcs</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button disabled={!selected.size} onClick={() => doPrint((data.pcs || []).filter((p) => selected.has(p.kode)))} style={{ fontSize: 12.5, fontWeight: 800, padding: "8px 14px", borderRadius: 8, border: "1px solid #C7D2FE", background: "white", color: selected.size ? "#4338CA" : "#94A3B8", cursor: selected.size ? "pointer" : "not-allowed" }}>
-                <Printer size={13} style={{ verticalAlign: -2 }} /> Cetak Terpilih
-              </button>
-              <button disabled={!visibleAvail.length} onClick={() => doPrint(visibleAvail)} style={{ fontSize: 12.5, fontWeight: 800, padding: "8px 14px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#6366F1,#4F46E5)", color: "white", cursor: "pointer", opacity: visibleAvail.length ? 1 : 0.5 }}>
-                <Printer size={13} style={{ verticalAlign: -2 }} /> Cetak Semua Tersedia ({visibleAvail.length})
-              </button>
+          <div style={{ borderTop: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+            {/* Toolbar Pilihan Cetak Elemen */}
+            <div style={{ padding: "8px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", background: "#F1F5F9", fontSize: 12 }}>
+              <span style={{ fontWeight: 800, color: "#1E293B", display: "flex", alignItems: "center", gap: 5 }}>
+                ⚙️ Elemen Cetak:
+              </span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showNama ? 800 : 500, color: printOpts.showNama ? "#0F172A" : "#64748B" }}>
+                <input type="checkbox" checked={printOpts.showNama} onChange={(e) => setPrintOpts(p => ({ ...p, showNama: e.target.checked }))} />
+                Nama Barang
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showSize ? 800 : 500, color: printOpts.showSize ? "#0F172A" : "#64748B" }}>
+                <input type="checkbox" checked={printOpts.showSize} onChange={(e) => setPrintOpts(p => ({ ...p, showSize: e.target.checked }))} />
+                Ukuran Size
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showSku ? 800 : 500, color: printOpts.showSku ? "#0F172A" : "#64748B" }}>
+                <input type="checkbox" checked={printOpts.showSku} onChange={(e) => setPrintOpts(p => ({ ...p, showSku: e.target.checked }))} />
+                Kode SKU / TBJ
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showHarga ? 800 : 500, color: printOpts.showHarga ? "#0F172A" : "#64748B" }}>
+                <input type="checkbox" checked={printOpts.showHarga} onChange={(e) => setPrintOpts(p => ({ ...p, showHarga: e.target.checked }))} />
+                Harga Jual
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.useQr ? 800 : 600, color: printOpts.useQr ? "#0284C7" : "#475569", background: printOpts.useQr ? "#F0F9FF" : "transparent", padding: "1px 6px", borderRadius: 4, border: printOpts.useQr ? "1px solid #BAE6FD" : "1px solid #CBD5E1" }} title="Tampilkan 2D QR Code sebagai pengganti 1D Barcode">
+                <input type="checkbox" checked={printOpts.useQr} onChange={(e) => setPrintOpts(p => ({ ...p, useQr: e.target.checked }))} />
+                📱 QR Code
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.rotate180 ? 800 : 600, color: printOpts.rotate180 ? "#1D4ED8" : "#475569", background: printOpts.rotate180 ? "#EFF6FF" : "transparent", padding: "1px 6px", borderRadius: 4, border: printOpts.rotate180 ? "1px solid #BFDBFE" : "1px solid #CBD5E1" }} title="Putar orientasi cetak 180 derajat jika label keluar terbalik dari mulut printer">
+                <input type="checkbox" checked={printOpts.rotate180} onChange={(e) => setPrintOpts(p => ({ ...p, rotate180: e.target.checked }))} />
+                🔄 Balik Arah 180°
+              </label>
+              <span style={{ fontSize: 11, color: "#64748B", marginLeft: "auto", fontStyle: "italic" }}>
+                {!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga
+                  ? (printOpts.useQr ? "✨ Full QR Code tepat di tengah halaman (Nama, Size, SKU, Harga nonaktif)" : "✨ Full Barcode tepat di tengah halaman")
+                  : (printOpts.useQr ? "📱 Mode QR Code aktif · Layout dinamis proporsional" : "Centang elemen yang ingin disertakan")}
+              </span>
+            </div>
+
+            <div style={{ padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 12, color: "#475569" }}>Dipilih: <b>{selected.size}</b> pcs</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", padding: "2px 8px", borderRadius: 6 }}>
+                  🖨️ Zebra ZD230 (40×30 mm)
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  disabled={!selected.size || printingZebra}
+                  onClick={() => doDirectZebra((data.pcs || []).filter((p) => selected.has(p.kode)))}
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 800,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #16A34A",
+                    background: selected.size ? "#16A34A" : "#F1F5F9",
+                    color: selected.size ? "white" : "#94A3B8",
+                    cursor: selected.size && !printingZebra ? "pointer" : "not-allowed",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  ⚡ {printingZebra ? "Mengirim..." : "Cetak Langsung Zebra"}
+                </button>
+                <button disabled={!selected.size} onClick={() => doPrint((data.pcs || []).filter((p) => selected.has(p.kode)))} style={{ fontSize: 12.5, fontWeight: 800, padding: "8px 14px", borderRadius: 8, border: "1px solid #C7D2FE", background: "white", color: selected.size ? "#4338CA" : "#94A3B8", cursor: selected.size ? "pointer" : "not-allowed" }}>
+                  <Printer size={13} style={{ verticalAlign: -2 }} /> Preview / Dialog
+                </button>
+                <button disabled={!visibleAvail.length} onClick={() => doPrint(visibleAvail)} style={{ fontSize: 12.5, fontWeight: 800, padding: "8px 14px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#6366F1,#4F46E5)", color: "white", cursor: "pointer", opacity: visibleAvail.length ? 1 : 0.5 }}>
+                  <Printer size={13} style={{ verticalAlign: -2 }} /> Cetak Semua ({visibleAvail.length})
+                </button>
+              </div>
             </div>
           </div>
         )}

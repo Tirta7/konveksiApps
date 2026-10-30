@@ -47,10 +47,11 @@ export async function GET() {
         lastMasuk: led?.lastMasuk || null,
         lastKeluar: led?.lastKeluar || null,
         barcode: {
-          total: pcs.filter((x: any) => ["siap_jual", "terjual", "retur_banding"].includes(x.status)).length,
+          total: pcs.filter((x: any) => ["siap_jual", "terjual", "retur_banding", "stok_reject", "rusak_retur"].includes(x.status)).length,
           tersedia: pcs.filter((x: any) => x.status === "siap_jual").length,
           terjual: terjualPcs.length,
           retur_banding: pcs.filter((x: any) => x.status === "retur_banding").length,
+          stok_reject: pcs.filter((x: any) => x.status === "stok_reject").length,
         },
         terjual_kanal: perKanal,
         omzet,

@@ -25,6 +25,8 @@ import Barcode from "react-barcode";
 import { toast } from "sonner";
 import Link from "next/link";
 import { findStageByKey, isGudangStage } from "@/lib/stage-resolve";
+import { printBarangLabels, type LabelPcs } from "@/components/barang-label-print";
+import QRCode from "qrcode";
 
 export default function BarcodeProduksiPage() {
   const [barcodes, setBarcodes] = useState<any[]>([]);
@@ -54,6 +56,8 @@ export default function BarcodeProduksiPage() {
     }
     if (status === "stok") return { label: "DI STOK · SIAP JUAL", color: "#059669", border: "#10B981", bg: "#ECFDF5", opacity: 1, clickable: true };
     if (status === "retur_banding") return { label: "RETUR · BANDING", color: "#D97706", border: "#F59E0B", bg: "#FFFBEB", opacity: 1, clickable: true };
+    if (status === "stok_reject") return { label: "RETUR · STOK REJECT (GRADE B)", color: "#B45309", border: "#F59E0B", bg: "#FEF3C7", opacity: 0.95, clickable: true };
+    if (status === "rusak_retur") return { label: "RETUR · WRITE-OFF", color: "#991B1B", border: "#FCA5A5", bg: "#FEF2F2", opacity: 0.85, clickable: true };
     if (status === "reject") return { label: "REJECT", color: "#DC2626", border: "#FCA5A5", bg: "#FEF2F2", opacity: 0.85, clickable: false };
     if (status === "siap_jual") return { label: "SELESAI · SIAP MASUK GUDANG", color: "#0D9488", border: "#14B8A6", bg: "#F0FDFA", opacity: 1, clickable: true };
     if (status === "gudang") return { label: "DI GUDANG · ANTRE MASUK STOK", color: "#0D9488", border: "#14B8A6", bg: "#F0FDFA", opacity: 1, clickable: false };
@@ -133,30 +137,101 @@ export default function BarcodeProduksiPage() {
     return () => window.removeEventListener("konveksi-sync", handler);
   }, []);
 
-  // Print handlers
+  // Print options & state
+  const [printOpts, setPrintOpts] = useState({
+    showNama: true,
+    showSize: true,
+    showSku: true,
+    showHarga: false,
+    useQr: false,
+    rotate180: false,
+  });
+  const [printingZebra, setPrintingZebra] = useState(false);
+
+  // Helper untuk generate SVG QR Code pada modal preview
+  const getQrSvg = (code: string) => {
+    let res = "";
+    try {
+      (QRCode as any).toString(code, { type: "svg", margin: 0 }, (err: any, svg: string) => {
+        if (!err && svg) res = svg;
+      });
+    } catch {}
+    return res;
+  };
+
+  // Helper untuk mengubah item barcode produksi menjadi LabelPcs unified (40x30 mm)
+  const mapToLabelPcs = (items: any[]): LabelPcs[] => {
+    return items.map((b) => ({
+      kode: b.kodeBarcode,
+      nama_barang: b.nama_barang || b.model || selectedPoInfo?.model || "Produk",
+      size: b.size,
+      sku: b.sku || b.kode_barang || b.noPo || selectedPoInfo?.noPo || "",
+      harga_jual: b.harga_jual != null ? Number(b.harga_jual) : undefined,
+      noPo: b.noPo || selectedPoInfo?.noPo,
+    }));
+  };
+
+  // 1-Klik Cetak langsung ke printer roll Zebra ZD230 via ZPL native
+  const handleDirectZebraPrint = async (items: any[]) => {
+    if (!items || !items.length) {
+      toast.error("Tidak ada item barcode yang dipilih");
+      return;
+    }
+    setPrintingZebra(true);
+    try {
+      const payload = mapToLabelPcs(items);
+      const res = await fetch("/api/print-zebra", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          labels: payload,
+          options: printOpts,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || (!data.ok && !data.success)) {
+        throw new Error(data.error || "Gagal mencetak ke Zebra");
+      }
+      toast.success(`⚡ Berhasil mengirim ${items.length} label ke printer Zebra ZD230!`);
+    } catch (err: any) {
+      toast.error(`Printer Zebra error: ${err.message}`);
+    } finally {
+      setPrintingZebra(false);
+    }
+  };
+
+  // Buka jendela preview label 40×30 mm dengan opsi elemen dan tombol cetak Zebra / browser
+  const handlePrintPreview = (items: any[], title?: string) => {
+    if (!items || !items.length) {
+      toast.error("Tidak ada item barcode yang dipilih");
+      return;
+    }
+    const labels = mapToLabelPcs(items);
+    printBarangLabels(labels, {
+      ukuran: "40x30",
+      namaUsaha: title || selectedPoInfo?.model || "Barcode Produksi",
+      showNama: printOpts.showNama,
+      showSize: printOpts.showSize,
+      showSku: printOpts.showSku,
+      showHarga: printOpts.showHarga,
+      showQr: printOpts.useQr,
+    });
+  };
+
+  // Legacy fallback print handlers
   const handlePrint = (sizeTarget?: string) => {
-    setPrintSizeTarget(sizeTarget || null);
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    const targets = sizeTarget 
+      ? filteredBarcodes.filter(b => b.size === sizeTarget)
+      : filteredBarcodes;
+    handlePrintPreview(targets, `PO ${selectedPoInfo?.noPo || ""} ${sizeTarget ? `- Size ${sizeTarget}` : ""}`);
   };
 
   const handlePrintSingle = () => {
-    document.body.classList.add('printing-single');
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    if (selectedBarcode) {
+      handlePrintPreview([selectedBarcode], `Label ${selectedBarcode.kodeBarcode}`);
+    }
   };
-
-  useEffect(() => {
-    const afterPrint = () => {
-      setSelectedBarcode(null);
-      setPrintSizeTarget(null);
-      document.body.classList.remove('printing-single');
-    };
-    window.addEventListener("afterprint", afterPrint);
-    return () => window.removeEventListener("afterprint", afterPrint);
-  }, []);
 
   const handleCopyCode = (code: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -248,19 +323,19 @@ export default function BarcodeProduksiPage() {
           body.printing-single .print-single-area, body.printing-single .print-single-area * { visibility: visible; }
           body.printing-single .print-single-area { 
             position: absolute; left: 0; top: 0; 
-            width: 5cm !important; 
+            width: 4cm !important; 
             height: 3cm !important; 
             background: white !important; 
             margin: 0 !important; padding: 0 !important; 
             display: flex; align-items: center; justify-content: center;
           }
           
-          body.printing-single .print-single-area .print-target-card { width: 4.8cm !important; height: 2.8cm !important; padding: 0.1cm 0.15cm !important; margin: 0 !important; border: 1px solid #000 !important; }
-          body.printing-single .print-single-area .print-size-box { width: 0.7cm !important; height: 0.7cm !important; font-size: 10pt !important; border-width: 1px !important; }
-          body.printing-single .print-single-area .print-model-text { font-size: 11pt !important; margin-bottom: 0 !important; letter-spacing: 0 !important; }
-          body.printing-single .print-single-area .print-detail-text { font-size: 6pt !important; }
+          body.printing-single .print-single-area .print-target-card { width: 3.8cm !important; height: 2.8cm !important; padding: 0.08cm 0.12cm !important; margin: 0 !important; border: 1px solid #000 !important; }
+          body.printing-single .print-single-area .print-size-box { width: 0.65cm !important; height: 0.65cm !important; font-size: 9pt !important; border-width: 1px !important; }
+          body.printing-single .print-single-area .print-model-text { font-size: 9.5pt !important; margin-bottom: 0 !important; letter-spacing: 0 !important; }
+          body.printing-single .print-single-area .print-detail-text { font-size: 5.5pt !important; }
           body.printing-single .print-single-area .print-divider { margin-bottom: 2% !important; height: 1px !important; }
-          body.printing-single .print-single-area .print-barcode-svg svg { width: 100% !important; height: 1.1cm !important; }
+          body.printing-single .print-single-area .print-barcode-svg svg { width: 100% !important; height: 1.0cm !important; }
           
           body.printing-single .modal-overlay { background: none; }
           body.printing-single .modal-box { box-shadow: none; padding: 0; margin: 0; }
@@ -268,7 +343,7 @@ export default function BarcodeProduksiPage() {
         }
         
         @page { size: auto; }
-        @page single-sticker { size: 5cm 3cm; margin: 0; }
+        @page single-sticker { size: 4cm 3cm; margin: 0; }
         @media print {
           body.printing-single { page: single-sticker; }
         }
@@ -315,14 +390,39 @@ export default function BarcodeProduksiPage() {
             <Package size={16} /> Daftar Bundle
           </Link>
 
-          <button 
-            className="btn btn-primary" 
-            onClick={() => handlePrint()} 
-            disabled={!selectedPoId || filteredBarcodes.length === 0}
-            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, padding: "10px 18px", fontWeight: 800 }}
-          >
-            <Printer size={16} /> Cetak Barcode PO Ini
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              onClick={() => handleDirectZebraPrint(filteredBarcodes)}
+              disabled={!selectedPoId || filteredBarcodes.length === 0 || printingZebra}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+                padding: "10px 18px",
+                fontWeight: 800,
+                borderRadius: 8,
+                background: filteredBarcodes.length && !printingZebra ? "#16A34A" : "#94A3B8",
+                color: "white",
+                border: "none",
+                cursor: filteredBarcodes.length && !printingZebra ? "pointer" : "not-allowed",
+                boxShadow: filteredBarcodes.length && !printingZebra ? "0 2px 8px rgba(22, 163, 74, 0.25)" : "none"
+              }}
+              title="Cetak semua barcode PO ini langsung ke printer Zebra ZD230 (1-Klik ZPL)"
+            >
+              ⚡ {printingZebra ? "Mengirim..." : `Cetak Langsung Zebra (${filteredBarcodes.length})`}
+            </button>
+
+            <button 
+              className="btn btn-primary" 
+              onClick={() => handlePrintPreview(filteredBarcodes, `PO ${selectedPoInfo?.noPo || ""} - ${selectedPoInfo?.model || "Jeans"}`)} 
+              disabled={!selectedPoId || filteredBarcodes.length === 0}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, padding: "10px 18px", fontWeight: 800 }}
+              title="Buka preview & dialog cetak 40×30 mm"
+            >
+              <Printer size={16} /> Preview / Dialog Cetak
+            </button>
+          </div>
         </div>
       </div>
 
@@ -501,6 +601,53 @@ export default function BarcodeProduksiPage() {
             })}
           </div>
         )}
+
+        {/* TOOLBAR PILIHAN ELEMEN CETAK LABEL */}
+        <div style={{
+          marginTop: 14,
+          padding: "10px 14px",
+          background: "#F8FAFC",
+          border: "1px solid #E2E8F0",
+          borderRadius: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          flexWrap: "wrap",
+          fontSize: 12
+        }}>
+          <span style={{ fontWeight: 800, color: "#1E293B", display: "flex", alignItems: "center", gap: 5 }}>
+            ⚙️ Elemen Cetak Label:
+          </span>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showNama ? 800 : 500, color: printOpts.showNama ? "#0F172A" : "#64748B" }}>
+            <input type="checkbox" checked={printOpts.showNama} onChange={(e) => setPrintOpts(p => ({ ...p, showNama: e.target.checked }))} />
+            Nama Barang / Model
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showSize ? 800 : 500, color: printOpts.showSize ? "#0F172A" : "#64748B" }}>
+            <input type="checkbox" checked={printOpts.showSize} onChange={(e) => setPrintOpts(p => ({ ...p, showSize: e.target.checked }))} />
+            Ukuran Size
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showSku ? 800 : 500, color: printOpts.showSku ? "#0F172A" : "#64748B" }}>
+            <input type="checkbox" checked={printOpts.showSku} onChange={(e) => setPrintOpts(p => ({ ...p, showSku: e.target.checked }))} />
+            Kode SKU / PO
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.showHarga ? 800 : 500, color: printOpts.showHarga ? "#0F172A" : "#64748B" }}>
+            <input type="checkbox" checked={printOpts.showHarga} onChange={(e) => setPrintOpts(p => ({ ...p, showHarga: e.target.checked }))} />
+            Harga Jual
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.useQr ? 800 : 600, color: printOpts.useQr ? "#0284C7" : "#475569", background: printOpts.useQr ? "#F0F9FF" : "transparent", padding: "1px 6px", borderRadius: 4, border: printOpts.useQr ? "1px solid #BAE6FD" : "1px solid #CBD5E1" }} title="Tampilkan 2D QR Code sebagai pengganti 1D Barcode">
+            <input type="checkbox" checked={printOpts.useQr} onChange={(e) => setPrintOpts(p => ({ ...p, useQr: e.target.checked }))} />
+            📱 QR Code
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: printOpts.rotate180 ? 800 : 600, color: printOpts.rotate180 ? "#1D4ED8" : "#475569", background: printOpts.rotate180 ? "#EFF6FF" : "transparent", padding: "1px 6px", borderRadius: 4, border: printOpts.rotate180 ? "1px solid #BFDBFE" : "1px solid #CBD5E1" }} title="Putar orientasi cetak 180 derajat jika label keluar terbalik dari mulut printer">
+            <input type="checkbox" checked={printOpts.rotate180} onChange={(e) => setPrintOpts(p => ({ ...p, rotate180: e.target.checked }))} />
+            🔄 Balik Arah 180°
+          </label>
+          <span style={{ fontSize: 11, color: "#64748B", marginLeft: "auto", fontStyle: "italic" }}>
+            {!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga
+              ? (printOpts.useQr ? "✨ Full QR Code tepat di tengah halaman (Nama, Size, SKU, Harga nonaktif)" : "✨ Hanya Barcode yang akan dicetak (posisi pas di tengah)")
+              : (printOpts.useQr ? "📱 Mode QR Code aktif · Layout dinamis proporsional" : "🖨️ Zebra ZD230 (40×30 mm) · Code 128 tebal & Size Box besar")}
+          </span>
+        </div>
       </div>
 
       {/* PRINTABLE CONTAINER / MAIN VIEW */}
@@ -562,14 +709,37 @@ export default function BarcodeProduksiPage() {
                           </span>
                         </div>
 
-                        <button
-                          onClick={() => handlePrint(sz)}
-                          className="btn btn-secondary"
-                          style={{ fontSize: 11.5, padding: "4px 10px", borderRadius: 6, display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}
-                          title={`Cetak hanya stiker Size ${sz}`}
-                        >
-                          <Printer size={13} /> Cetak Khusus Size {sz}
-                        </button>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <button
+                            onClick={() => handleDirectZebraPrint(itemsInSize)}
+                            disabled={printingZebra}
+                            className="btn"
+                            style={{
+                              fontSize: 11.5,
+                              padding: "5px 12px",
+                              borderRadius: 6,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontWeight: 800,
+                              background: "#16A34A",
+                              color: "white",
+                              border: "none",
+                              cursor: printingZebra ? "not-allowed" : "pointer"
+                            }}
+                            title={`Cetak langsung ${itemsInSize.length} label Size ${sz} ke printer Zebra ZD230 (1-Klik ZPL)`}
+                          >
+                            ⚡ Zebra Size {sz} ({itemsInSize.length})
+                          </button>
+                          <button
+                            onClick={() => handlePrintPreview(itemsInSize, `PO ${selectedPoInfo?.noPo || ""} - Size ${sz}`)}
+                            className="btn btn-secondary"
+                            style={{ fontSize: 11.5, padding: "5px 12px", borderRadius: 6, display: "flex", alignItems: "center", gap: 5, fontWeight: 700 }}
+                            title={`Buka preview & dialog cetak Size ${sz}`}
+                          >
+                            <Printer size={13} /> Preview Size {sz}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="size-header">Ukuran: {sz} ({itemsInSize.length} pcs)</div>
@@ -616,35 +786,44 @@ export default function BarcodeProduksiPage() {
                                 {si.label}
                               </div>
                               
-                              {/* Top Section */}
-                              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, marginTop: 12 }}>
-                                {/* Size Square */}
-                                <div style={{ border: "2px solid #000", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900, color: "#000", flexShrink: 0 }}>
-                                  {b.size}
+                              {/* Top Section: Nama Barang di kiri, Size di kanan */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginTop: 12, marginBottom: 6 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 12.5, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.3, color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {b.nama_barang || b.model || "JEANS"}
+                                  </div>
+                                  <div style={{ fontSize: 9, fontWeight: 700, color: "#64748B", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {b.sku || b.kode_barang || b.noPo || "-"}
+                                  </div>
                                 </div>
                                 
-                                {/* Text Info */}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 1, color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                    {b.model || "JEANS"}
-                                  </div>
-                                  <div style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", color: "#333", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                    SIZE {b.size} / {b.kodeBarcode}
-                                  </div>
+                                {/* Size Box - Rounded & Bold */}
+                                <div style={{
+                                  border: "2px solid #000",
+                                  borderRadius: 4,
+                                  padding: "2px 6px",
+                                  minWidth: 28,
+                                  height: 22,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 12.5,
+                                  fontWeight: 900,
+                                  color: "#000",
+                                  flexShrink: 0
+                                }}>
+                                  {b.size}
                                 </div>
                               </div>
 
-                              {/* Divider line */}
-                              <div style={{ width: "100%", height: 1.5, background: "#000", marginBottom: 6 }}></div>
-
-                              {/* Barcode Section */}
-                              <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+                              {/* Barcode Section (Clean, without divider line) */}
+                              <div style={{ display: "flex", justifyContent: "center", width: "100%", padding: "4px 0" }}>
                                 <Barcode 
                                   value={b.kodeBarcode} 
-                                  width={1.2} 
+                                  width={1.25} 
                                   height={34} 
                                   displayValue={true} 
-                                  fontSize={10.5} 
+                                  fontSize={10} 
                                   fontOptions="bold"
                                   margin={0} 
                                   background="transparent" 
@@ -753,11 +932,20 @@ export default function BarcodeProduksiPage() {
                                 {isCopied ? <Check size={12} color="#059669" /> : <Copy size={12} />}
                               </button>
                               <button
+                                onClick={(e) => { e.stopPropagation(); handleDirectZebraPrint([b]); }}
+                                disabled={printingZebra}
+                                className="btn"
+                                style={{ padding: "4px 8px", fontSize: 11, background: "#16A34A", color: "white", border: "none", borderRadius: 4, cursor: printingZebra ? "not-allowed" : "pointer", fontWeight: 700 }}
+                                title="Cetak langsung ke Zebra ZD230"
+                              >
+                                ⚡ Zebra
+                              </button>
+                              <button
                                 onClick={() => setSelectedBarcode(b)}
                                 className="btn btn-primary"
                                 style={{ padding: "4px 10px", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}
                               >
-                                <Printer size={12} /> Cetak
+                                <Printer size={12} /> Detail
                               </button>
                             </div>
                           </td>
@@ -783,7 +971,7 @@ export default function BarcodeProduksiPage() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "var(--text-primary)" }}>Preview Stiker Barcode</h3>
-                  <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Format Label Thermal Standard (5 x 3 cm)</div>
+                  <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Format Label Rol Thermal (40×30 mm) · Zebra ZD230</div>
                 </div>
               </div>
               <button onClick={() => setSelectedBarcode(null)} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-secondary)" }}>&times;</button>
@@ -791,38 +979,101 @@ export default function BarcodeProduksiPage() {
             
             <div style={{ padding: 24, display: "flex", flexDirection: "column", alignItems: "center", background: "#F1F5F9" }}>
               
-              {/* TARGET AREA CETAK SATUAN */}
+              {/* TARGET AREA CETAK SATUAN (40x30 mm Unified Layout) */}
               <div className="print-single-area" style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-                <div className="card barcode-card print-target-card" style={{ display: "flex", flexDirection: "column", padding: "14px 18px", background: "white", border: "2px solid #000", borderRadius: 0, width: "100%", maxWidth: 360, margin: "0 auto", boxSizing: "border-box" }}>
-                  <div style={{ display: "flex", gap: "4%", alignItems: "center", marginBottom: "3%" }}>
-                    <div className="print-size-box" style={{ border: "3px solid #000", width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: "#000", flexShrink: 0 }}>
-                      {selectedBarcode.size}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="print-model-text" style={{ fontSize: 18, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2, color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {selectedBarcode.model || "JEANS"}
+                <div className="card barcode-card print-target-card" style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  padding: (!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? "16px 14px" : "22px 14px 12px 14px",
+                  background: "white",
+                  border: "1.5px solid #000",
+                  borderRadius: 4,
+                  width: 320,
+                  height: 200,
+                  margin: "0 auto",
+                  boxSizing: "border-box",
+                  justifyContent: (!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? "center" : "space-between",
+                  boxShadow: "0 6px 18px rgba(0,0,0,0.08)"
+                }}>
+                  {/* TOP: Nama Barang & Size */}
+                  {(printOpts.showNama || printOpts.showSize) && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {printOpts.showNama && (
+                          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.3, color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {selectedBarcode.nama_barang || selectedBarcode.model || "JEANS"}
+                          </div>
+                        )}
                       </div>
-                      <div className="print-detail-text" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        SIZE {selectedBarcode.size} / {selectedBarcode.kodeBarcode} / GREY
-                      </div>
+                      {printOpts.showSize && (
+                        <div style={{
+                          border: "2px solid #000",
+                          borderRadius: 3,
+                          padding: "2px 8px",
+                          minWidth: 32,
+                          height: 24,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 13.5,
+                          fontWeight: 900,
+                          color: "#000",
+                          flexShrink: 0
+                        }}>
+                          {selectedBarcode.size}
+                        </div>
+                      )}
                     </div>
+                  )}
+
+                  {/* BARCODE / QR CODE CENTERED */}
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%", margin: "auto 0" }}>
+                    {printOpts.useQr ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        <div 
+                          style={{ 
+                            width: (!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? 140 : 90, 
+                            height: (!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? 140 : 90, 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center" 
+                          }}
+                          dangerouslySetInnerHTML={{ __html: getQrSvg(selectedBarcode.kodeBarcode) }} 
+                        />
+                        <span style={{ 
+                          fontFamily: "monospace", 
+                          fontSize: (!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? 13.5 : 11, 
+                          fontWeight: 900, 
+                          color: "#000",
+                          letterSpacing: 0.5,
+                          marginTop: 3
+                        }}>
+                          {selectedBarcode.kodeBarcode}
+                        </span>
+                      </div>
+                    ) : (
+                      <Barcode 
+                        value={selectedBarcode.kodeBarcode} 
+                        width={(!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? 1.6 : 1.4} 
+                        height={(!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? 70 : 42} 
+                        displayValue={true} 
+                        fontSize={(!printOpts.showNama && !printOpts.showSize && !printOpts.showSku && !printOpts.showHarga) ? 13.5 : 11.5} 
+                        fontOptions="bold"
+                        margin={0} 
+                        textMargin={6}
+                        background="transparent" 
+                        lineColor="#000"
+                      />
+                    )}
                   </div>
 
-                  <div className="print-divider" style={{ width: "100%", height: 2, background: "#000", marginBottom: "3%" }}></div>
-
-                  <div className="print-barcode-svg" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-                    <Barcode 
-                      value={selectedBarcode.kodeBarcode} 
-                      width={1.4} 
-                      height={42} 
-                      displayValue={true} 
-                      fontSize={13} 
-                      fontOptions="bold"
-                      margin={0} 
-                      background="transparent" 
-                      lineColor="#000"
-                    />
-                  </div>
+                  {/* BOTTOM: SKU / PO & Harga */}
+                  {(printOpts.showSku || printOpts.showHarga) && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, color: "#000", fontWeight: 700 }}>
+                      <span>{printOpts.showSku ? (selectedBarcode.sku || selectedBarcode.kode_barang || selectedBarcode.noPo || "-") : ""}</span>
+                      <span>{printOpts.showHarga && selectedBarcode.harga_jual ? `Rp ${Number(selectedBarcode.harga_jual).toLocaleString("id-ID")}` : ""}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -885,16 +1136,37 @@ export default function BarcodeProduksiPage() {
                 <Copy size={14} /> Salin Kode
               </button>
 
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-secondary" onClick={() => setSelectedBarcode(null)} style={{ fontSize: 13 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <button className="btn btn-secondary" onClick={() => setSelectedBarcode(null)} style={{ fontSize: 12.5 }}>
                   Tutup
                 </button>
                 <button 
-                  className="btn btn-primary" 
-                  onClick={handlePrintSingle}
-                  style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800 }}
+                  className="btn btn-secondary" 
+                  onClick={() => handlePrintPreview([selectedBarcode], `Label ${selectedBarcode.kodeBarcode}`)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700 }}
                 >
-                  <Printer size={16} /> Cetak Stiker 5x3 cm
+                  <Printer size={14} /> Preview / Dialog
+                </button>
+                <button 
+                  className="btn" 
+                  onClick={() => handleDirectZebraPrint([selectedBarcode])}
+                  disabled={printingZebra}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12.5,
+                    fontWeight: 800,
+                    background: "#16A34A",
+                    color: "white",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: 6,
+                    cursor: printingZebra ? "not-allowed" : "pointer"
+                  }}
+                  title="Cetak langsung ke Zebra ZD230 via ZPL native"
+                >
+                  ⚡ {printingZebra ? "Mencetak..." : "Cetak Langsung Zebra"}
                 </button>
               </div>
             </div>

@@ -33,7 +33,7 @@ export async function GET() {
     }
 
     // Status yang sudah "lebih maju" (masuk stok, terjual, retur, reject) tidak boleh ditimpa
-    const FINAL = ["siap_jual", "terjual", "retur_banding", "reject", "washing", "benang", "finishing"];
+    const FINAL = ["siap_jual", "terjual", "retur_banding", "stok_reject", "rusak_retur", "reject", "washing", "benang", "finishing"];
     const isAdvanced = (s: string) => FINAL.includes(s) || String(s || "").endsWith("_dikerjakan");
 
     // For each group, assign effective status based on counts
@@ -78,6 +78,7 @@ export async function GET() {
         statusPo: po ? po.status : "Unknown",
         nama_barang: barang?.nama_barang || null,
         kode_barang: barang?.kode || null,
+        harga_jual: barang?.harga_jual ?? null,
         pelanggan: sale?.pelanggan || null,
         harga_terjual: line?.harga ?? null,
       };

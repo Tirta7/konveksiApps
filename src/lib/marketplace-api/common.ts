@@ -212,6 +212,40 @@ export function upsertMarketplaceOrders(data: any, shop: MarketplaceShop, orders
       }
     }
     res.updated++;
+    const isReturnOrder = o.status === "Retur" || o.status_api === "TO_RETURN" || (o.dibatalkan && scannedCount(oid) > 0);
+    if (isReturnOrder) {
+      if (!Array.isArray(data.retur_online)) data.retur_online = [];
+      const alreadyInRetur = data.retur_online.some((ro: any) => String(ro.order_id || "").trim() === oid);
+      if (!alreadyInRetur) {
+        const sudahDireturFisik = (data.retur_marketplace || []).some((rm: any) => String(rm.order_id || "").trim() === oid);
+        for (const r of o.rows) {
+          data.retur_online.push({
+            id: nextId(data, "retur_online" as any),
+            marketplace: shop.label,
+            order_id: oid,
+            product_name: r.product_name || "-",
+            variation: r.variation || "-",
+            return_quantity: Number(r.quantity || 1) || 1,
+            return_type: o.status === "Retur" ? "Return/Refund" : "Cancel (Sudah Dikemas)",
+            alasan: r.cancel_reason || head.cancel_reason || "Retur/Batal dari Sinkronisasi API",
+            buyer_note: "-",
+            tanggal_batal: now,
+            buyer_username: r.buyer_username || head.buyer_username || "-",
+            recipient: r.recipient || head.recipient || "-",
+            phone: r.phone || head.phone || "-",
+            address: [r.address || head.address, r.city || head.city, r.province || head.province].filter(Boolean).join(", ") || "-",
+            tracking_id: r.tracking_id || head.tracking_id || "-",
+            shipping_provider: r.shipping_provider || head.shipping_provider || "-",
+            order_amount: String(r.order_amount || "0"),
+            payment_method: r.payment_method || head.payment_method || "-",
+            seller_sku: r.seller_sku || "-",
+            status: sudahDireturFisik ? "Masuk Gudang" : "Menunggu Gudang",
+            sumber: "api",
+            tanggal_diimpor: now,
+          });
+        }
+      }
+    }
     if (o.dibatalkan && !wasCancelled && scannedCount(oid) > 0) res.cancelledScanned++;
   }
   return res;

@@ -53,14 +53,14 @@ export default function LaporanPage() {
     if (!file) return;
 
     setUploading(true);
-    Papa.parse(file, {
+    Papa.parse(file as any, {
       header: true,
       skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as any[];
+      complete: async (results: Papa.ParseResult<any>) => {
+        const rows = (results.data || []) as any[];
         
         // Filter rows that are actual orders/refunds with Order ID
-        const validRows = rows.filter(r => r["ID pesanan terkait"] || r["ID Pesanan/Penyesuaian"]);
+        const validRows = rows.filter((r: any) => r["ID pesanan terkait"] || r["ID Pesanan/Penyesuaian"]);
 
         if (validRows.length === 0) {
           toast.error("Format file tidak sesuai. Pastikan Anda mengunggah file Settlement Keuangan TikTok.");
@@ -68,7 +68,7 @@ export default function LaporanPage() {
           return;
         }
 
-        const formatted = validRows.map(row => {
+        const formatted = validRows.map((row: any) => {
           return {
             order_id: row["ID pesanan terkait"] || row["ID Pesanan/Penyesuaian"],
             jenis_transaksi: row["Jenis transaksi"] || "Pesanan",
@@ -129,13 +129,19 @@ export default function LaporanPage() {
   const unifiedOrders = keuanganData.sales
     .filter(sale => sale.order_id && !String(sale.order_id).includes("Platform unique"))
     .map(sale => {
-    const returScan = (sale.returs || [])[0]; // retur yang sudah diproses di menu Retur Marketplace
+    const retursList = sale.returs || [];
+    const returScan = retursList[0]; // retur yang sudah diproses di menu Retur Marketplace
     const isRetur = returMap.has(sale.order_id) || !!returScan;
     const returData = returMap.has(sale.order_id) ? returMap.get(sale.order_id) : null;
     const settleData = settlementMap.get(sale.order_id);
 
+    const danaBanding = retursList.reduce((s: number, r: any) => s + Number(r.dana_diterima || 0), 0);
     const omzetKotor = Number(sale.total_amount ?? sale.order_amount ?? 0);
-    const labaBersih = settleData ? settleData.penyelesaian_pembayaran : (isRetur ? 0 : omzetKotor); // Default to omzet kotor if not settled, but 0 if retur
+    const labaBersih = settleData
+      ? Number(settleData.penyelesaian_pembayaran || 0) + danaBanding
+      : isRetur
+      ? danaBanding
+      : omzetKotor;
     const potongan = settleData ? Math.abs(settleData.biaya_lainnya || settleData.biaya_komisi || 0) : 0;
     const items = sale.items || [];
     
@@ -145,7 +151,14 @@ export default function LaporanPage() {
       variation: items.length ? items.map((i: any) => i.variation).filter(Boolean).join(", ") : sale.variation,
       tanggal: sale.tanggal_pesanan,
       isRetur,
-      statusRetur: returData?.return_type || (returScan ? (returScan.kondisi === "sesuai" ? "Retur · kembali ke stok" : `Banding · ${returScan.status}`) : ""),
+      danaBanding,
+      statusRetur: returScan
+        ? returScan.status === "Kembali ke Stok" || returScan.status === "Dipindah ke Stok"
+          ? "RETUR · KEMBALI KE STOK"
+          : `BANDING · ${String(returScan.status || "").toUpperCase()}`
+        : returData?.return_type
+        ? `RETUR / ${String(returData.return_type).toUpperCase()}`
+        : "RETUR / BATAL",
       omzetKotor,
       labaBersih,
       potongan,
@@ -154,9 +167,9 @@ export default function LaporanPage() {
   }).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   const totalOmzetKotor = unifiedOrders.reduce((s, o) => s + o.omzetKotor, 0);
-  const totalLabaBersih = unifiedOrders.reduce((s, o) => s + (o.isRetur ? 0 : o.labaBersih), 0);
+  const totalLabaBersih = unifiedOrders.reduce((s, o) => s + o.labaBersih, 0);
   const totalPotongan = unifiedOrders.reduce((s, o) => s + o.potongan, 0);
-  const totalReturLoss = unifiedOrders.reduce((s, o) => s + (o.isRetur ? o.omzetKotor : 0), 0);
+  const totalReturLoss = unifiedOrders.reduce((s, o) => s + (o.isRetur ? Math.max(0, o.omzetKotor - o.danaBanding) : 0), 0);
 
   const totalPO = data.reduce((s, d) => s + (d.total_po ?? 0), 0);
   const totalRetail = data.reduce((s, d) => s + (d.total_retail ?? 0), 0);
@@ -284,7 +297,7 @@ export default function LaporanPage() {
                             </td>
                             <td style={{ padding: "16px 24px" }}>
                               {o.isRetur ? (
-                                <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 800, background: "#FECACA", color: "#991B1B" }}>RETUR / BATAL</span>
+                                <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 800, background: "#FECACA", color: "#991B1B" }}>{o.statusRetur || "RETUR / BATAL"}</span>
                               ) : (
                                 <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 800, background: "#D1FAE5", color: "#065F46" }}>SELESAI</span>
                               )}
@@ -295,8 +308,8 @@ export default function LaporanPage() {
                             <td style={{ padding: "16px 24px", textAlign: "right", fontWeight: o.potongan > 0 ? 800 : 500, color: o.potongan > 0 ? "#F59E0B" : "#94A3B8", fontSize: 14 }}>
                               {o.potongan > 0 ? `-Rp ${o.potongan.toLocaleString("id-ID")}` : "Belum Settlement"}
                             </td>
-                            <td style={{ padding: "16px 24px", textAlign: "right", fontWeight: 900, color: o.isRetur ? "#EF4444" : "#10B981", fontSize: 16 }}>
-                              Rp {(o.isRetur ? 0 : o.labaBersih).toLocaleString("id-ID")}
+                            <td style={{ padding: "16px 24px", textAlign: "right", fontWeight: 900, color: o.isRetur && o.labaBersih <= 0 ? "#EF4444" : "#10B981", fontSize: 16 }}>
+                              Rp {o.labaBersih.toLocaleString("id-ID")}
                             </td>
                           </tr>
                         ))
