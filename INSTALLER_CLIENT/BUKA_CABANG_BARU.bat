@@ -14,7 +14,7 @@ echo.
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo [INFO] Meminta hak administrator...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%~dp0\" && \"%~f0\"' -Verb RunAs"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b 0
 )
 
@@ -163,7 +163,7 @@ if not "%TUNNEL_INPUT%"=="" (
   echo :: 1. Self-Elevation Admin
   echo net session ^>nul 2^>^&1
   echo if %%errorlevel%% neq 0 (
-  echo     powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%%%%~dp0\" ^&^& \"%%%%~f0\" ^& pause' -Verb RunAs -Wait"
+  echo     powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%%%%~f0' -Verb RunAs"
   echo     exit /b 0
   echo )
   echo cd /d "%%~dp0"

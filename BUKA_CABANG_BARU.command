@@ -249,7 +249,7 @@ cls
 :: 1. Self-Elevation Admin jika diperlukan
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%~dp0\" && \"%~f0\" & pause' -Verb RunAs -Wait"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b 0
 )
 
@@ -386,7 +386,7 @@ cls
 :: Self-Elevation Admin
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%~dp0\" && \"%~f0\" & pause' -Verb RunAs -Wait"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b 0
 )
 
@@ -453,6 +453,11 @@ fi
 if [ -f "INSTALLER_CLIENT/.token.example" ]; then
     cp "INSTALLER_CLIENT/.token.example" "${BRANCH_DIR}/" 2>/dev/null || true
 fi
+
+# Windows wajib memakai akhir baris CRLF agar label/goto di file .bat berfungsi
+for f in "${BRANCH_DIR}"/*.bat; do
+    perl -pi -e 's/\r?\n/\r\n/' "$f" 2>/dev/null || true
+done
 
 # 11. Cek Eksekusi Kontainer
 if [ "$DOCKER_AVAILABLE" = false ]; then
