@@ -46,6 +46,7 @@ next-env.d.ts
 .auth-secret
 /backups/
 /data/
+CABANG_*/
 !.env.example
 license-cache.json
 *.backup*.json

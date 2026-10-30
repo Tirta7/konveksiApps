@@ -21,39 +21,92 @@ if %errorlevel% neq 0 (
 
 cd /d "%~dp0"
 
-:: 2. Cek Apakah Docker Desktop Aktif
+:: 2. Cek & Install Docker Desktop Otomatis
 echo [1/5] Memeriksa status Docker Desktop...
 docker --version >nul 2>&1
-if %errorlevel% neq 0 (
+if not errorlevel 1 goto DOCKER_FOUND
+
+echo.
+echo  ============================================================
+echo   [!] DOCKER DESKTOP BELUM TERPASANG DI KOMPUTER INI
+echo   Memulai instalasi otomatis Docker Desktop...
+echo   Proses ini membutuhkan waktu sekitar 5 - 15 menit.
+echo  ============================================================
+echo.
+
+where winget >nul 2>&1
+if not errorlevel 1 (
+    echo  [..] Menginstall Docker Desktop via Windows Package Manager (winget)...
+    winget install -e --id Docker.DockerDesktop --exact --source winget --silent --accept-package-agreements --accept-source-agreements
+    if !errorlevel! equ 0 goto DOCKER_INSTALLED
+    echo  [!] winget gagal, mencoba download installer langsung...
+)
+
+echo  [..] Mengunduh Docker Desktop Installer resmi...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -UserAgent 'Mozilla/5.0' -Uri 'https://desktop.docker.com/win/main/amd64/Docker%%20Desktop%%20Installer.exe' -OutFile '%TEMP%\DockerInstaller.exe'"
+
+if not exist "%TEMP%\DockerInstaller.exe" (
     echo.
-    echo [ERROR] Docker belum terinstall pada komputer ini!
-    echo Silakan install Docker Desktop dari: https://www.docker.com/products/docker-desktop/
+    echo  [ERROR] Gagal mengunduh Docker Desktop.
+    echo  Pastikan koneksi internet lancar, atau unduh manual dari:
+    echo  https://www.docker.com/products/docker-desktop/
     echo.
     pause
     exit /b 1
 )
 
+echo  [..] Memasang Docker Desktop (Silent Installation)...
+start /wait "" "%TEMP%\DockerInstaller.exe" install --quiet --accept-license --backend=wsl-2
+del /q "%TEMP%\DockerInstaller.exe" >nul 2>&1
+
+:DOCKER_INSTALLED
+echo.
+echo  ============================================================
+echo   [BERHASIL] DOCKER DESKTOP SELESAI DIINSTALL!
+echo   ----------------------------------------------------------
+echo   Sistem Windows WAJIB di-RESTART (Reboot) agar fitur
+echo   virtualisasi & WSL2 aktif sepenuhnya.
+echo.
+echo   Langkah selanjutnya:
+echo   1. Klik Restart komputer Anda sekarang.
+echo   2. Setelah menyala kembali, jalankan file ini lagi!
+echo  ============================================================
+echo.
+pause
+exit /b 0
+
+:DOCKER_FOUND
+echo [OK] Docker Desktop terpasang.
+
+:: Memastikan Docker Engine aktif
 docker info >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo [WARNING] Docker Desktop belum aktif. Membuka Docker...
+if not errorlevel 1 goto DOCKER_READY
+
+echo [WARNING] Docker Desktop belum aktif. Membuka Docker otomatis...
+if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
     start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" >nul 2>&1
-    echo Menunggu Docker aktif (maksimal 45 detik)...
-    set /a attempt=0
-    :WAIT_DOCKER
-    timeout /t 5 /nobreak >nul
-    docker info >nul 2>&1
-    if %errorlevel% equ 0 goto DOCKER_READY
-    set /a attempt+=1
-    if !attempt! lss 9 goto WAIT_DOCKER
-    echo.
-    echo [ERROR] Docker Desktop belum siap. Pastikan Docker sudah running lalu ulangi.
-    pause
-    exit /b 1
+) else (
+    start "" "Docker Desktop" >nul 2>&1
 )
+
+echo Menunggu Docker aktif (maksimal 90 detik)...
+set /a attempt=0
+:WAIT_DOCKER
+timeout /t 5 /nobreak >nul
+docker info >nul 2>&1
+if %errorlevel% equ 0 goto DOCKER_READY
+set /a attempt+=1
+if !attempt! lss 18 (
+    echo   ...menunggu Docker siap (!attempt!/18)...
+    goto WAIT_DOCKER
+)
+echo.
+echo [ERROR] Docker Desktop belum siap. Pastikan statusnya 'Engine Running' lalu ulangi.
+pause
+exit /b 1
 
 :DOCKER_READY
-echo [OK] Docker Desktop aktif.
+echo [OK] Docker Desktop aktif dan siap digunakan.
 
 :: 3. Input Data Pembeli / Klien Konveksi Baru
 echo.
@@ -96,7 +149,9 @@ set /p "TUNNEL_INPUT=Token Cloudflare Tunnel: "
 echo.
 echo [2/5] Membaca Machine ID hardware komputer pembeli...
 set "MACHINE_ID="
-if exist "get-machine-id.ps1" (
+if exist "client-sdk\get-machine-id.ps1" (
+    for /f "usebackq delims=" %%i in (`powershell -NoProfile -ExecutionPolicy Bypass -File client-sdk\get-machine-id.ps1`) do set "MACHINE_ID=%%i"
+) else if exist "get-machine-id.ps1" (
     for /f "usebackq delims=" %%i in (`powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1`) do set "MACHINE_ID=%%i"
 )
 if "%MACHINE_ID%"=="" (
@@ -205,11 +260,11 @@ echo   Machine ID Klien   : %MACHINE_ID%
 echo ============================================================
 echo.
 echo   PETUNJUK AKTIVASI LISENSI:
-echo   1. Machine ID (%MACHINE_ID%) SUDAH OTOMATIS TERDAFTAR ke Server Pusat.
-echo   2. Hubungi Admin / Penyedia Sistem untuk aktivasi lisensi "%STORE_INPUT%".
-echo   3. Setelah lisensi disetujui oleh pusat:
-echo   4. Layar aplikasi di komputer ini akan otomatis terbuka langsung
-echo      dalam 5 detik (tanpa perlu input lisensi manual)!
+echo   1. Salin Machine ID di atas: %MACHINE_ID%
+echo   2. Buka Dashboard VOC ML Anda di menu "Machine ID Masuk".
+echo   3. Setujui / Aktifkan lisensi untuk toko "%STORE_INPUT%".
+echo   4. Layar merah di komputer pembeli akan otomatis terbuka
+echo      dalam 5 detik begitu diaktifkan!
 echo ============================================================
 echo.
 

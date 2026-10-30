@@ -239,18 +239,193 @@ fi
 chmod +x "${BRANCH_DIR}/BUKA_APLIKASI.command"
 
 # --- Script Windows (.bat) agar folder cabang ini bisa langsung dipakai di Windows ---
-cat <<EOF > "${BRANCH_DIR}/START_CABANG.bat"
+cat <<'EOF_BAT' > "${BRANCH_DIR}/START_CABANG.bat"
 @echo off
-title Menjalankan Cabang ${STORE_INPUT}
+setlocal enabledelayedexpansion
+title Menjalankan Cabang
+color 0A
+cls
+
+:: 1. Self-Elevation Admin jika diperlukan
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%~dp0\" && \"%~f0\" & pause' -Verb RunAs -Wait"
+    exit /b 0
+)
+
 cd /d "%~dp0"
 
+echo ============================================================
+echo   SISTEM MANAJEMEN KONVEKSI - MEMULAI APLIKASI
+echo ============================================================
+echo.
+
+:: 2. Cek Apakah Docker Terinstall
+echo [1/4] Memeriksa status Docker Desktop...
+docker --version >nul 2>&1
+if not errorlevel 1 goto DOCKER_FOUND
+
+echo.
+echo  ============================================================
+echo   [!] DOCKER DESKTOP BELUM TERPASANG DI KOMPUTER INI
+echo   Memulai instalasi otomatis Docker Desktop...
+echo   Proses ini membutuhkan waktu sekitar 5 - 15 menit.
+echo  ============================================================
+echo.
+
+where winget >nul 2>&1
+if not errorlevel 1 (
+    echo  [..] Menginstall Docker via Windows Package Manager (winget)...
+    winget install -e --id Docker.DockerDesktop --exact --source winget --silent --accept-package-agreements --accept-source-agreements
+    if !errorlevel! equ 0 goto DOCKER_INSTALLED
+    echo  [!] winget gagal, mencoba download langsung...
+)
+
+echo  [..] Mengunduh Docker Desktop Installer resmi...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -UserAgent 'Mozilla/5.0' -Uri 'https://desktop.docker.com/win/main/amd64/Docker%%20Desktop%%20Installer.exe' -OutFile '%TEMP%\DockerInstaller.exe'"
+
+if not exist "%TEMP%\DockerInstaller.exe" (
+    echo.
+    echo  [ERROR] Gagal mengunduh Docker Desktop. Periksa koneksi internet Anda.
+    pause
+    exit /b 1
+)
+
+echo  [..] Memasang Docker Desktop (Silent Install)...
+start /wait "" "%TEMP%\DockerInstaller.exe" install --quiet --accept-license --backend=wsl-2
+del /q "%TEMP%\DockerInstaller.exe" >nul 2>&1
+
+:DOCKER_INSTALLED
+echo.
+echo  ============================================================
+echo   [BERHASIL] DOCKER DESKTOP TELAH DIINSTALL!
+echo   ----------------------------------------------------------
+echo   Komputer WAJIB di-RESTART sekarang agar WSL2 aktif.
+echo   Setelah restart, silakan klik kembali file START_CABANG.bat!
+echo  ============================================================
+echo.
+pause
+exit /b 0
+
+:DOCKER_FOUND
+echo  [OK] Docker Desktop terpasang.
+
+:: 3. Memastikan Docker Engine Berjalan
+echo  [..] Memeriksa apakah Docker Engine aktif...
+docker info >nul 2>&1
+if not errorlevel 1 goto DOCKER_READY
+
+echo  [!] Docker belum aktif. Membuka Docker Desktop otomatis...
+if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" >nul 2>&1
+) else (
+    start "" "Docker Desktop" >nul 2>&1
+)
+
+echo  Menunggu Docker Engine aktif (maksimal 90 detik)...
+set /a attempt=0
+:WAIT_DOCKER
+timeout /t 5 /nobreak >nul
+docker info >nul 2>&1
+if %errorlevel% equ 0 goto DOCKER_READY
+set /a attempt+=1
+if !attempt! lss 18 (
+    echo   ...menunggu Docker siap (!attempt!/18)...
+    goto WAIT_DOCKER
+)
+echo.
+echo  [ERROR] Docker Desktop belum aktif. Buka Docker Desktop secara manual
+echo  hingga status 'Engine Running', lalu klik kembali file ini.
+pause
+exit /b 1
+
+:DOCKER_READY
+echo  [OK] Docker Engine aktif dan siap.
+
+:: 4. Deteksi Hardware Machine ID
+echo.
+echo [2/4] Menyesuaikan Machine ID hardware komputer...
 if exist "get-machine-id.ps1" (
     powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 >nul 2>&1
 )
 
+:: 5. Login GHCR jika ada token
+echo.
+echo [3/4] Memeriksa kredensial update...
+if exist ".token" (
+    for /f "usebackq tokens=1,* delims==" %%a in (".token") do (
+        if /i "%%a"=="GITHUB_USERNAME" set "GH_USER=%%b"
+        if /i "%%a"=="GITHUB_TOKEN"    set "GH_PAT=%%b"
+    )
+    if defined GH_PAT (
+        echo !GH_PAT! | docker login ghcr.io -u !GH_USER! --password-stdin >nul 2>&1
+    )
+)
+
+:: 6. Jalankan Layanan
+echo.
+echo [4/4] Menjalankan server aplikasi...
 docker compose pull
 docker compose up -d
+
+echo Menunggu inisialisasi server (5 detik)...
 timeout /t 5 /nobreak >nul
+EOF_BAT
+
+cat <<EOF >> "${BRANCH_DIR}/START_CABANG.bat"
+start http://localhost:${PORT_INPUT}
+EOF
+
+cat <<'EOF_UPDATE' > "${BRANCH_DIR}/UPDATE_CABANG.bat"
+@echo off
+setlocal enabledelayedexpansion
+title Update Versi Terbaru Cabang
+color 0E
+cls
+
+:: Self-Elevation Admin
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%~dp0\" && \"%~f0\" & pause' -Verb RunAs -Wait"
+    exit /b 0
+)
+
+cd /d "%~dp0"
+echo ============================================================
+echo   UPDATE APLIKASI KONVEKSI KE VERSI TERBARU
+echo ============================================================
+echo.
+
+:: Cek Docker
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [!] Membuka Docker Desktop...
+    if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    timeout /t 15 /nobreak >nul
+)
+
+:: Login jika ada token
+if exist ".token" (
+    for /f "usebackq tokens=1,* delims==" %%a in (".token") do (
+        if /i "%%a"=="GITHUB_USERNAME" set "GH_USER=%%b"
+        if /i "%%a"=="GITHUB_TOKEN"    set "GH_PAT=%%b"
+    )
+    if defined GH_PAT echo !GH_PAT! | docker login ghcr.io -u !GH_USER! --password-stdin >nul 2>&1
+)
+
+echo [1/2] Mengunduh pembaruan dari cloud server...
+docker compose pull
+
+echo.
+echo [2/2] Merestart aplikasi dengan versi baru...
+docker compose up -d --remove-orphans
+
+echo.
+echo [OK] Update selesai! Membuka aplikasi...
+timeout /t 5 /nobreak >nul
+EOF_UPDATE
+
+cat <<EOF >> "${BRANCH_DIR}/UPDATE_CABANG.bat"
 start http://localhost:${PORT_INPUT}
 EOF
 
@@ -274,6 +449,9 @@ fi
 
 if [ -f "get-machine-id.ps1" ]; then
     cp "get-machine-id.ps1" "${BRANCH_DIR}/" 2>/dev/null || true
+fi
+if [ -f "INSTALLER_CLIENT/.token.example" ]; then
+    cp "INSTALLER_CLIENT/.token.example" "${BRANCH_DIR}/" 2>/dev/null || true
 fi
 
 # 11. Cek Eksekusi Kontainer

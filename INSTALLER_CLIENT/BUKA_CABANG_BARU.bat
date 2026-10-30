@@ -64,7 +64,9 @@ set /p "TUNNEL_INPUT=Token Cloudflare (opsional): "
 
 :: 6. Deteksi Machine ID Hardware
 set "MACHINE_ID="
-if exist "get-machine-id.ps1" (
+if exist "client-sdk\get-machine-id.ps1" (
+    for /f "usebackq delims=" %%i in (`powershell -NoProfile -ExecutionPolicy Bypass -File client-sdk\get-machine-id.ps1`) do set "MACHINE_ID=%%i"
+) else if exist "get-machine-id.ps1" (
     for /f "usebackq delims=" %%i in (`powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1`) do set "MACHINE_ID=%%i"
 )
 if "%MACHINE_ID%"=="" (
@@ -153,13 +155,140 @@ if not "%TUNNEL_INPUT%"=="" (
 :: 10. Buat Script Kontrol di dalam folder cabang
 (
   echo @echo off
+  echo setlocal enabledelayedexpansion
   echo title Menjalankan Cabang %STORE_INPUT%
+  echo color 0A
+  echo cls
+  echo.
+  echo :: 1. Self-Elevation Admin
+  echo net session ^>nul 2^>^&1
+  echo if %%errorlevel%% neq 0 (
+  echo     powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c cd /d \"%%%%~dp0\" ^&^& \"%%%%~f0\" ^& pause' -Verb RunAs -Wait"
+  echo     exit /b 0
+  echo )
   echo cd /d "%%~dp0"
+  echo.
+  echo :: 2. Cek Apakah Docker Terinstall
+  echo echo [1/4] Memeriksa status Docker Desktop...
+  echo docker --version ^>nul 2^>^&1
+  echo if not errorlevel 1 goto DOCKER_FOUND
+  echo.
+  echo echo  ============================================================
+  echo echo   [!] DOCKER DESKTOP BELUM TERPASANG DI KOMPUTER INI
+  echo echo   Memulai instalasi otomatis Docker Desktop...
+  echo echo   Proses ini membutuhkan waktu sekitar 5 - 15 menit.
+  echo echo  ============================================================
+  echo echo.
+  echo where winget ^>nul 2^>^&1
+  echo if not errorlevel 1 (
+  echo     echo  [..] Menginstall Docker via winget...
+  echo     winget install -e --id Docker.DockerDesktop --exact --source winget --silent --accept-package-agreements --accept-source-agreements
+  echo     if ^^!errorlevel^^! equ 0 goto DOCKER_INSTALLED
+  echo     echo  [!] winget gagal, beralih ke download langsung...
+  echo )
+  echo echo  [..] Mengunduh Docker Desktop Installer resmi...
+  echo powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -UserAgent 'Mozilla/5.0' -Uri 'https://desktop.docker.com/win/main/amd64/Docker%%%%20Desktop%%%%20Installer.exe' -OutFile '%%TEMP%%\DockerInstaller.exe'"
+  echo if not exist "%%TEMP%%\DockerInstaller.exe" (
+  echo     echo  [ERROR] Gagal mengunduh Docker Desktop. Periksa koneksi internet Anda.
+  echo     pause
+  echo     exit /b 1
+  echo )
+  echo echo  [..] Memasang Docker Desktop (Silent Install)...
+  echo start /wait "" "%%TEMP%%\DockerInstaller.exe" install --quiet --accept-license --backend=wsl-2
+  echo del /q "%%TEMP%%\DockerInstaller.exe" ^>nul 2^>^&1
+  echo :DOCKER_INSTALLED
+  echo echo.
+  echo echo  ============================================================
+  echo echo   [BERHASIL] DOCKER DESKTOP TELAH DIINSTALL!
+  echo echo   Komputer WAJIB di-RESTART sekarang agar WSL2 aktif.
+  echo echo   Setelah restart, silakan klik kembali file START_CABANG.bat!
+  echo echo  ============================================================
+  echo pause
+  echo exit /b 0
+  echo.
+  echo :DOCKER_FOUND
+  echo echo  [OK] Docker Desktop terpasang.
+  echo.
+  echo :: 3. Memastikan Docker Engine Berjalan
+  echo echo  [..] Memeriksa apakah Docker Engine aktif...
+  echo docker info ^>nul 2^>^&1
+  echo if not errorlevel 1 goto DOCKER_READY
+  echo echo  [!] Docker belum aktif. Membuka Docker Desktop otomatis...
+  echo if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+  echo     start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" ^>nul 2^>^&1
+  echo ) else (
+  echo     start "" "Docker Desktop" ^>nul 2^>^&1
+  echo )
+  echo echo  Menunggu Docker Engine aktif (maksimal 90 detik)...
+  echo set /a attempt=0
+  echo :WAIT_DOCKER
+  echo timeout /t 5 /nobreak ^>nul
+  echo docker info ^>nul 2^>^&1
+  echo if %%errorlevel%% equ 0 goto DOCKER_READY
+  echo set /a attempt+=1
+  echo if ^^!attempt^^! lss 18 (
+  echo     echo   ...menunggu Docker siap (^^!attempt^^!/18)...
+  echo     goto WAIT_DOCKER
+  echo )
+  echo echo  [ERROR] Docker Desktop belum aktif. Buka secara manual hingga 'Engine Running'.
+  echo pause
+  echo exit /b 1
+  echo.
+  echo :DOCKER_READY
+  echo echo  [OK] Docker Engine aktif dan siap.
+  echo.
+  echo :: 4. Machine ID & Login Token
+  echo if exist "get-machine-id.ps1" (
+  echo     powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 ^>nul 2^>^&1
+  echo )
+  echo if exist ".token" (
+  echo     for /f "usebackq tokens=1,* delims==" %%%%a in (".token") do (
+  echo         if /i "%%%%a"=="GITHUB_USERNAME" set "GH_USER=%%%%b"
+  echo         if /i "%%%%a"=="GITHUB_TOKEN"    set "GH_PAT=%%%%b"
+  echo     )
+  echo     if defined GH_PAT echo ^^!GH_PAT^^! ^| docker login ghcr.io -u ^^!GH_USER^^! --password-stdin ^>nul 2^>^&1
+  echo )
+  echo.
+  echo :: 5. Jalankan Kontainer
+  echo echo [4/4] Menjalankan server aplikasi %STORE_INPUT%...
   echo docker compose pull
   echo docker compose up -d
   echo timeout /t 5 /nobreak ^>nul
   echo start http://localhost:%PORT_INPUT%
 ) > "%BRANCH_DIR%\START_CABANG.bat"
+
+(
+  echo @echo off
+  echo setlocal enabledelayedexpansion
+  echo title Update Versi Terbaru Cabang %STORE_INPUT%
+  echo color 0E
+  echo cls
+  echo cd /d "%%~dp0"
+  echo echo ============================================================
+  echo echo   UPDATE APLIKASI KONVEKSI - %STORE_INPUT%
+  echo echo ============================================================
+  echo echo.
+  echo docker info ^>nul 2^>^&1
+  echo if %%errorlevel%% neq 0 (
+  echo     if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+  echo     timeout /t 15 /nobreak ^>nul
+  echo )
+  echo if exist ".token" (
+  echo     for /f "usebackq tokens=1,* delims==" %%%%a in (".token") do (
+  echo         if /i "%%%%a"=="GITHUB_USERNAME" set "GH_USER=%%%%b"
+  echo         if /i "%%%%a"=="GITHUB_TOKEN"    set "GH_PAT=%%%%b"
+  echo     )
+  echo     if defined GH_PAT echo ^^!GH_PAT^^! ^| docker login ghcr.io -u ^^!GH_USER^^! --password-stdin ^>nul 2^>^&1
+  echo )
+  echo echo [1/2] Mengunduh pembaruan dari cloud server...
+  echo docker compose pull
+  echo echo [2/2] Merestart kontainer aplikasi...
+  echo docker compose up -d --remove-orphans
+  echo echo [OK] Update selesai!
+  echo timeout /t 5 /nobreak ^>nul
+  echo start http://localhost:%PORT_INPUT%
+  echo pause
+) > "%BRANCH_DIR%\UPDATE_CABANG.bat"
 
 (
   echo @echo off
@@ -178,6 +307,9 @@ if not "%TUNNEL_INPUT%"=="" (
     echo start http://localhost:%PORT_INPUT%
   )
 ) > "%BRANCH_DIR%\BUKA_APLIKASI.bat"
+
+if exist "get-machine-id.ps1" copy "get-machine-id.ps1" "%BRANCH_DIR%\" >nul 2>&1
+if exist "INSTALLER_CLIENT\.token.example" copy "INSTALLER_CLIENT\.token.example" "%BRANCH_DIR%\" >nul 2>&1
 
 echo [4/4] Skrip dan konfigurasi cabang selesai dibuat!
 echo.
@@ -216,10 +348,9 @@ start http://localhost:%PORT_INPUT%
 echo.
 echo ============================================================
 echo   CABANG TELAH AKTIF!
-echo   Bila muncul Layar Aktivasi (Terkunci), hubungi Admin /
-echo   Penyedia Sistem untuk mengaktifkan Machine ID:
+echo   Bila muncul Layar Merah (Terkunci), aktifkan Machine ID:
 echo   %MACHINE_ID%
-echo   untuk lisensi cabang "%STORE_INPUT%".
+echo   pada Dashboard VOC ML Anda untuk cabang "%STORE_INPUT%".
 echo ============================================================
 echo.
 pause

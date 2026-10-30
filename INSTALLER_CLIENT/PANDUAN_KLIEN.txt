@@ -1,47 +1,49 @@
 ========================================================================
-PANDUAN INSTALASI & PENGGUNAAN APLIKASI KONVEKSI (CLIENT / PABRIK)
+PANDUAN LENGKAP INSTALASI & PENGGUNAAN SISTEM KONVEKSI (CLIENT / PABRIK)
 ========================================================================
 
-1. PERSYARATAN UTAMA:
-   - Komputer menggunakan OS Windows 10 atau Windows 11 (64-bit).
-   - Docker Desktop sudah terpasang dan dalam status aktif ("Engine Running").
-     Download Docker Desktop: https://www.docker.com/products/docker-desktop/
+1. PERSYARATAN:
+   - Komputer Windows 10 atau Windows 11 (64-bit).
+   - Koneksi internet aktif saat instalasi pertama kali & saat update.
+   - Tidak perlu install Docker manual! Sistem akan mendeteksi dan
+     mengunduh serta menginstall Docker Desktop secara otomatis.
 
 2. CARA INSTALASI PERTAMA KALI:
-   - Cukup klik 2x pada file: "INSTALL.bat"
+   - Klik 2x file: "INSTALL.bat" (atau "START_CABANG.bat")
    - Script akan otomatis:
-     a. Memeriksa status keaktifan Docker Desktop.
-     b. Membaca Machine ID unik hardware komputer ini secara otomatis.
-     c. Meminta nama cabang/outlet Anda (misal: Konveksi Solo / Gudang Pusat).
-     d. Mengunduh (pull) aplikasi Konveksi versi terbaru dari cloud.
-     e. Menjalankan server aplikasi di latar belakang.
-     f. Memunculkan Machine ID Anda di layar hitam CMD.
-     g. Otomatis membuka aplikasi di browser web: http://localhost:3001
+     a. Memeriksa apakah Docker Desktop sudah ada. Jika BELUM, script
+        otomatis mengunduh dan menginstall Docker Desktop ke PC Anda!
+        (Jika baru pertama kali diinstall, restart PC Anda 1x lalu klik
+         kembali file INSTALL.bat).
+     b. Membuka dan memastikan Docker Engine aktif di latar belakang.
+     c. Mendeteksi Serial Number / Machine ID unik hardware PC ini.
+     d. Mengunduh aplikasi Konveksi versi terbaru langsung dari cloud registry.
+     e. Membuat shortcut di Desktop: "Aplikasi Konveksi" & "UPDATE".
+     f. Membuka aplikasi secara otomatis di browser Chrome / Edge.
 
-3. AKTIVASI LISENSI (JIKA MUNCUL LAYAR MERAH "APLIKASI TERKUNCI"):
-   - Machine ID komputer Anda otomatis terdaftar ke server lisensi pusat.
-   - Informasikan nama usaha Anda kepada penyedia software untuk persetujuan aktivasi.
-   - Begitu diaktifkan dari pusat, aplikasi otomatis terbuka sendiri dalam 
-     5 detik tanpa perlu me-restart komputer.
+3. AKTIVASI LISENSI (JIKA MUNCUL LAYAR MERAH / KUNCI LISENSI):
+   - Machine ID PC klien otomatis terkirim dan tercatat di server lisensi pusat.
+   - Informasikan nama usaha / cabang Anda ke Admin / Pemilik Sistem.
+   - Begitu lisensi disetujui, layar merah akan otomatis terbuka dalam 5 detik
+     tanpa perlu restart atau setting ulang.
 
+4. CARA UPDATE APLIKASI KE VERSI TERBARU:
+   - Jika Developer / Anda memperbarui fitur aplikasi di GitHub:
+     a. Pastikan file ".token" ada jika repository/image bersifat Private.
+        (Salin dari ".token.example", rename menjadi ".token", lalu isi
+         GitHub Personal Access Token Classic dengan centang 'read:packages').
+     b. Cukup klik 2x file: "UPDATE.bat" (atau "UPDATE_CABANG.bat").
+     c. Script otomatis mengunduh pembaruan dari cloud, merestart container,
+        dan membuka aplikasi yang sudah terupdate!
+     d. Data barang, transaksi, barcode, dan retur Anda 100% AMAN (tidak hilang).
 
-4. CARA MENGGUNAKAN SEHARI-HARI:
-   - Cukup klik 2x pada: "BUKA_APLIKASI.bat"
-   - Atau buka browser Chrome / Edge lalu ketik: http://localhost:3001
-   - Untuk akses dari komputer lain dalam 1 jaringan Wi-Fi/LAN kantor, 
-     ketik: http://[IP-KOMPUTER-SERVER]:3001 (contoh: http://192.168.1.50:3001)
-
-5. CARA UPDATE VERSI TERBARU:
-   - Jika pengembang merilis fitur baru, cukup klik 2x: "UPDATE.bat"
-   - Script akan otomatis mengunduh pembaruan tanpa menghapus data Anda.
+5. CARA PENGGUNAAN SEHARI-HARI:
+   - Cukup klik shortcut di Desktop: "Aplikasi Konveksi"
+   - Atau klik file "BUKA_APLIKASI.bat"
+   - Browser PC ini   : http://localhost:3001
+   - Domain Online    : https://[subdomain].vocpos.id (jika cloudflare aktif)
+   - Akses HP/Tablet  : http://[IP-KOMPUTER-SERVER]:3001 (dalam satu jaringan Wi-Fi)
 
 6. CARA MEMATIKAN APLIKASI:
-   - Klik 2x pada file: "STOP.bat"
-
-7. KEAMANAN DATA:
-   - Seluruh data Anda (database, backup, pengaturan) tersimpan aman di 
-     folder "data/" di dalam direktori ini.
-   - Jangan menghapus folder "data/".
-   - Anda dapat membuat salinan cadangan manual kapan saja dengan 
-     mengklik 2x file "BACKUP_DATA.bat".
+   - Klik 2x pada file: "STOP.bat" (atau "STOP_CABANG.bat")
 ========================================================================

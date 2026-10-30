@@ -1,3 +1,16 @@
-# Ganti file ini menjadi ".token" jika image ghcr.io Anda bersifat PRIVATE
+# ============================================================
+# KREDENSIAL GITHUB CONTAINER REGISTRY (ghcr.io)
+# ============================================================
+# Salin file ini menjadi ".token" (hapus kata .example)
+#
+# Cara membuat Personal Access Token (PAT) Classic di GitHub:
+# 1. Buka: https://github.com/settings/tokens/new
+# 2. Note: Konveksi Client Token
+# 3. Expiration: No expiration (atau 1 tahun)
+# 4. Centang checklist: [x] read:packages
+# 5. Klik "Generate token" di bagian paling bawah
+# 6. Salin token ghp_xxxxxx ke bawah ini:
+# ============================================================
+
 GITHUB_USERNAME=tirta7
-GITHUB_TOKEN=ghp_masukkan_personal_access_token_di_sini
+GITHUB_TOKEN=ghp_masukkan_token_classic_di_sini
