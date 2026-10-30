@@ -123,7 +123,7 @@ echo [3/4] Menyiapkan docker-compose.yml khusus cabang...
   echo       DATA_DIR: /data
   echo       TZ: Asia/Jakarta
   echo       STORE_NAME: "%STORE_INPUT%"
-  echo       VOCML_MACHINE_ID: "%MACHINE_ID%"
+  echo       VOCML_MACHINE_ID: "${VOCML_MACHINE_ID:-}"
   echo       VOCML_SERVER_URL: "${VOCML_SERVER_URL:-https://vocml.vocpos.id}"
   echo       VOCML_PRODUCT: "pos"
   echo     volumes:
@@ -144,7 +144,7 @@ if not "%TUNNEL_INPUT%"=="" (
     echo     image: cloudflare/cloudflared:latest
     echo     container_name: konveksi_tunnel_%SUB_CLEAN%
     echo     restart: unless-stopped
-    echo     command: tunnel --no-autoupdate run
+    echo     command: tunnel --no-autoupdate run --url http://app:3001
     echo     environment:
     echo       TUNNEL_TOKEN: "%TUNNEL_INPUT%"
     echo     depends_on:
@@ -239,7 +239,7 @@ if not "%TUNNEL_INPUT%"=="" (
   echo.
   echo :: 4. Machine ID & Login Token
   echo if exist "get-machine-id.ps1" (
-  echo     powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 ^>nul 2^>^&1
+  echo     powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 -EnvFile ".env" ^>nul 2^>^&1
   echo )
   echo if exist ".token" (
   echo     for /f "usebackq tokens=1,* delims==" %%%%a in (".token") do (

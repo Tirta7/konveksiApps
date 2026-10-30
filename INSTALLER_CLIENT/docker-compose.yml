@@ -36,7 +36,7 @@ services:
   #   image: cloudflare/cloudflared:latest
   #   container_name: konveksi_tunnel
   #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run
+  #   command: tunnel --no-autoupdate run --url http://app:3001
   #   environment:
   #     TUNNEL_TOKEN: ${TUNNEL_TOKEN}
   #   depends_on:

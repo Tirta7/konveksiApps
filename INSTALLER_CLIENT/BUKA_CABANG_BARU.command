@@ -154,7 +154,7 @@ AUTH_SECRET=konveksi_${SUB_CLEAN}_secret_session_2026
 # Sistem Lisensi Pengunci
 VOCML_SERVER_URL=https://vocml.vocpos.id
 VOCML_PRODUCT=pos
-VOCML_MACHINE_ID=${MACHINE_ID}
+VOCML_MACHINE_ID=
 VOCML_DISABLED=false
 
 # Cloudflare Tunnel
@@ -178,7 +178,7 @@ services:
       DATA_DIR: /data
       TZ: Asia/Jakarta
       STORE_NAME: "${STORE_INPUT}"
-      VOCML_MACHINE_ID: "${MACHINE_ID}"
+      VOCML_MACHINE_ID: "\${VOCML_MACHINE_ID:-}"
       VOCML_SERVER_URL: "\${VOCML_SERVER_URL:-https://vocml.vocpos.id}"
       VOCML_PRODUCT: "pos"
     volumes:
@@ -199,7 +199,7 @@ cat <<EOF >> "${BRANCH_DIR}/docker-compose.yml"
     image: cloudflare/cloudflared:latest
     container_name: konveksi_tunnel_${SUB_CLEAN}
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate run --url http://app:3001
     environment:
       TUNNEL_TOKEN: "${TUNNEL_INPUT}"
     depends_on:
@@ -346,7 +346,7 @@ echo  [OK] Docker Engine aktif dan siap.
 echo.
 echo [2/4] Menyesuaikan Machine ID hardware komputer...
 if exist "get-machine-id.ps1" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 >nul 2>&1
+    powershell -NoProfile -ExecutionPolicy Bypass -File get-machine-id.ps1 -EnvFile ".env" >nul 2>&1
 )
 
 :: 5. Login GHCR jika ada token

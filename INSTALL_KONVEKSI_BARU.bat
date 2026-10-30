@@ -204,7 +204,7 @@ if not exist "data" mkdir data
   echo       DATA_DIR: /data
   echo       TZ: Asia/Jakarta
   echo       STORE_NAME: "%STORE_INPUT%"
-  echo       VOCML_MACHINE_ID: "%MACHINE_ID%"
+  echo       VOCML_MACHINE_ID: "${VOCML_MACHINE_ID:-}"
   echo       VOCML_SERVER_URL: "${VOCML_SERVER_URL:-https://vocml.vocpos.id}"
   echo       VOCML_PRODUCT: "pos"
   echo     volumes:
@@ -224,7 +224,7 @@ if not "%TUNNEL_INPUT%"=="" (
     echo     image: cloudflare/cloudflared:latest
     echo     container_name: konveksi_tunnel_%SUB_CLEAN%
     echo     restart: unless-stopped
-    echo     command: tunnel --no-autoupdate run
+    echo     command: tunnel --no-autoupdate run --url http://app:3001
     echo     environment:
     echo       TUNNEL_TOKEN: "%TUNNEL_INPUT%"
     echo     depends_on:
