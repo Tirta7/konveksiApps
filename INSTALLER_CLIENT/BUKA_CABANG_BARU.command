@@ -453,6 +453,11 @@ fi
 if [ -f "INSTALLER_CLIENT/.token.example" ]; then
     cp "INSTALLER_CLIENT/.token.example" "${BRANCH_DIR}/" 2>/dev/null || true
 fi
+for util_file in RESTART_FACTORY.bat BACKUP_DATABASE.bat RESTORE_DATABASE.bat export-sql.ps1; do
+    if [ -f "INSTALLER_CLIENT/${util_file}" ]; then
+        cp "INSTALLER_CLIENT/${util_file}" "${BRANCH_DIR}/" 2>/dev/null || true
+    fi
+done
 
 # Windows wajib memakai akhir baris CRLF agar label/goto di file .bat berfungsi
 for f in "${BRANCH_DIR}"/*.bat; do
