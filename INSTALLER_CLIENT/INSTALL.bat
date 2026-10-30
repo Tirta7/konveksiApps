@@ -54,7 +54,7 @@ echo.
 
 where winget >nul 2>&1
 if not errorlevel 1 (
-    echo  [..] Menginstall Docker Desktop via Windows Package Manager (winget)...
+    echo  [..] Menginstall Docker Desktop via Windows Package Manager - winget...
     winget install -e --id Docker.DockerDesktop --exact --source winget --silent --accept-package-agreements --accept-source-agreements
     if !errorlevel! equ 0 goto DOCKER_INSTALLED
     echo  [!] winget gagal atau butuh persetujuan manual, beralih ke download langsung...
@@ -156,7 +156,7 @@ if defined GH_PAT (
         echo  [WARNING] Token login tidak valid atau kadaluarsa. Mencoba lanjut...
     )
 ) else (
-    echo  [INFO] Menggunakan image public ghcr.io (atau token opsional di .token).
+    echo  [INFO] Menggunakan image public ghcr.io - atau token opsional di .token.
 )
 
 :: ============================================================

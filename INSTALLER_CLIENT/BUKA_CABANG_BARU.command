@@ -275,7 +275,7 @@ echo.
 
 where winget >nul 2>&1
 if not errorlevel 1 (
-    echo  [..] Menginstall Docker via Windows Package Manager (winget)...
+    echo  [..] Menginstall Docker via Windows Package Manager - winget...
     winget install -e --id Docker.DockerDesktop --exact --source winget --silent --accept-package-agreements --accept-source-agreements
     if !errorlevel! equ 0 goto DOCKER_INSTALLED
     echo  [!] winget gagal, mencoba download langsung...
@@ -330,7 +330,7 @@ docker info >nul 2>&1
 if %errorlevel% equ 0 goto DOCKER_READY
 set /a attempt+=1
 if !attempt! lss 18 (
-    echo   ...menunggu Docker siap (!attempt!/18)...
+    echo   ...menunggu Docker siap - !attempt!/18...
     goto WAIT_DOCKER
 )
 echo.

@@ -227,7 +227,7 @@ if not "%TUNNEL_INPUT%"=="" (
   echo if %%errorlevel%% equ 0 goto DOCKER_READY
   echo set /a attempt+=1
   echo if ^^!attempt^^! lss 18 (
-  echo     echo   ...menunggu Docker siap (^^!attempt^^!/18)...
+  echo     echo   ...menunggu Docker siap - ^^!attempt^^!/18...
   echo     goto WAIT_DOCKER
   echo )
   echo echo  [ERROR] Docker Desktop belum aktif. Buka secara manual hingga 'Engine Running'.
