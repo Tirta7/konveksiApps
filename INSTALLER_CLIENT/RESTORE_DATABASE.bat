@@ -93,3 +93,4 @@ if exist ".env" (
 timeout /t 5 /nobreak >nul
 start http://localhost:%TARGET_PORT%
 pause
+

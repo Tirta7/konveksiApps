@@ -153,3 +153,18 @@ export async function checkLicense({ serverUrl, product, machineId, publicKeyPem
     });
   }
 }
+
+/** Ambil pesan siaran (broadcast / info maintenance) aktif dari server VOC ML */
+export async function fetchMessages({ serverUrl, product, machineId, timeoutMs = 6000 }) {
+  try {
+    if (!serverUrl || !machineId) return [];
+    const base = serverUrl.replace(/\/$/, '');
+    const qs = new URLSearchParams({ machine_id: String(machineId).trim().toUpperCase(), product });
+    const res = await fetch(`${base}/api/v1/messages?${qs}`, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) return [];
+    const body = await res.json();
+    return Array.isArray(body?.messages) ? body.messages : [];
+  } catch {
+    return [];
+  }
+}

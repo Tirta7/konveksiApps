@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
 import NotificationBell from "@/components/NotificationBell";
+import VocmlBroadcastModal from "@/components/VocmlBroadcastModal";
 import { Menu } from "lucide-react";
 import { subscribeRealtime, subscribeRealtimeEvent } from "@/lib/realtime-client";
 import { toast } from "sonner";
@@ -152,6 +153,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
              </button>
            </div>
         </header>
+        <VocmlBroadcastModal />
         {children}
       </main>
     </div>

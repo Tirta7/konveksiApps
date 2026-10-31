@@ -27,6 +27,7 @@ interface LicenseData {
   licenseKey: string | null;
   lastChecked: string | null;
   disabled?: boolean;
+  messages?: any[];
 }
 
 export default function LicenseInfoCard() {
@@ -427,6 +428,42 @@ export default function LicenseInfoCard() {
               {copiedKey ? "Tersalin!" : "Salin Kunci"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* PESAN BROADCAST AKTIF DARI VOC ML */}
+      {data?.messages && data.messages.length > 0 && (
+        <div style={{
+          background: "#EFF6FF",
+          borderTop: "1px solid #BFDBFE",
+          padding: "14px 24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#1D4ED8" }}>
+            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#2563EB" }}></span>
+            PESAN SIARAN DARI SERVER VOC ML:
+          </div>
+          {data.messages.map((m: any, idx: number) => (
+            <div key={idx} style={{
+              background: "#FFFFFF",
+              border: "1px solid #DBEAFE",
+              borderRadius: 10,
+              padding: "10px 14px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <div>
+                <strong style={{ fontSize: 13, color: "#1E293B" }}>{m.title}</strong>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>{m.message}</p>
+              </div>
+              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 999, background: "#DBEAFE", color: "#1D4ED8", fontWeight: 700, textTransform: "uppercase" }}>
+                {m.type || "Info"}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

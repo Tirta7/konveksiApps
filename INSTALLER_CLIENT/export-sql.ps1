@@ -45,3 +45,4 @@ foreach ($prop in $data.PSObject.Properties) {
 $out += "COMMIT;"
 $out | Set-Content -Path $SqlPath -Encoding UTF8
 Write-Output "[OK] SQL Dump berhasil diexport: $SqlPath"
+

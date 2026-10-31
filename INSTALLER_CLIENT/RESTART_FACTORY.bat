@@ -70,3 +70,4 @@ echo.
 
 start http://localhost:%TARGET_PORT%
 pause
+

@@ -8,7 +8,7 @@
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { checkLicense } from '../client-sdk/vocml-client.js';
+import { checkLicense, fetchMessages } from '../client-sdk/vocml-client.js';
 
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
 
@@ -66,7 +66,8 @@ export let licenseStatus = {
   expiresAt: null,
   licenseKey: null,
   lastChecked: null,
-  disabled: VOCML_CONFIG.disabled
+  disabled: VOCML_CONFIG.disabled,
+  messages: []
 };
 
 let pollTimer = null;
@@ -96,7 +97,11 @@ export async function runLicenseVerification() {
   }
 
   try {
-    const res = await checkLicense(VOCML_CONFIG);
+    const [res, msgs] = await Promise.all([
+      checkLicense(VOCML_CONFIG),
+      fetchMessages(VOCML_CONFIG).catch(() => [])
+    ]);
+
     licenseStatus = {
       allowed: res.allowed,
       status: res.status || (res.allowed ? 'active' : 'pending'),
@@ -110,7 +115,8 @@ export async function runLicenseVerification() {
       expiresAt: res.expiresAt || null,
       licenseKey: res.licenseKey || null,
       lastChecked: new Date().toISOString(),
-      disabled: false
+      disabled: false,
+      messages: msgs || []
     };
 
     if (res.allowed) {
