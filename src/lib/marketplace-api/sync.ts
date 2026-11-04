@@ -7,11 +7,11 @@
  *
  * Semua perubahan data ditulis lewat readData()/writeData() (cache global, antrean tulis atomik).
  */
-import { readData, writeData } from "@/lib/data-store";
+import { readData, writeData, nextId } from "@/lib/data-store";
 import { emitEvent } from "@/lib/realtime-hub";
 import { type MarketplaceShop, type MappedOrder, findShop, getShops, upsertMarketplaceOrders } from "./common";
 import { tiktokConfig, tiktokRefresh, tiktokSearchOrders, tiktokOrderDetails, mapTiktokOrder } from "./tiktok";
-import { shopeeConfig, shopeeRefresh, shopeeOrderList, shopeeOrderDetails, shopeeTrackingNumber, mapShopeeOrder } from "./shopee";
+import { shopeeConfig, shopeeRefresh, shopeeOrderList, shopeeOrderDetails, shopeeTrackingNumber, mapShopeeOrder, shopeeEscrowDetail } from "./shopee";
 
 const g = globalThis as any;
 if (!g.__mpLocks) g.__mpLocks = new Set<string>();
@@ -135,6 +135,66 @@ export async function syncAllShops(opts: { days?: number; platform?: string } = 
     catch (e: any) { results.push({ key: s.key, error: String(e?.message || e) }); }
   }
   return results;
+}
+
+export async function syncMarketplaceSettlements() {
+  const data: any = readData();
+  const shops = getShops(data).filter((s) => s.aktif);
+  if (!data.settlement_online) data.settlement_online = [];
+
+  let synced = 0;
+  for (const rawShop of shops) {
+    if (rawShop.platform === "shopee") {
+      let shop = await ensureFreshToken({ ...rawShop });
+      const shopeeOrders: string[] = Array.from(
+        new Set<string>(
+          (data.penjualan_online || [])
+            .filter((r: any) => r.marketplace === "Shopee" || /shopee/i.test(String(r.marketplace || "")))
+            .map((r: any) => String(r.order_id).trim())
+        )
+      );
+
+      for (const orderId of shopeeOrders.slice(0, 50)) {
+        try {
+          const income = await shopeeEscrowDetail(shop, orderId);
+          if (income) {
+            const buyer_total = Number(income.buyer_total_amount || 0);
+            const comm_fee = Number(income.commission_fee || 0) + Number(income.service_fee || 0) + Number(income.transaction_fee || 0);
+            const aff_fee = Number(income.ams_commission_fee || 0);
+            const ship_fee = Number(income.final_shipping_fee || 0);
+            const voucher_fee = Number(income.voucher_from_seller || 0);
+            const other_fee = Number(income.drc_adjustable_refund || 0) + voucher_fee;
+            const net_payout = Number(income.escrow_amount || 0);
+
+            const existingIndex = data.settlement_online.findIndex((s: any) => s.order_id === orderId);
+            const rec = {
+              order_id: orderId,
+              jenis_transaksi: "Pesanan",
+              pendapatan_kotor: buyer_total,
+              biaya_komisi: comm_fee,
+              biaya_afiliasi: aff_fee,
+              biaya_ongkir: ship_fee,
+              biaya_lainnya: other_fee,
+              penyelesaian_pembayaran: net_payout,
+              tanggal_pembayaran: new Date().toISOString()
+            };
+            if (existingIndex >= 0) {
+              data.settlement_online[existingIndex] = { ...data.settlement_online[existingIndex], ...rec };
+            } else {
+              data.settlement_online.push({ id: nextId(data, "settlement_online"), ...rec });
+            }
+            synced++;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  if (synced > 0) {
+    writeData(data);
+    emitEvent("settlement_updated", { count: synced });
+  }
+  return { success: true, synced };
 }
 
 export function marketplaceConfigStatus() {

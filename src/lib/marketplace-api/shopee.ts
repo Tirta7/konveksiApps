@@ -136,6 +136,15 @@ export async function shopeeTrackingNumber(shop: MarketplaceShop, orderSn: strin
   } catch { return ""; }
 }
 
+export async function shopeeEscrowDetail(shop: MarketplaceShop, orderSn: string): Promise<any> {
+  try {
+    const d = await shopeeApi("/api/v2/payment/get_escrow_detail", shop, { order_sn: orderSn });
+    return d?.response?.order_income || d?.order_income || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Order Shopee → format baris CSV (nilai per baris produk, sama seperti kolom "Total Harga Produk" CSV). */
 export function mapShopeeOrder(o: any, shop: MarketplaceShop, tracking = ""): MappedOrder {
   const statusApi = String(o.order_status || "");
