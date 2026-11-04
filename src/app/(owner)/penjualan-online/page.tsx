@@ -99,12 +99,9 @@ export default function PenjualanOnlinePage() {
     const unSync = subscribeRealtime(() => fetchData());
     const unEvent = subscribeRealtimeEvent((ev, evData) => {
       if (ev === "marketplace:order_received") {
-        playOrderSound();
-        const jml = evData?.added ? `${evData.added} pesanan baru` : "Pesanan diperbarui";
-        toast.success(`🎉 ${jml} masuk dari ${evData?.shop || "Marketplace"}!`, {
-          description: "Data langsung diperbarui otomatis tanpa reload halaman.",
-          duration: 4000,
-        });
+        if (evData?.added > 0) {
+          playOrderSound();
+        }
         fetchData();
       } else if (
         ev === "retur_processed" ||

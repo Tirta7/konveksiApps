@@ -42,10 +42,10 @@ function useGlobalSync() {
             duration: 5000,
           });
         }
-      } else if (event === "marketplace:order_received") {
-        toast.success(`🎉 ${d?.added || 1} Pesanan baru masuk dari ${d?.shop || "Marketplace"}!`, {
+      } else if (event === "marketplace:order_received" && d?.added > 0) {
+        toast.success(`🎉 ${d.added} Pesanan baru masuk dari ${d?.shop || "Marketplace"}!`, {
           description: "Pesanan otomatis masuk ke Penjualan Online.",
-          duration: 6000,
+          duration: 5000,
         });
       }
     });
