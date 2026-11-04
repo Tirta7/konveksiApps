@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   UploadCloud, Search, ShoppingCart, User, FileText, ChevronRight, CreditCard, Box, 
   Calendar, Truck, MapPin, TableIcon, BarChart2, X, Eye, Clock, RefreshCw,
-  CheckCircle2, AlertCircle, Info, ChevronDown, ChevronUp, Check, ShieldCheck, Sparkles, ScanLine, Trash2
+  CheckCircle2, AlertCircle, Info, ChevronDown, ChevronUp, Check, ShieldCheck, Sparkles, ScanLine, Trash2,
+  ChevronLeft, ChevronsLeft, ChevronsRight, Filter, CalendarDays
 } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
@@ -43,6 +44,46 @@ function playOrderSound() {
   } catch {}
 }
 
+function parseOrderDate(dateStr: any): Date | null {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const s = dateStr.trim();
+  if (!s || s === "-") return null;
+
+  // DD/MM/YYYY or DD/MM/YYYY HH:mm:ss
+  const slashMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (slashMatch) {
+    const [, day, month, year, hh = "0", mm = "0", ss = "0"] = slashMatch;
+    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hh), Number(mm), Number(ss));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // DD-MM-YYYY or DD-MM-YYYY HH:mm:ss
+  const dashMatch = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (dashMatch) {
+    const [, day, month, year, hh = "0", mm = "0", ss = "0"] = dashMatch;
+    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hh), Number(mm), Number(ss));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // YYYY-MM-DD or YYYY-MM-DD HH:mm:ss
+  const ymdMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (ymdMatch) {
+    const [, year, month, day, hh = "0", mm = "0", ss = "0"] = ymdMatch;
+    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hh), Number(mm), Number(ss));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const parsed = new Date(s);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function PenjualanOnlinePage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +94,11 @@ export default function PenjualanOnlinePage() {
   const [search, setSearch] = useState("");
   const [filterTipe, setFilterTipe] = useState("Semua");
   const [filterStatusScan, setFilterStatusScan] = useState<"semua" | "belum_discan" | "sudah_discan" | "pre_order">("semua");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [activeDatePreset, setActiveDatePreset] = useState<string>("semua");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showGuide, setShowGuide] = useState(true);
   const [viewMode, setViewMode] = useState<"table" | "summary">("table");
   const [selectedPenjualan, setSelectedPenjualan] = useState<any | null>(null);
@@ -301,6 +347,49 @@ export default function PenjualanOnlinePage() {
     });
   };
 
+  const setPresetToday = () => {
+    const today = formatYMD(new Date());
+    setFilterStartDate(today);
+    setFilterEndDate(today);
+    setActiveDatePreset("today");
+  };
+
+  const setPreset7Days = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 6);
+    setFilterStartDate(formatYMD(start));
+    setFilterEndDate(formatYMD(end));
+    setActiveDatePreset("7d");
+  };
+
+  const setPreset30Days = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 29);
+    setFilterStartDate(formatYMD(start));
+    setFilterEndDate(formatYMD(end));
+    setActiveDatePreset("30d");
+  };
+
+  const setPresetThisMonth = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    setFilterStartDate(formatYMD(start));
+    setFilterEndDate(formatYMD(now));
+    setActiveDatePreset("month");
+  };
+
+  const resetDateFilter = () => {
+    setFilterStartDate("");
+    setFilterEndDate("");
+    setActiveDatePreset("semua");
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterTipe, filterStatusScan, filterStartDate, filterEndDate, pageSize]);
+
   const filteredData = data.filter(d => {
     if (!d.order_id || d.order_id.includes("Platform unique")) return false;
     
@@ -314,6 +403,24 @@ export default function PenjualanOnlinePage() {
     if (filterStatusScan === "belum_discan" && d.status_kemas === "Sudah Discan") return false;
     if (filterStatusScan === "sudah_discan" && d.status_kemas !== "Sudah Discan") return false;
     if (filterStatusScan === "pre_order" && d.tipe_pesanan !== "Pre-order") return false;
+
+    // Filter tanggal pesanan
+    if (filterStartDate || filterEndDate) {
+      const orderDate = parseOrderDate(d.tanggal_pesanan) || parseOrderDate(d.tanggal_diimpor);
+      if (!orderDate) return false;
+
+      if (filterStartDate) {
+        const [sy, sm, sd] = filterStartDate.split("-").map(Number);
+        const startLimit = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+        if (orderDate < startLimit) return false;
+      }
+
+      if (filterEndDate) {
+        const [ey, em, ed] = filterEndDate.split("-").map(Number);
+        const endLimit = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+        if (orderDate > endLimit) return false;
+      }
+    }
 
     // Search query
     if (search.trim()) {
@@ -397,6 +504,32 @@ export default function PenjualanOnlinePage() {
     
     const pad = (n: number) => n.toString().padStart(2, "0");
     return `${pad(dateObj.getDate())}/${pad(dateObj.getMonth() + 1)}/${dateObj.getFullYear()} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+  };
+
+  // Urutkan pesanan terbaru lebih dulu & potong sesuai halaman
+  const sortedData = [...filteredData].reverse();
+  const totalItems = sortedData.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedData = sortedData.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const delta = 1;
+    const range: (number | string)[] = [];
+    const left = Math.max(2, safeCurrentPage - delta);
+    const right = Math.min(totalPages - 1, safeCurrentPage + delta);
+
+    range.push(1);
+    if (left > 2) range.push("...");
+    for (let i = left; i <= right; i++) {
+      range.push(i);
+    }
+    if (right < totalPages - 1) range.push("...");
+    if (totalPages > 1) range.push(totalPages);
+
+    return range;
   };
 
   // Real-time sync: refresh data when another admin makes changes
@@ -676,6 +809,113 @@ export default function PenjualanOnlinePage() {
           </div>
         </div>
 
+        {/* 4. Toolbar Baris 2: Filter Tanggal & Pilihan Baris Per Halaman */}
+        <div style={{ padding: "10px 32px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#334155" }}>
+              <CalendarDays size={15} color="#3B82F6" />
+              <span>Filter Tanggal:</span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", background: "white", border: "1px solid #CBD5E1", borderRadius: 8, padding: "4px 8px" }}>
+              <span style={{ fontSize: 11, color: "#94A3B8", marginRight: 6, fontWeight: 700 }}>Dari</span>
+              <input 
+                type="date" 
+                value={filterStartDate} 
+                onChange={(e) => { setFilterStartDate(e.target.value); setActiveDatePreset("custom"); }}
+                style={{ border: "none", outline: "none", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "transparent", cursor: "pointer" }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", background: "white", border: "1px solid #CBD5E1", borderRadius: 8, padding: "4px 8px" }}>
+              <span style={{ fontSize: 11, color: "#94A3B8", marginRight: 6, fontWeight: 700 }}>Sampai</span>
+              <input 
+                type="date" 
+                value={filterEndDate} 
+                onChange={(e) => { setFilterEndDate(e.target.value); setActiveDatePreset("custom"); }}
+                style={{ border: "none", outline: "none", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "transparent", cursor: "pointer" }}
+              />
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 2 }}>
+              {[
+                { id: "today", label: "Hari Ini", action: setPresetToday },
+                { id: "7d", label: "7 Hari", action: setPreset7Days },
+                { id: "30d", label: "30 Hari", action: setPreset30Days },
+                { id: "month", label: "Bulan Ini", action: setPresetThisMonth }
+              ].map(preset => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={preset.action}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: activeDatePreset === preset.id ? "1px solid #3B82F6" : "1px solid #E2E8F0",
+                    background: activeDatePreset === preset.id ? "#EFF6FF" : "white",
+                    color: activeDatePreset === preset.id ? "#1D4ED8" : "#64748B",
+                    transition: "all 0.15s"
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+
+              {(filterStartDate || filterEndDate) && (
+                <button
+                  type="button"
+                  onClick={resetDateFilter}
+                  title="Reset rentang tanggal"
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: "1px solid #FECACA",
+                    background: "#FEF2F2",
+                    color: "#DC2626",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3
+                  }}
+                >
+                  <X size={12} /> Reset Tanggal
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Rows Per Page */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Tampilkan:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              style={{
+                padding: "5px 10px",
+                background: "white",
+                border: "1px solid #CBD5E1",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#334155",
+                cursor: "pointer",
+                outline: "none"
+              }}
+            >
+              <option value={10}>10 per halaman</option>
+              <option value={25}>25 per halaman</option>
+              <option value={50}>50 per halaman</option>
+              <option value={100}>100 per halaman</option>
+            </select>
+          </div>
+        </div>
+
         <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
           {/* Main List Area */}
           <div style={{ flex: 1, padding: "20px 32px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -785,13 +1025,39 @@ export default function PenjualanOnlinePage() {
               <div style={{ padding: 60, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <ShoppingCart size={48} color="#CBD5E1" style={{ marginBottom: 16 }} />
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#334155", marginBottom: 8 }}>Belum ada pesanan yang sesuai filter</div>
-                <div style={{ fontSize: 13, color: "#94A3B8", maxWidth: 360, lineHeight: 1.5 }}>
-                  Coba ubah kata kunci pencarian atau ubah filter status di bagian atas.
+                <div style={{ fontSize: 13, color: "#94A3B8", maxWidth: 360, lineHeight: 1.5, marginBottom: 16 }}>
+                  Coba ubah rentang tanggal, kata kunci pencarian, atau reset filter status.
                 </div>
+                {(filterStartDate || filterEndDate || search || filterStatusScan !== "semua" || filterTipe !== "Semua") && (
+                  <button
+                    onClick={() => {
+                      setSearch("");
+                      setFilterTipe("Semua");
+                      setFilterStatusScan("semua");
+                      resetDateFilter();
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      background: "#EFF6FF",
+                      border: "1px solid #BFDBFE",
+                      color: "#1D4ED8",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    <RefreshCw size={13} /> Reset Semua Filter
+                  </button>
+                )}
               </div>
             ) : (
-              <div style={{ flex: 1, overflow: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <>
+                <div style={{ flex: 1, overflow: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead style={{ position: "sticky", top: 0, zIndex: 10, background: "white" }}>
                     <tr style={{ borderBottom: "2px solid #E2E8F0" }}>
                       <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Order ID & Waktu</th>
@@ -803,7 +1069,7 @@ export default function PenjualanOnlinePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredData.slice().reverse().map(d => {
+                    {paginatedData.map(d => {
                       const isSelected = selectedPenjualan?.id === d.id;
                       const isSudahDiscan = d.status_kemas === "Sudah Discan";
                       return (
@@ -978,7 +1244,159 @@ export default function PenjualanOnlinePage() {
                   </tbody>
                 </table>
               </div>
-            )}
+
+              {/* Pagination Footer Bar */}
+              <div style={{ 
+                padding: "12px 24px", 
+                background: "white", 
+                borderTop: "1px solid #E2E8F0", 
+                display: "flex", 
+                justifyContent: "space-between", 
+                alignItems: "center", 
+                flexWrap: "wrap", 
+                gap: 12,
+                flexShrink: 0
+              }}>
+                <div style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>
+                  Menampilkan <b style={{ color: "#0F172A" }}>{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</b> dari <b style={{ color: "#0F172A" }}>{totalItems}</b> pesanan
+                  {(filterStartDate || filterEndDate || search || filterStatusScan !== "semua" || filterTipe !== "Semua") && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: "#3B82F6", fontWeight: 700 }}>
+                      (hasil sortir dari {data.length} total)
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  {/* Tombol Pertama */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={safeCurrentPage === 1}
+                    title="Halaman Pertama"
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #E2E8F0",
+                      background: safeCurrentPage === 1 ? "#F8FAFC" : "white",
+                      color: safeCurrentPage === 1 ? "#CBD5E1" : "#334155",
+                      cursor: safeCurrentPage === 1 ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12
+                    }}
+                  >
+                    <ChevronsLeft size={14} />
+                  </button>
+
+                  {/* Tombol Sebelumnya */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={safeCurrentPage === 1}
+                    title="Sebelumnya"
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #E2E8F0",
+                      background: safeCurrentPage === 1 ? "#F8FAFC" : "white",
+                      color: safeCurrentPage === 1 ? "#CBD5E1" : "#334155",
+                      cursor: safeCurrentPage === 1 ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 12,
+                      fontWeight: 700
+                    }}
+                  >
+                    <ChevronLeft size={14} /> Prev
+                  </button>
+
+                  {/* Nomor Halaman */}
+                  {getPageNumbers().map((p, idx) => {
+                    if (p === "...") {
+                      return (
+                        <span key={`ellipsis-${idx}`} style={{ padding: "0 6px", color: "#94A3B8", fontSize: 12, userSelect: "none" }}>
+                          ...
+                        </span>
+                      );
+                    }
+                    const isCurrent = p === safeCurrentPage;
+                    return (
+                      <button
+                        key={`page-${p}`}
+                        type="button"
+                        onClick={() => setCurrentPage(Number(p))}
+                        style={{
+                          minWidth: 32,
+                          height: 32,
+                          padding: "0 8px",
+                          borderRadius: 6,
+                          border: isCurrent ? "1px solid #3B82F6" : "1px solid #E2E8F0",
+                          background: isCurrent ? "#3B82F6" : "white",
+                          color: isCurrent ? "white" : "#334155",
+                          fontWeight: isCurrent ? 800 : 700,
+                          cursor: "pointer",
+                          fontSize: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: isCurrent ? "0 2px 4px rgba(59,130,246,0.3)" : "none"
+                        }}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+
+                  {/* Tombol Selanjutnya */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={safeCurrentPage >= totalPages}
+                    title="Selanjutnya"
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #E2E8F0",
+                      background: safeCurrentPage >= totalPages ? "#F8FAFC" : "white",
+                      color: safeCurrentPage >= totalPages ? "#CBD5E1" : "#334155",
+                      cursor: safeCurrentPage >= totalPages ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 12,
+                      fontWeight: 700
+                    }}
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+
+                  {/* Tombol Terakhir */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={safeCurrentPage >= totalPages}
+                    title="Halaman Terakhir"
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #E2E8F0",
+                      background: safeCurrentPage >= totalPages ? "#F8FAFC" : "white",
+                      color: safeCurrentPage >= totalPages ? "#CBD5E1" : "#334155",
+                      cursor: safeCurrentPage >= totalPages ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12
+                    }}
+                  >
+                    <ChevronsRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
           </div>
         </div>
 
