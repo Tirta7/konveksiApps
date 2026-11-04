@@ -1113,7 +1113,7 @@ export default function PenjualanOnlinePage() {
                   )}
                 </div>
                 {selectedPenjualan.returs?.length > 0 && (
-                  <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: 16 }}>
+                  <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: 16, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#92400E", marginBottom: 6 }}>Riwayat Retur</div>
                     {selectedPenjualan.returs.map((r: any) => (
                       <div key={r.id} style={{ fontSize: 12, color: "#78350F", padding: "4px 0", borderTop: "1px dashed #FDE68A" }}>
@@ -1122,6 +1122,35 @@ export default function PenjualanOnlinePage() {
                     ))}
                   </div>
                 )}
+
+                <div style={{ paddingTop: 16, borderTop: "1px solid #E2E8F0" }}>
+                  <button
+                    type="button"
+                    disabled={deletingOrder === selectedPenjualan.order_id}
+                    onClick={() => handleHapusPesanan(selectedPenjualan.order_id)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #FECACA",
+                      background: "#FEF2F2",
+                      color: "#DC2626",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      transition: "all 0.15s"
+                    }}
+                  >
+                    <Trash2 size={14} /> {deletingOrder === selectedPenjualan.order_id ? "Menghapus..." : "Hapus Pesanan dari Sistem"}
+                  </button>
+                  <div style={{ fontSize: 10, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>
+                    Gunakan untuk membersihkan pesanan uji coba / pesanan yang dibatalkan.
+                  </div>
+                </div>
               </div>
             </>
           )}

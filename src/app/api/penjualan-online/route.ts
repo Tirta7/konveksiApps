@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
 import { groupOrders, getOrder } from "@/lib/marketplace";
+import { cancelBarcodeSale } from "@/lib/barcode-sales";
 
 /** Perbaiki data lama yang tersimpan sebagai {"0":{...},"1":{...}} (bug impor lama). */
 function normalize(data: any) {
@@ -91,6 +92,32 @@ export async function POST(req: Request) {
     // bukan menandai barcode secara acak — agar pcs yang terjual tercatat tepat.
     writeData(data);
     return NextResponse.json({ success: true, added, skipped });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// DELETE ?order_id=XXX → hapus pesanan dari ERP (jika ada barcode yang discan, stok otomatis dikembalikan ke gudang)
+export async function DELETE(req: NextRequest) {
+  try {
+    const sp = new URL(req.url).searchParams;
+    const oid = sp.get("order_id");
+    if (!oid) return NextResponse.json({ error: "order_id wajib diisi" }, { status: 400 });
+
+    const data: any = readData();
+    // 1. Batalkan transaksi barcode yang tertaut ke order ini (stok kembali ke gudang)
+    const sales = (data.penjualan_barcode || []).filter((s: any) => String(s.order_id || "").trim() === oid.trim());
+    for (const sale of sales) {
+      try { cancelBarcodeSale(data, sale.id); } catch {}
+    }
+
+    // 2. Hapus baris pesanan dari penjualan_online
+    const initialLen = (data.penjualan_online || []).length;
+    data.penjualan_online = (data.penjualan_online || []).filter((r: any) => String(r.order_id || "").trim() !== oid.trim());
+    const deletedCount = initialLen - data.penjualan_online.length;
+
+    writeData(data);
+    return NextResponse.json({ success: true, deleted: deletedCount, order_id: oid });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
