@@ -9,7 +9,7 @@
  *  - Daftar pesanan   : GET  /api/v2/order/get_order_list    (time_range_field=update_time, maks 15 hari)
  *  - Detail pesanan   : GET  /api/v2/order/get_order_detail  (maks 50 order_sn)
  *  - Nomor resi       : GET  /api/v2/logistics/get_tracking_number
- * Host live: https://partner.shopeemobile.com · sandbox: https://partner.test-stable.shopeemobile.com
+ * Host live: https://partner.shopeemobile.com · sandbox: https://openplatform.sandbox.test-stable.shopee.sg
  *
  * Tanda tangan:
  *  - Public (auth)  : HMAC-SHA256(partner_key, partner_id + path + timestamp)
@@ -24,7 +24,7 @@ export function shopeeConfig() {
   const partner_id = process.env.SHOPEE_PARTNER_ID || "";
   const partner_key = process.env.SHOPEE_PARTNER_KEY || "";
   const sandbox = /^(1|true|ya|yes)$/i.test(process.env.SHOPEE_SANDBOX || "");
-  const host = sandbox ? "https://partner.test-stable.shopeemobile.com" : "https://partner.shopeemobile.com";
+  const host = sandbox ? "https://openplatform.sandbox.test-stable.shopee.sg" : "https://partner.shopeemobile.com";
   return { partner_id, partner_key, sandbox, host, ready: !!(partner_id && partner_key) };
 }
 
