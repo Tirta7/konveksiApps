@@ -84,6 +84,49 @@ function formatYMD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function matchStatusPesanan(d: any, filter: string): boolean {
+  if (!filter || filter === "semua") return true;
+  const isBatal = Boolean(d.dibatalkan || String(d.status || "").toLowerCase().includes("batal") || String(d.status || "").toLowerCase().includes("cancel"));
+  if (filter === "dibatalkan") return isBatal;
+  if (isBatal) return false;
+
+  const st = String(d.status || "").toLowerCase();
+  const stApi = String(d.status_api || "").toUpperCase();
+
+  if (filter === "perlu_dikirim") {
+    return (
+      st.includes("perlu") ||
+      st.includes("diproses") ||
+      st.includes("menunggu") ||
+      stApi === "READY_TO_SHIP" ||
+      stApi === "PROCESSED" ||
+      stApi === "AWAITING_SHIPMENT" ||
+      stApi === "AWAITING_COLLECTION"
+    );
+  }
+
+  if (filter === "dikirim") {
+    return (
+      (st.includes("dikirim") || st.includes("shipped") || st.includes("transit") || stApi === "SHIPPED" || stApi === "IN_TRANSIT" || stApi === "PARTIALLY_SHIPPING") &&
+      !st.includes("perlu")
+    );
+  }
+
+  if (filter === "selesai") {
+    return (
+      st.includes("selesai") ||
+      st.includes("terkirim") ||
+      st.includes("completed") ||
+      st.includes("delivered") ||
+      stApi === "COMPLETED" ||
+      stApi === "DELIVERED" ||
+      stApi === "TO_CONFIRM_RECEIVE"
+    );
+  }
+
+  return true;
+}
+
 export default function PenjualanOnlinePage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,8 +135,9 @@ export default function PenjualanOnlinePage() {
   const [showScan, setShowScan] = useState(false);
   const [scanOrderId, setScanOrderId] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
+  const [filterStatusPesanan, setFilterStatusPesanan] = useState<string>("semua");
   const [filterTipe, setFilterTipe] = useState("Semua");
-  const [filterStatusScan, setFilterStatusScan] = useState<"semua" | "belum_discan" | "sudah_discan" | "pre_order">("semua");
+  const [filterStatusScan, setFilterStatusScan] = useState<"semua" | "belum_discan" | "sudah_discan">("semua");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [activeDatePreset, setActiveDatePreset] = useState<string>("semua");
@@ -388,11 +432,14 @@ export default function PenjualanOnlinePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterTipe, filterStatusScan, filterStartDate, filterEndDate, pageSize]);
+  }, [search, filterTipe, filterStatusScan, filterStatusPesanan, filterStartDate, filterEndDate, pageSize]);
 
   const filteredData = data.filter(d => {
     if (!d.order_id || d.order_id.includes("Platform unique")) return false;
     
+    // Filter status pesanan marketplace (Perlu Dikirim, Dikirim, Selesai, Dibatalkan)
+    if (!matchStatusPesanan(d, filterStatusPesanan)) return false;
+
     // Filter tipe pesanan
     if (filterTipe !== "Semua") {
       if (filterTipe === "Normal" && d.tipe_pesanan && d.tipe_pesanan !== "Normal") return false;
@@ -402,7 +449,6 @@ export default function PenjualanOnlinePage() {
     // Filter status scan
     if (filterStatusScan === "belum_discan" && d.status_kemas === "Sudah Discan") return false;
     if (filterStatusScan === "sudah_discan" && d.status_kemas !== "Sudah Discan") return false;
-    if (filterStatusScan === "pre_order" && d.tipe_pesanan !== "Pre-order") return false;
 
     // Filter tanggal pesanan
     if (filterStartDate || filterEndDate) {
@@ -459,6 +505,12 @@ export default function PenjualanOnlinePage() {
   const countPreOrder = data.filter(d => d.tipe_pesanan === "Pre-order").length;
   const pcsSudahDiscan = pesananSudahDiscan.reduce((s, d) => s + (d.scanned_qty || d.quantity || 0), 0);
   const pcsBelumDiscan = pesananBelumDiscan.reduce((s, d) => s + Math.max(0, (d.quantity || 1) - (d.scanned_qty || 0)), 0);
+
+  // Breakdown status barang / pesanan marketplace
+  const countPerluDikirim = data.filter(d => matchStatusPesanan(d, "perlu_dikirim")).length;
+  const countSedangDikirim = data.filter(d => matchStatusPesanan(d, "dikirim")).length;
+  const countSelesai = data.filter(d => matchStatusPesanan(d, "selesai")).length;
+  const countDibatalkan = data.filter(d => matchStatusPesanan(d, "dibatalkan")).length;
 
   const productCount: Record<string, number> = {};
   const provinceCount: Record<string, number> = {};
@@ -592,9 +644,9 @@ export default function PenjualanOnlinePage() {
         <div style={{ padding: "20px 32px 0 32px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {/* Card 1: Total Pesanan */}
           <div 
-            onClick={() => setFilterStatusScan("semua")}
+            onClick={() => { setFilterStatusScan("semua"); setFilterStatusPesanan("semua"); }}
             style={{ 
-              background: "white", padding: "16px 20px", borderRadius: 14, border: filterStatusScan === "semua" ? "2px solid #3B82F6" : "1px solid #E2E8F0", 
+              background: "white", padding: "16px 20px", borderRadius: 14, border: (filterStatusScan === "semua" && filterStatusPesanan === "semua") ? "2px solid #3B82F6" : "1px solid #E2E8F0", 
               boxShadow: "0 2px 8px rgba(0,0,0,0.03)", cursor: "pointer", transition: "all 0.2s" 
             }}
           >
@@ -758,27 +810,29 @@ export default function PenjualanOnlinePage() {
             />
           </div>
 
-          {/* Status Filter Chips */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {/* Status Barang / Pesanan Marketplace Tabs */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             {[
-              { id: "semua", label: `Semua (${data.length})` },
-              { id: "belum_discan", label: `🔴 Belum Discan (${countBelumDiscan})` },
-              { id: "sudah_discan", label: `🟢 Sudah Discan (${countSudahDiscan})` },
-              { id: "pre_order", label: `⏳ Pre-Order (${countPreOrder})` }
+              { id: "semua", label: `Semua (${data.length})`, color: "#3B82F6", bg: "#EFF6FF" },
+              { id: "perlu_dikirim", label: `📦 Perlu Dikirim (${countPerluDikirim})`, color: "#2563EB", bg: "#DBEAFE" },
+              { id: "dikirim", label: `🚚 Dikirim (${countSedangDikirim})`, color: "#D97706", bg: "#FEF3C7" },
+              { id: "selesai", label: `✅ Selesai (${countSelesai})`, color: "#059669", bg: "#DCFCE7" },
+              { id: "dibatalkan", label: `❌ Batal (${countDibatalkan})`, color: "#DC2626", bg: "#FEE2E2" }
             ].map(tab => (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setFilterStatusScan(tab.id as any)}
+                onClick={() => setFilterStatusPesanan(tab.id)}
                 style={{
                   padding: "7px 12px",
                   borderRadius: 8,
                   fontSize: 12,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   cursor: "pointer",
-                  border: filterStatusScan === tab.id ? "1px solid #3B82F6" : "1px solid #E2E8F0",
-                  background: filterStatusScan === tab.id ? "#EFF6FF" : "#F8FAFC",
-                  color: filterStatusScan === tab.id ? "#1D4ED8" : "#64748B",
+                  border: filterStatusPesanan === tab.id ? `2px solid ${tab.color}` : "1px solid #E2E8F0",
+                  background: filterStatusPesanan === tab.id ? (tab.bg || "#EFF6FF") : "#F8FAFC",
+                  color: filterStatusPesanan === tab.id ? tab.color : "#64748B",
+                  boxShadow: filterStatusPesanan === tab.id ? `0 2px 6px ${tab.color}25` : "none",
                   transition: "all 0.15s"
                 }}
               >
@@ -787,15 +841,46 @@ export default function PenjualanOnlinePage() {
             ))}
           </div>
 
+          {/* Dropdown Status Scan Fisik Gudang */}
+          <select 
+            value={filterStatusScan} 
+            onChange={(e) => setFilterStatusScan(e.target.value as any)}
+            style={{ 
+              padding: "8px 12px", 
+              background: filterStatusScan !== "semua" ? "#EFF6FF" : "#F8FAFC", 
+              border: filterStatusScan !== "semua" ? "1px solid #3B82F6" : "1px solid #CBD5E1", 
+              borderRadius: 8, 
+              fontSize: 12, 
+              fontWeight: 700, 
+              color: filterStatusScan !== "semua" ? "#1D4ED8" : "#334155", 
+              outline: "none", 
+              cursor: "pointer" 
+            }}
+          >
+            <option value="semua">Semua Scan Gudang</option>
+            <option value="belum_discan">🔴 Belum Discan ({countBelumDiscan})</option>
+            <option value="sudah_discan">🟢 Sudah Discan ({countSudahDiscan})</option>
+          </select>
+
           {/* Dropdown Tipe Pesanan */}
           <select 
             value={filterTipe} 
             onChange={(e) => setFilterTipe(e.target.value)}
-            style={{ padding: "8px 12px", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: 8, fontSize: 12, fontWeight: 700, color: "#334155", outline: "none", cursor: "pointer" }}
+            style={{ 
+              padding: "8px 12px", 
+              background: filterTipe !== "Semua" ? "#EFF6FF" : "#F8FAFC", 
+              border: filterTipe !== "Semua" ? "1px solid #3B82F6" : "1px solid #CBD5E1", 
+              borderRadius: 8, 
+              fontSize: 12, 
+              fontWeight: 700, 
+              color: filterTipe !== "Semua" ? "#1D4ED8" : "#334155", 
+              outline: "none", 
+              cursor: "pointer" 
+            }}
           >
             <option value="Semua">Semua Tipe</option>
             <option value="Normal">Normal</option>
-            <option value="Pre-order">Pre-order</option>
+            <option value="Pre-order">Pre-order ({countPreOrder})</option>
           </select>
 
           {/* Toggle View Mode */}
@@ -1028,12 +1113,13 @@ export default function PenjualanOnlinePage() {
                 <div style={{ fontSize: 13, color: "#94A3B8", maxWidth: 360, lineHeight: 1.5, marginBottom: 16 }}>
                   Coba ubah rentang tanggal, kata kunci pencarian, atau reset filter status.
                 </div>
-                {(filterStartDate || filterEndDate || search || filterStatusScan !== "semua" || filterTipe !== "Semua") && (
+                {(filterStartDate || filterEndDate || search || filterStatusPesanan !== "semua" || filterStatusScan !== "semua" || filterTipe !== "Semua") && (
                   <button
                     onClick={() => {
                       setSearch("");
                       setFilterTipe("Semua");
                       setFilterStatusScan("semua");
+                      setFilterStatusPesanan("semua");
                       resetDateFilter();
                     }}
                     style={{
@@ -1259,7 +1345,7 @@ export default function PenjualanOnlinePage() {
               }}>
                 <div style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>
                   Menampilkan <b style={{ color: "#0F172A" }}>{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</b> dari <b style={{ color: "#0F172A" }}>{totalItems}</b> pesanan
-                  {(filterStartDate || filterEndDate || search || filterStatusScan !== "semua" || filterTipe !== "Semua") && (
+                  {(filterStartDate || filterEndDate || search || filterStatusPesanan !== "semua" || filterStatusScan !== "semua" || filterTipe !== "Semua") && (
                     <span style={{ marginLeft: 6, fontSize: 11, color: "#3B82F6", fontWeight: 700 }}>
                       (hasil sortir dari {data.length} total)
                     </span>
