@@ -8,6 +8,7 @@
  * Semua perubahan data ditulis lewat readData()/writeData() (cache global, antrean tulis atomik).
  */
 import { readData, writeData } from "@/lib/data-store";
+import { emitEvent } from "@/lib/realtime-hub";
 import { type MarketplaceShop, type MappedOrder, findShop, getShops, upsertMarketplaceOrders } from "./common";
 import { tiktokConfig, tiktokRefresh, tiktokSearchOrders, tiktokOrderDetails, mapTiktokOrder } from "./tiktok";
 import { shopeeConfig, shopeeRefresh, shopeeOrderList, shopeeOrderDetails, shopeeTrackingNumber, mapShopeeOrder } from "./shopee";
@@ -95,6 +96,9 @@ export async function syncShop(key: string, opts: { days?: number } = {}) {
     fresh.last_result = result;
     fresh.last_error = null;
     writeData(data);
+    if (result.added > 0 || result.updated > 0) {
+      emitEvent("marketplace:order_received", { platform: fresh.platform, shop: fresh.shop_name, added: result.added, updated: result.updated });
+    }
     return { success: true, shop: fresh.shop_name, ...result };
   } catch (e: any) {
     patchShop(key, { last_error: String(e?.message || e), last_sync_run: new Date().toISOString() });
@@ -115,6 +119,9 @@ export async function syncOrderIds(platform: "tiktok" | "shopee", shopId: string
   const fresh = findShop(data, key)!;
   const result = upsertMarketplaceOrders(data, fresh, mapped);
   writeData(data);
+  if (result.added > 0 || result.updated > 0) {
+    emitEvent("marketplace:order_received", { platform: fresh.platform, shop: fresh.shop_name, added: result.added, updated: result.updated });
+  }
   return result;
 }
 
@@ -137,14 +144,14 @@ export function marketplaceConfigStatus() {
   };
 }
 
-/** Sinkron berkala (dipanggil sekali dari instrumentation.ts). */
+/** Sinkron berkala di background (dipanggil sekali dari instrumentation.ts). */
 export function startMarketplaceScheduler() {
   if (g.__mpScheduler) return;
-  const INTERVAL = 10 * 60_000;
+  const INTERVAL = 30_000; // Tiap 30 detik cek pesanan baru otomatis
   g.__mpScheduler = setInterval(() => {
     if (getShops(readData()).some((s) => s.aktif)) {
       syncAllShops().catch((e) => console.error("[marketplace] sinkron berkala gagal:", e?.message));
     }
   }, INTERVAL);
-  console.log("[marketplace] penjadwal sinkron aktif (tiap 10 menit)");
+  console.log("[marketplace] penjadwal sinkron aktif (tiap 30 detik)");
 }

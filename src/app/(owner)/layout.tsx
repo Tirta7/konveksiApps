@@ -42,6 +42,11 @@ function useGlobalSync() {
             duration: 5000,
           });
         }
+      } else if (event === "marketplace:order_received") {
+        toast.success(`🎉 ${d?.added || 1} Pesanan baru masuk dari ${d?.shop || "Marketplace"}!`, {
+          description: "Pesanan otomatis masuk ke Penjualan Online.",
+          duration: 6000,
+        });
       }
     });
     // Cek status lisensi berkala di background (jika dikunci dari pusat, langsung kunci layar browser)

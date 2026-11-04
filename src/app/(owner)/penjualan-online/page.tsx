@@ -11,6 +11,38 @@ import Papa from "papaparse";
 import ScanJualPanel from "@/components/ScanJualPanel";
 import { subscribeRealtime, subscribeRealtimeEvent } from "@/lib/realtime-client";
 
+function playOrderSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, now); // D5
+    osc1.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(880, now + 0.12); // A5
+    osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.35); // D6
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.12);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.45);
+  } catch {}
+}
+
 export default function PenjualanOnlinePage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +87,26 @@ export default function PenjualanOnlinePage() {
 
   useEffect(() => {
     fetchData();
+
+    // Auto-sync cepat di background saat halaman dibuka
+    fetch("/api/marketplace/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }).catch(() => {});
+
+    // Polling background tiap 30 detik untuk menjamin pesanan baru selalu masuk tanpa intervensi
+    const autoSyncTimer = setInterval(() => {
+      fetch("/api/marketplace/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }).catch(() => {});
+    }, 30_000);
+
     const unSync = subscribeRealtime(() => fetchData());
-    const unEvent = subscribeRealtimeEvent((ev) => {
-      if (
+    const unEvent = subscribeRealtimeEvent((ev, evData) => {
+      if (ev === "marketplace:order_received") {
+        playOrderSound();
+        const jml = evData?.added ? `${evData.added} pesanan baru` : "Pesanan diperbarui";
+        toast.success(`🎉 ${jml} masuk dari ${evData?.shop || "Marketplace"}!`, {
+          description: "Data langsung diperbarui otomatis tanpa reload halaman.",
+          duration: 4000,
+        });
+        fetchData();
+      } else if (
         ev === "retur_processed" ||
         ev === "retur_online_updated" ||
         ev === "retur_banding_updated" ||
@@ -68,6 +117,7 @@ export default function PenjualanOnlinePage() {
       }
     });
     return () => {
+      clearInterval(autoSyncTimer);
       unSync();
       unEvent();
     };
