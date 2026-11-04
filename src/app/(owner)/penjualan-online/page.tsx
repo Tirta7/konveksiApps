@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   UploadCloud, Search, ShoppingCart, User, FileText, ChevronRight, CreditCard, Box, 
   Calendar, Truck, MapPin, TableIcon, BarChart2, X, Eye, Clock, RefreshCw,
-  CheckCircle2, AlertCircle, Info, ChevronDown, ChevronUp, Check, ShieldCheck, Sparkles, ScanLine
+  CheckCircle2, AlertCircle, Info, ChevronDown, ChevronUp, Check, ShieldCheck, Sparkles, ScanLine, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
@@ -56,6 +56,24 @@ export default function PenjualanOnlinePage() {
   const [showGuide, setShowGuide] = useState(true);
   const [viewMode, setViewMode] = useState<"table" | "summary">("table");
   const [selectedPenjualan, setSelectedPenjualan] = useState<any | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState<string | null>(null);
+
+  const handleHapusPesanan = async (orderId: string) => {
+    if (!window.confirm(`Hapus pesanan ${orderId} dari daftar? Jika sudah ada barcode yang di-scan, stok barang akan otomatis dikembalikan ke gudang.`)) return;
+    setDeletingOrder(orderId);
+    try {
+      const res = await fetch(`/api/penjualan-online?order_id=${encodeURIComponent(orderId)}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal menghapus pesanan");
+      toast.success(`Pesanan ${orderId} berhasil dihapus dari sistem!`);
+      if (selectedPenjualan?.order_id === orderId) setSelectedPenjualan(null);
+      await fetchData();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setDeletingOrder(null);
+    }
+  };
 
   const handleSyncMarketplace = async () => {
     setSyncingMp(true);
