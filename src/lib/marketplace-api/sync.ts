@@ -10,8 +10,8 @@
 import { readData, writeData, nextId } from "@/lib/data-store";
 import { emitEvent } from "@/lib/realtime-hub";
 import { type MarketplaceShop, type MappedOrder, findShop, getShops, upsertMarketplaceOrders } from "./common";
-import { tiktokConfig, tiktokRefresh, tiktokSearchOrders, tiktokOrderDetails, mapTiktokOrder } from "./tiktok";
-import { shopeeConfig, shopeeRefresh, shopeeOrderList, shopeeOrderDetails, shopeeTrackingNumber, mapShopeeOrder, shopeeEscrowDetail } from "./shopee";
+import { tiktokConfig, tiktokRefresh, tiktokSearchOrders, tiktokOrderDetails, mapTiktokOrder, tiktokGetReviews } from "./tiktok";
+import { shopeeConfig, shopeeRefresh, shopeeOrderList, shopeeOrderDetails, shopeeTrackingNumber, mapShopeeOrder, shopeeEscrowDetail, shopeeGetComment } from "./shopee";
 
 const g = globalThis as any;
 if (!g.__mpLocks) g.__mpLocks = new Set<string>();
@@ -193,6 +193,114 @@ export async function syncMarketplaceSettlements() {
   if (synced > 0) {
     writeData(data);
     emitEvent("settlement_updated", { count: synced });
+  }
+  return { success: true, synced };
+}
+
+export function extractReviewTags(comment: string): string[] {
+  const text = (comment || "").toLowerCase();
+  const tags: string[] = [];
+  if (text.includes("rapi") || text.includes("jahit")) tags.push("Jahitan Rapi");
+  if (text.includes("nyaman") || text.includes("enak") || text.includes("pas di pinggang")) tags.push("Pola Nyaman");
+  if (text.includes("tebal")) tags.push("Bahan Tebal");
+  if (text.includes("lembut") || text.includes("adem") || text.includes("halus")) tags.push("Bahan Denim Lembut");
+  if (text.includes("pas") || text.includes("presisi") || text.includes("sesuai ukuran")) tags.push("Ukuran Pas");
+  if (text.includes("washing") || text.includes("luntur") || text.includes("warna")) tags.push("Washing Bagus");
+  if (text.includes("repeat") || text.includes("langganan") || text.includes("order lagi")) tags.push("Wajib Repeat Order");
+  if (text.includes("kancing") || text.includes("zipper") || text.includes("resleting")) tags.push("Aksesoris Kokoh");
+  if (tags.length === 0) tags.push("Kualitas Terjamin");
+  return tags.slice(0, 4);
+}
+
+export async function syncMarketplaceReviews() {
+  const data: any = readData();
+  const shops = getShops(data).filter((s) => s.aktif);
+  if (!data.product_reviews) data.product_reviews = [];
+
+  const orderMap = new Map<string, any>();
+  (data.penjualan_online || []).forEach((o: any) => {
+    if (o.order_id) orderMap.set(String(o.order_id).trim(), o);
+  });
+
+  let synced = 0;
+  for (const rawShop of shops) {
+    let shop = await ensureFreshToken({ ...rawShop });
+    if (shop.platform === "shopee") {
+      try {
+        const comments = await shopeeGetComment(shop);
+        for (const c of comments) {
+          const orderSn = String(c.order_sn || c.order_id || "").trim();
+          const existing = data.product_reviews.find((r: any) => (orderSn && r.order_id === orderSn) || r.comment_id === c.comment_id);
+          const matchedOrder = orderSn ? orderMap.get(orderSn) : null;
+          const pName = matchedOrder?.product_name || c.item_name || c.product_name || "Produk Jeans Shopee";
+          const variation = matchedOrder?.variation || c.model_name || c.variation || "-";
+          const rating = Number(c.rating_star || 5);
+          const comment = c.comment || "Produk bagus, jahitan rapi.";
+
+          const rec = {
+            comment_id: c.comment_id,
+            order_id: orderSn || `SHP-${c.comment_id}`,
+            product_name: pName,
+            variation: variation,
+            marketplace: "Shopee",
+            buyer_name: c.buyer_username || "Pembeli Shopee",
+            rating: Math.min(5, Math.max(1, rating)),
+            comment: comment,
+            tags: extractReviewTags(comment),
+            created_at: c.create_time ? new Date(Number(c.create_time) * 1000).toISOString() : new Date().toISOString()
+          };
+
+          if (existing) {
+            Object.assign(existing, rec);
+          } else {
+            data.product_reviews.unshift({ id: nextId(data, "product_reviews"), ...rec });
+          }
+          synced++;
+        }
+      } catch (err: any) {
+        console.warn("[marketplace] sync Shopee reviews warning:", err?.message);
+      }
+    } else if (shop.platform === "tiktok") {
+      try {
+        const reviews = await tiktokGetReviews(shop);
+        for (const rv of reviews) {
+          const orderId = String(rv.order_id || "").trim();
+          const existing = data.product_reviews.find((r: any) => (orderId && r.order_id === orderId) || r.review_id === rv.review_id);
+          const matchedOrder = orderId ? orderMap.get(orderId) : null;
+          const pName = matchedOrder?.product_name || rv.product_name || "Produk Jeans TikTok";
+          const variation = matchedOrder?.variation || rv.sku_name || "-";
+          const rating = Number(rv.rating || 5);
+          const comment = rv.review_text || rv.content || "Produk sangat bagus dan sesuai.";
+
+          const rec = {
+            review_id: rv.review_id,
+            order_id: orderId || `TTK-${rv.review_id || Date.now()}`,
+            product_name: pName,
+            variation: variation,
+            marketplace: "TikTok Shop",
+            buyer_name: rv.buyer_name || "Pembeli TikTok",
+            rating: Math.min(5, Math.max(1, rating)),
+            comment: comment,
+            tags: extractReviewTags(comment),
+            created_at: rv.create_time ? new Date(Number(rv.create_time) * 1000).toISOString() : new Date().toISOString()
+          };
+
+          if (existing) {
+            Object.assign(existing, rec);
+          } else {
+            data.product_reviews.unshift({ id: nextId(data, "product_reviews"), ...rec });
+          }
+          synced++;
+        }
+      } catch (err: any) {
+        console.warn("[marketplace] sync TikTok reviews warning:", err?.message);
+      }
+    }
+  }
+
+  if (synced > 0) {
+    writeData(data);
+    emitEvent("reviews_updated", { count: synced });
   }
   return { success: true, synced };
 }

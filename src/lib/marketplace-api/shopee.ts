@@ -145,6 +145,17 @@ export async function shopeeEscrowDetail(shop: MarketplaceShop, orderSn: string)
   }
 }
 
+export async function shopeeGetComment(shop: MarketplaceShop, cursor = "", pageSize = 50): Promise<any[]> {
+  try {
+    const q: Record<string, string | number> = { page_size: pageSize };
+    if (cursor) q.cursor = cursor;
+    const d = await shopeeApi("/api/v2/product/get_comment", shop, q);
+    return d?.item_comment_list || d?.response?.item_comment_list || [];
+  } catch {
+    return [];
+  }
+}
+
 /** Order Shopee → format baris CSV (nilai per baris produk, sama seperti kolom "Total Harga Produk" CSV). */
 export function mapShopeeOrder(o: any, shop: MarketplaceShop, tracking = ""): MappedOrder {
   const statusApi = String(o.order_status || "");

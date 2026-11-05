@@ -94,6 +94,17 @@ export async function tiktokAuthorizedShops(accessToken: string): Promise<any[]>
   return d.shops || [];
 }
 
+export async function tiktokGetReviews(shop: MarketplaceShop, pageToken = "", pageSize = 50): Promise<any[]> {
+  try {
+    const query: Record<string, string | number> = { shop_cipher: shop.shop_cipher || "", page_size: pageSize };
+    if (pageToken) query.page_token = pageToken;
+    const d = await tiktokApi("GET", "/review/202309/reviews", shop.access_token, query);
+    return d?.reviews || [];
+  } catch {
+    return [];
+  }
+}
+
 /** Ambil pesanan yang berubah dalam rentang update_time [from, to) (detik). */
 export async function tiktokSearchOrders(shop: MarketplaceShop, fromSec: number, toSec: number): Promise<any[]> {
   const out: any[] = [];

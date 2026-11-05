@@ -1,6 +1,6 @@
 {
   "name": "konveksi-app",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "scripts": {
     "dev": "node server.mjs",

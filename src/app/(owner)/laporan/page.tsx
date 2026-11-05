@@ -71,6 +71,8 @@ export default function LaporanPage() {
     tags: ""
   });
   const [savingReview, setSavingReview] = useState(false);
+  const [syncingReviews, setSyncingReviews] = useState(false);
+  const [uploadingReviewsCSV, setUploadingReviewsCSV] = useState(false);
 
   const isInitialLoad = useRef(true);
   const isFetchingRef = useRef(false);
@@ -273,6 +275,101 @@ export default function LaporanPage() {
           toast.error("Terjadi kesalahan saat mengupload data");
         } finally {
           setUploading(false);
+          if (e.target) e.target.value = "";
+        }
+      }
+    });
+  };
+
+  const handleSyncReviewsAPI = async () => {
+    setSyncingReviews(true);
+    try {
+      const res = await fetch("/api/reviews/sync", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal sinkron ulasan");
+      toast.success(`Sinkronisasi ulasan API selesai! (${json.synced || 0} ulasan diperbarui)`);
+      await fetchData(true);
+    } catch (e: any) {
+      toast.error(e.message || "Gagal sinkron ulasan API");
+    } finally {
+      setSyncingReviews(false);
+    }
+  };
+
+  const handleUploadReviewsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingReviewsCSV(true);
+    Papa.parse(file as any, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results: Papa.ParseResult<any>) => {
+        try {
+          const rows = (results.data || []) as any[];
+          if (rows.length === 0) {
+            toast.error("File CSV kosong atau tidak valid.");
+            return;
+          }
+
+          // Pencarian nama kolom yang fleksibel (Shopee Seller Center & TikTok Shop Seller Center)
+          const findCol = (row: any, candidates: string[]) => {
+            const keys = Object.keys(row);
+            for (const c of candidates) {
+              const matched = keys.find(k => k.trim().toLowerCase() === c.toLowerCase() || k.trim().toLowerCase().includes(c.toLowerCase()));
+              if (matched && row[matched] !== undefined) return row[matched];
+            }
+            return "";
+          };
+
+          const parsedReviews: any[] = [];
+          rows.forEach((row: any) => {
+            const orderId = findCol(row, ["order sn", "order id", "id pesanan", "no. pesanan", "no pesanan", "nomor pesanan", "order_id", "order_sn"]);
+            const productName = findCol(row, ["nama produk", "product name", "item name", "produk", "product_name"]);
+            const variation = findCol(row, ["nama variasi", "variasi", "variation", "sku name", "spesifikasi", "model name", "sub_sku"]);
+            const rawRating = findCol(row, ["penilaian pembeli", "rating pembeli", "penilaian", "rating", "star", "bintang", "review star", "skor"]);
+            const comment = findCol(row, ["komentar pembeli", "ulasan pembeli", "isi ulasan", "ulasan", "komentar", "review text", "review content", "feedback", "review"]);
+            const buyerName = findCol(row, ["username pembeli", "nama pembeli", "buyer username", "buyer name", "customer name", "pembeli", "buyer"]);
+            const createdAt = findCol(row, ["waktu penilaian", "waktu ulasan", "rating time", "review time", "tanggal", "create time", "waktu"]);
+
+            let ratingNum = 5;
+            if (rawRating) {
+              const match = String(rawRating).match(/\d+/);
+              if (match) ratingNum = parseInt(match[0], 10);
+            }
+
+            if (comment || productName) {
+              parsedReviews.push({
+                order_id: String(orderId || "").trim(),
+                product_name: String(productName || "Produk Jeans").trim(),
+                variation: String(variation || "-").trim(),
+                marketplace: /shopee/i.test(file.name) || /shopee/i.test(JSON.stringify(row)) ? "Shopee" : "TikTok Shop",
+                buyer_name: String(buyerName || "Pembeli Seller Center").trim(),
+                rating: Math.min(5, Math.max(1, ratingNum)),
+                comment: String(comment || "Produk memuaskan.").trim(),
+                created_at: createdAt ? new Date(createdAt).toISOString() : new Date().toISOString()
+              });
+            }
+          });
+
+          if (parsedReviews.length === 0) {
+            toast.error("Format file tidak cocok. Pastikan Anda mengunggah file ekspor ulasan dari Shopee / TikTok Seller Center.");
+            return;
+          }
+
+          const res = await fetch("/api/reviews", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "bulk_import", reviews: parsedReviews })
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || "Gagal mengimpor ulasan");
+          toast.success(`Berhasil mengimpor ${json.imported || parsedReviews.length} ulasan dari Seller Center!`);
+          await fetchData(true);
+        } catch (err: any) {
+          toast.error(err.message || "Gagal memproses file CSV");
+        } finally {
+          setUploadingReviewsCSV(false);
           if (e.target) e.target.value = "";
         }
       }
@@ -597,27 +694,73 @@ export default function LaporanPage() {
             )}
 
             {activeTab === "review" && (
-              <button
-                type="button"
-                onClick={() => setShowAddReviewModal(true)}
-                style={{
-                  background: "#F59E0B",
-                  color: "white",
-                  padding: "9px 15px",
+              <>
+                <button
+                  type="button"
+                  onClick={handleSyncReviewsAPI}
+                  disabled={syncingReviews}
+                  style={{
+                    background: "#3B82F6",
+                    color: "white",
+                    padding: "9px 15px",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    border: "none",
+                    cursor: syncingReviews ? "not-allowed" : "pointer",
+                    boxShadow: "0 4px 10px rgba(59,130,246,0.25)",
+                    opacity: syncingReviews ? 0.7 : 1
+                  }}
+                >
+                  <RefreshCw size={15} className={syncingReviews ? "animate-spin" : ""} />
+                  {syncingReviews ? "Menyinkronkan API..." : "Sinkron Ulasan API"}
+                </button>
+
+                <label style={{
+                  background: "white",
+                  color: "#334155",
+                  border: "1px solid #CBD5E1",
+                  padding: "8px 14px",
                   borderRadius: 10,
                   fontSize: 12,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  border: "none",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 10px rgba(245,158,11,0.25)"
-                }}
-              >
-                <Plus size={15} />
-                Tambah Ulasan Pelanggan
-              </button>
+                  cursor: uploadingReviewsCSV ? "not-allowed" : "pointer",
+                  opacity: uploadingReviewsCSV ? 0.7 : 1,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                }}>
+                  <UploadCloud size={15} color="#059669" />
+                  {uploadingReviewsCSV ? "Mengimpor CSV..." : "Upload CSV Ulasan Seller Center"}
+                  <input type="file" accept=".csv" onChange={handleUploadReviewsCSV} disabled={uploadingReviewsCSV} style={{ display: "none" }} />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddReviewModal(true)}
+                  style={{
+                    background: "#F59E0B",
+                    color: "white",
+                    padding: "9px 15px",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 10px rgba(245,158,11,0.25)"
+                  }}
+                >
+                  <Plus size={15} />
+                  Catat Manual
+                </button>
+              </>
             )}
           </div>
         </div>

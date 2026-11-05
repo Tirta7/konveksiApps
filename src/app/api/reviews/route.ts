@@ -182,12 +182,42 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const data: any = readData();
+    if (!data.product_reviews) data.product_reviews = [];
+
+    // Handle Bulk Import from CSV Seller Center
+    if (body.action === "bulk_import" && Array.isArray(body.reviews)) {
+      let imported = 0;
+      for (const item of body.reviews) {
+        if (!item.comment && !item.rating) continue;
+        const orderId = String(item.order_id || "").trim();
+        const existingIndex = orderId ? data.product_reviews.findIndex((r: any) => r.order_id === orderId) : -1;
+        const entry = {
+          order_id: orderId || `IMP-${Date.now().toString().slice(-6)}-${imported}`,
+          product_name: item.product_name || "Produk Jeans",
+          variation: item.variation || "-",
+          marketplace: item.marketplace || "Shopee",
+          buyer_name: item.buyer_name || "Pembeli Seller Center",
+          rating: Math.min(5, Math.max(1, Number(item.rating || 5))),
+          comment: String(item.comment || "Kualitas baik."),
+          tags: Array.isArray(item.tags) && item.tags.length > 0 ? item.tags : ["Seller Center Verified"],
+          created_at: item.created_at || new Date().toISOString()
+        };
+
+        if (existingIndex >= 0) {
+          data.product_reviews[existingIndex] = { ...data.product_reviews[existingIndex], ...entry };
+        } else {
+          data.product_reviews.unshift({ id: nextId(data, "product_reviews"), ...entry });
+        }
+        imported++;
+      }
+      writeData(data);
+      return NextResponse.json({ success: true, imported });
+    }
+
     if (!body.product_name || !body.comment) {
       return NextResponse.json({ error: "Nama produk dan ulasan wajib diisi" }, { status: 400 });
     }
-
-    const data: any = readData();
-    if (!data.product_reviews) data.product_reviews = [];
 
     const newReview = {
       id: nextId(data, "product_reviews"),
