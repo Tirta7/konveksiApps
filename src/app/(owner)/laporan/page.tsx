@@ -401,9 +401,16 @@ export default function LaporanPage() {
         const biayaAfiliasi = settleData ? Number(settleData.biaya_afiliasi || 0) : 0;
         const biayaOngkir = settleData ? Number(settleData.biaya_ongkir || 0) : 0;
         const biayaLainnya = settleData ? Number(settleData.biaya_lainnya || 0) : 0;
-        const totalPotongan = settleData
-          ? (biayaKomisi + biayaAfiliasi + biayaOngkir + biayaLainnya)
+        const potonganRinci = (biayaKomisi + biayaAfiliasi + biayaOngkir + biayaLainnya);
+        const selisihNominal = settleData && omzetKotor > Number(settleData.penyelesaian_pembayaran || 0)
+          ? (omzetKotor - Number(settleData.penyelesaian_pembayaran || 0))
           : 0;
+        const totalPotongan = settleData
+          ? Math.max(potonganRinci, selisihNominal)
+          : 0;
+
+        // Jika ada selisih potongan tapi rincian komisi 0 (biasa pada Shopee sandbox test order), atribusikan ke komisi/layanan platform
+        const displayKomisi = biayaKomisi > 0 ? biayaKomisi : (totalPotongan > 0 && potonganRinci === 0 ? totalPotongan : 0);
 
         const isSudahCair = Boolean(settleData && Number(settleData.penyelesaian_pembayaran) > 0);
         const labaBersih = settleData
@@ -439,7 +446,7 @@ export default function LaporanPage() {
             ? `RETUR / ${String(returData.return_type).toUpperCase()}`
             : "RETUR / BATAL",
           omzetKotor,
-          biayaKomisi,
+          biayaKomisi: displayKomisi,
           biayaAfiliasi,
           biayaOngkir,
           biayaLainnya,
@@ -1047,8 +1054,16 @@ export default function LaporanPage() {
                             </td>
 
                             {/* 8. Total Potongan */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 800, color: o.totalPotongan > 0 ? "#DC2626" : "#94A3B8", fontSize: 12 }}>
-                              {o.totalPotongan > 0 ? `-Rp ${o.totalPotongan.toLocaleString("id-ID")}` : "Belum Settlement"}
+                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 800, fontSize: 12 }}>
+                              {o.isSudahCair ? (
+                                o.totalPotongan > 0 ? (
+                                  <span style={{ color: "#DC2626" }}>-Rp {o.totalPotongan.toLocaleString("id-ID")}</span>
+                                ) : (
+                                  <span style={{ color: "#059669" }}>Rp 0</span>
+                                )
+                              ) : (
+                                <span style={{ color: "#94A3B8" }}>Belum Settlement</span>
+                              )}
                             </td>
 
                             {/* 9. Pencairan Bersih */}
