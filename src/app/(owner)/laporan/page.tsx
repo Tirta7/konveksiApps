@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { 
   BarChart2, TrendingUp, Store, ShoppingBag, UploadCloud, DollarSign, Wallet, FileX, CreditCard, 
@@ -48,7 +48,6 @@ function formatYMD(d: Date): string {
 
 export default function LaporanPage() {
   const [data, setData] = useState<any[]>([]);
-  const _bgRefresh = useRef(false);
   const [keuanganData, setKeuanganData] = useState<{sales: any[], retur: any[], settlement: any[]}>({sales: [], retur: [], settlement: []});
   const [periode, setPeriode] = useState<"minggu" | "bulan">("minggu");
   const [activeTab, setActiveTab] = useState<"keuangan" | "produk">("keuangan");
@@ -56,18 +55,31 @@ export default function LaporanPage() {
   const [uploading, setUploading] = useState(false);
   const [syncingSettlement, setSyncingSettlement] = useState(false);
 
+  const isInitialLoad = useRef(true);
+  const isFetchingRef = useRef(false);
+  const salesCountRef = useRef(0);
+  salesCountRef.current = keuanganData.sales.length;
+
   // Filter Tanggal & Search
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [activeDatePreset, setActiveDatePreset] = useState<string>("semua");
   const [search, setSearch] = useState("");
 
-  const fetchData = useCallback(async () => {
-    if (!_bgRefresh.current) setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    // Hindari pemanggilan ganda secara bersamaan
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
+    // Hanya aktifkan spinner jika halaman baru pertama kali dimuat & data masih kosong
+    if (!silent && isInitialLoad.current && salesCountRef.current === 0) {
+      setLoading(true);
+    }
+
     try {
       const r1 = await fetch(`/api/laporan?periode=${periode}`);
       const d1 = await r1.json();
-      setData(d1);
+      setData(Array.isArray(d1) ? d1 : []);
 
       // Fetch all data for financial reconciliation (pesanan per Order ID agar omzet tidak dobel)
       const [rSales, rRetur, rSettlement] = await Promise.all([
@@ -86,22 +98,32 @@ export default function LaporanPage() {
     } catch (e) {
       console.error(e);
     } finally {
+      isInitialLoad.current = false;
+      isFetchingRef.current = false;
       setLoading(false);
     }
   }, [periode]);
 
   useEffect(() => {
+    // Initial fetch
     fetchData();
 
-    // Auto-sync settlement di background saat halaman dibuka
-    fetch("/api/settlement/sync", { method: "POST" }).catch(() => {});
+    // Auto-sync settlement di background 2 detik setelah buka halaman (silent)
+    const syncTimeout = setTimeout(() => {
+      fetch("/api/settlement/sync", { method: "POST" })
+        .then(() => fetchData(true))
+        .catch(() => {});
+    }, 2000);
 
-    // Polling background tiap 30 detik untuk menjamin data selalu sinkron
+    // Polling background tiap 60 detik (silent tanpa blink)
     const autoSyncTimer = setInterval(() => {
-      fetch("/api/settlement/sync", { method: "POST" }).catch(() => {});
-    }, 30_000);
+      fetch("/api/settlement/sync", { method: "POST" })
+        .then(() => fetchData(true))
+        .catch(() => {});
+    }, 60_000);
 
-    const unSync = subscribeRealtime(() => fetchData());
+    // Realtime listeners (semuanya silent in-place update)
+    const unSync = subscribeRealtime(() => fetchData(true));
     const unEvent = subscribeRealtimeEvent((ev) => {
       if (
         ev === "marketplace:order_received" ||
@@ -112,18 +134,15 @@ export default function LaporanPage() {
         ev === "retur_ke_stok" ||
         ev === "retur_deleted"
       ) {
-        fetchData();
+        fetchData(true);
       }
     });
 
-    const onKonveksiSync = () => fetchData();
-    window.addEventListener("konveksi-sync", onKonveksiSync);
-
     return () => {
+      clearTimeout(syncTimeout);
       clearInterval(autoSyncTimer);
       unSync();
       unEvent();
-      window.removeEventListener("konveksi-sync", onKonveksiSync);
     };
   }, [fetchData]);
 
@@ -135,7 +154,7 @@ export default function LaporanPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Gagal sinkron settlement");
       toast.success(`Sinkronisasi keuangan API selesai! (${json.synced || 0} data settlement diperbarui)`);
-      await fetchData();
+      await fetchData(true);
     } catch (e: any) {
       toast.error(e.message || "Gagal sinkron settlement API");
     } finally {
@@ -238,131 +257,148 @@ export default function LaporanPage() {
     });
   };
 
-  // Kalkulasi Rekonsiliasi Keuangan
-  const settlementMap = new Map<string, any>();
-  keuanganData.settlement.forEach(s => {
-    if (!settlementMap.has(s.order_id)) {
-      settlementMap.set(s.order_id, { ...s });
-    } else {
-      const existing = settlementMap.get(s.order_id);
-      existing.penyelesaian_pembayaran += Number(s.penyelesaian_pembayaran || 0);
-      existing.biaya_komisi += Number(s.biaya_komisi || 0);
-      existing.biaya_afiliasi += Number(s.biaya_afiliasi || 0);
-      existing.biaya_ongkir += Number(s.biaya_ongkir || 0);
-      existing.biaya_lainnya += Number(s.biaya_lainnya || 0);
-    }
-  });
+  // Kalkulasi Rekonsiliasi Keuangan (di-memoize agar tidak menghitung ulang saat render berulang)
+  const { unifiedOrders, filteredOrders, totals } = useMemo(() => {
+    const settlementMap = new Map<string, any>();
+    keuanganData.settlement.forEach(s => {
+      if (!settlementMap.has(s.order_id)) {
+        settlementMap.set(s.order_id, { ...s });
+      } else {
+        const existing = settlementMap.get(s.order_id);
+        existing.penyelesaian_pembayaran += Number(s.penyelesaian_pembayaran || 0);
+        existing.biaya_komisi += Number(s.biaya_komisi || 0);
+        existing.biaya_afiliasi += Number(s.biaya_afiliasi || 0);
+        existing.biaya_ongkir += Number(s.biaya_ongkir || 0);
+        existing.biaya_lainnya += Number(s.biaya_lainnya || 0);
+      }
+    });
 
-  const returMap = new Map<string, any>();
-  keuanganData.retur.forEach(r => returMap.set(r.order_id, r));
+    const returMap = new Map<string, any>();
+    keuanganData.retur.forEach(r => returMap.set(r.order_id, r));
 
-  // Build unified order table
-  const unifiedOrders = keuanganData.sales
-    .filter(sale => sale.order_id && !String(sale.order_id).includes("Platform unique"))
-    .map(sale => {
-      const retursList = sale.returs || [];
-      const returScan = retursList[0];
-      const isRetur = returMap.has(sale.order_id) || !!returScan;
-      const returData = returMap.has(sale.order_id) ? returMap.get(sale.order_id) : null;
-      const settleData = settlementMap.get(sale.order_id);
+    // Build unified order table
+    const orders = keuanganData.sales
+      .filter(sale => sale.order_id && !String(sale.order_id).includes("Platform unique"))
+      .map(sale => {
+        const retursList = sale.returs || [];
+        const returScan = retursList[0];
+        const isRetur = returMap.has(sale.order_id) || !!returScan;
+        const returData = returMap.has(sale.order_id) ? returMap.get(sale.order_id) : null;
+        const settleData = settlementMap.get(sale.order_id);
 
-      const danaBanding = retursList.reduce((s: number, r: any) => s + Number(r.dana_diterima || 0), 0);
-      const omzetKotor = Number(sale.total_amount ?? sale.order_amount ?? 0);
+        const danaBanding = retursList.reduce((s: number, r: any) => s + Number(r.dana_diterima || 0), 0);
+        const omzetKotor = Number(sale.total_amount ?? sale.order_amount ?? 0);
 
-      const biayaKomisi = settleData ? Number(settleData.biaya_komisi || 0) : 0;
-      const biayaAfiliasi = settleData ? Number(settleData.biaya_afiliasi || 0) : 0;
-      const biayaOngkir = settleData ? Number(settleData.biaya_ongkir || 0) : 0;
-      const biayaLainnya = settleData ? Number(settleData.biaya_lainnya || 0) : 0;
-      const totalPotongan = settleData
-        ? (biayaKomisi + biayaAfiliasi + biayaOngkir + biayaLainnya)
-        : 0;
+        const biayaKomisi = settleData ? Number(settleData.biaya_komisi || 0) : 0;
+        const biayaAfiliasi = settleData ? Number(settleData.biaya_afiliasi || 0) : 0;
+        const biayaOngkir = settleData ? Number(settleData.biaya_ongkir || 0) : 0;
+        const biayaLainnya = settleData ? Number(settleData.biaya_lainnya || 0) : 0;
+        const totalPotongan = settleData
+          ? (biayaKomisi + biayaAfiliasi + biayaOngkir + biayaLainnya)
+          : 0;
 
-      const isSudahCair = Boolean(settleData && Number(settleData.penyelesaian_pembayaran) > 0);
-      const labaBersih = settleData
-        ? Number(settleData.penyelesaian_pembayaran || 0) + danaBanding
-        : isRetur
-        ? danaBanding
-        : omzetKotor;
+        const isSudahCair = Boolean(settleData && Number(settleData.penyelesaian_pembayaran) > 0);
+        const labaBersih = settleData
+          ? Number(settleData.penyelesaian_pembayaran || 0) + danaBanding
+          : isRetur
+          ? danaBanding
+          : omzetKotor;
 
-      const statusPencairan = isRetur
-        ? "RETUR / BATAL"
-        : isSudahCair
-        ? "SUDAH CAIR"
-        : "MENUNGGU CAIR (ESCROW)";
+        const statusPencairan = isRetur
+          ? "RETUR / BATAL"
+          : isSudahCair
+          ? "SUDAH CAIR"
+          : "MENUNGGU CAIR (ESCROW)";
 
-      const items = sale.items || [];
+        const items = sale.items || [];
 
-      return {
-        order_id: sale.order_id,
-        marketplace: sale.marketplace || (/^\d{6}[A-Z0-9]{6,}$/i.test(sale.order_id) ? "Shopee" : "TikTok Shop"),
-        product: items.length ? items.map((i: any) => i.product_name).join(", ") : sale.product_name,
-        variation: items.length ? items.map((i: any) => i.variation).filter(Boolean).join(", ") : sale.variation,
-        total_qty: items.length ? items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0) : Number(sale.quantity || 1),
-        tanggal: sale.tanggal_pesanan,
-        isRetur,
-        isSudahCair,
-        statusPencairan,
-        danaBanding,
-        statusRetur: returScan
-          ? returScan.status === "Kembali ke Stok" || returScan.status === "Dipindah ke Stok"
-            ? "RETUR · KEMBALI KE STOK"
-            : `BANDING · ${String(returScan.status || "").toUpperCase()}`
-          : returData?.return_type
-          ? `RETUR / ${String(returData.return_type).toUpperCase()}`
-          : "RETUR / BATAL",
-        omzetKotor,
-        biayaKomisi,
-        biayaAfiliasi,
-        biayaOngkir,
-        biayaLainnya,
-        totalPotongan,
-        labaBersih,
-        settleData
-      };
-    })
-    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+        return {
+          order_id: sale.order_id,
+          marketplace: sale.marketplace || (/^\d{6}[A-Z0-9]{6,}$/i.test(sale.order_id) ? "Shopee" : "TikTok Shop"),
+          product: items.length ? items.map((i: any) => i.product_name).join(", ") : sale.product_name,
+          variation: items.length ? items.map((i: any) => i.variation).filter(Boolean).join(", ") : sale.variation,
+          total_qty: items.length ? items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0) : Number(sale.quantity || 1),
+          tanggal: sale.tanggal_pesanan,
+          isRetur,
+          isSudahCair,
+          statusPencairan,
+          danaBanding,
+          statusRetur: returScan
+            ? returScan.status === "Kembali ke Stok" || returScan.status === "Dipindah ke Stok"
+              ? "RETUR · KEMBALI KE STOK"
+              : `BANDING · ${String(returScan.status || "").toUpperCase()}`
+            : returData?.return_type
+            ? `RETUR / ${String(returData.return_type).toUpperCase()}`
+            : "RETUR / BATAL",
+          omzetKotor,
+          biayaKomisi,
+          biayaAfiliasi,
+          biayaOngkir,
+          biayaLainnya,
+          totalPotongan,
+          labaBersih,
+          settleData
+        };
+      })
+      .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
-  // Filter berdasarkan Rentang Tanggal & Search
-  const filteredOrders = unifiedOrders.filter((o) => {
-    if (filterStartDate || filterEndDate) {
-      const orderDate = parseOrderDate(o.tanggal);
-      if (!orderDate) return false;
+    // Filter berdasarkan Rentang Tanggal & Search
+    const filtered = orders.filter((o) => {
+      if (filterStartDate || filterEndDate) {
+        const orderDate = parseOrderDate(o.tanggal);
+        if (!orderDate) return false;
 
-      if (filterStartDate) {
-        const [sy, sm, sd] = filterStartDate.split("-").map(Number);
-        const startLimit = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-        if (orderDate < startLimit) return false;
+        if (filterStartDate) {
+          const [sy, sm, sd] = filterStartDate.split("-").map(Number);
+          const startLimit = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+          if (orderDate < startLimit) return false;
+        }
+
+        if (filterEndDate) {
+          const [ey, em, ed] = filterEndDate.split("-").map(Number);
+          const endLimit = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+          if (orderDate > endLimit) return false;
+        }
       }
 
-      if (filterEndDate) {
-        const [ey, em, ed] = filterEndDate.split("-").map(Number);
-        const endLimit = new Date(ey, em - 1, ed, 23, 59, 59, 999);
-        if (orderDate > endLimit) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const match =
+          o.order_id?.toLowerCase().includes(q) ||
+          o.product?.toLowerCase().includes(q) ||
+          o.variation?.toLowerCase().includes(q) ||
+          o.marketplace?.toLowerCase().includes(q);
+        if (!match) return false;
       }
-    }
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const match =
-        o.order_id?.toLowerCase().includes(q) ||
-        o.product?.toLowerCase().includes(q) ||
-        o.variation?.toLowerCase().includes(q) ||
-        o.marketplace?.toLowerCase().includes(q);
-      if (!match) return false;
-    }
+      return true;
+    });
 
-    return true;
-  });
+    const tot = {
+      totalOmzetKotor: filtered.reduce((s, o) => s + o.omzetKotor, 0),
+      totalSudahCair: filtered.reduce((s, o) => s + (o.isSudahCair ? o.labaBersih : 0), 0),
+      totalMenungguCair: filtered.reduce((s, o) => s + (!o.isRetur && !o.isSudahCair ? o.omzetKotor : 0), 0),
+      totalBiayaKomisi: filtered.reduce((s, o) => s + o.biayaKomisi, 0),
+      totalBiayaAfiliasi: filtered.reduce((s, o) => s + o.biayaAfiliasi, 0),
+      totalBiayaOngkir: filtered.reduce((s, o) => s + o.biayaOngkir, 0),
+      totalPotongan: filtered.reduce((s, o) => s + o.totalPotongan, 0),
+      totalReturLoss: filtered.reduce((s, o) => s + (o.isRetur ? Math.max(0, o.omzetKotor - o.danaBanding) : 0), 0),
+    };
 
-  // Kalkulasi KPI dinamis berdasarkan hasil filter
-  const totalOmzetKotor = filteredOrders.reduce((s, o) => s + o.omzetKotor, 0);
-  const totalSudahCair = filteredOrders.reduce((s, o) => s + (o.isSudahCair ? o.labaBersih : 0), 0);
-  const totalMenungguCair = filteredOrders.reduce((s, o) => s + (!o.isRetur && !o.isSudahCair ? o.omzetKotor : 0), 0);
-  const totalBiayaKomisi = filteredOrders.reduce((s, o) => s + o.biayaKomisi, 0);
-  const totalBiayaAfiliasi = filteredOrders.reduce((s, o) => s + o.biayaAfiliasi, 0);
-  const totalBiayaOngkir = filteredOrders.reduce((s, o) => s + o.biayaOngkir, 0);
-  const totalPotongan = filteredOrders.reduce((s, o) => s + o.totalPotongan, 0);
-  const totalReturLoss = filteredOrders.reduce((s, o) => s + (o.isRetur ? Math.max(0, o.omzetKotor - o.danaBanding) : 0), 0);
+    return { unifiedOrders: orders, filteredOrders: filtered, totals: tot };
+  }, [keuanganData, filterStartDate, filterEndDate, search]);
+
+
+  const {
+    totalOmzetKotor,
+    totalSudahCair,
+    totalMenungguCair,
+    totalBiayaKomisi,
+    totalBiayaAfiliasi,
+    totalBiayaOngkir,
+    totalPotongan,
+    totalReturLoss
+  } = totals;
 
   // Export 1-Klik ke Excel / CSV
   const handleExportCSV = () => {
@@ -699,7 +735,7 @@ export default function LaporanPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {loading ? (
+                      {loading && filteredOrders.length === 0 ? (
                         <tr><td colSpan={9} style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat data rekonsiliasi...</td></tr>
                       ) : filteredOrders.length === 0 ? (
                         <tr>
@@ -838,7 +874,7 @@ export default function LaporanPage() {
                     <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>Grafik Perbandingan Penjualan</h2>
                   </div>
                   <div style={{ padding: 24 }}>
-                    {loading ? (
+                    {loading && data.length === 0 ? (
                       <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat grafik...</div>
                     ) : data.length === 0 ? (
                       <div style={{ height: 320, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#94A3B8" }}>
@@ -872,7 +908,7 @@ export default function LaporanPage() {
                     <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>Rekomendasi untuk penentuan batch produksi berikutnya</p>
                   </div>
                   <div style={{ flex: 1, overflowY: "auto" }}>
-                    {loading ? (
+                    {loading && data.length === 0 ? (
                       <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat peringkat...</div>
                     ) : data.length === 0 ? (
                       <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>Belum ada data.</div>

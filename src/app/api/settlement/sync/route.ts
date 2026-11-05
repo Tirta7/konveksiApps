@@ -10,3 +10,4 @@ export async function POST() {
     return NextResponse.json({ error: e.message || "Gagal sinkron settlement" }, { status: 500 });
   }
 }
+
