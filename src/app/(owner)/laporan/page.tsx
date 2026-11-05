@@ -3,7 +3,8 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { 
   BarChart2, TrendingUp, Store, ShoppingBag, UploadCloud, DollarSign, Wallet, FileX, CreditCard, 
-  ChevronRight, Calculator, PieChart, Download, RefreshCw, Calendar, CalendarDays, X, CheckCircle2, Clock, Users, ArrowUpRight, Search
+  ChevronRight, Calculator, PieChart, Download, RefreshCw, Calendar, CalendarDays, X, CheckCircle2, Clock, Users, ArrowUpRight, Search,
+  Star, ThumbsUp, MessageSquare, AlertTriangle, Sparkles, Plus
 } from "lucide-react";
 import Papa from "papaparse";
 import { toast } from "sonner";
@@ -50,10 +51,26 @@ export default function LaporanPage() {
   const [data, setData] = useState<any[]>([]);
   const [keuanganData, setKeuanganData] = useState<{sales: any[], retur: any[], settlement: any[]}>({sales: [], retur: [], settlement: []});
   const [periode, setPeriode] = useState<"minggu" | "bulan">("minggu");
-  const [activeTab, setActiveTab] = useState<"keuangan" | "produk">("keuangan");
+  const [activeTab, setActiveTab] = useState<"keuangan" | "produk" | "review">("keuangan");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [syncingSettlement, setSyncingSettlement] = useState(false);
+
+  // Review & Rating State
+  const [reviewsData, setReviewsData] = useState<{ reviews: any[]; summary: any[] }>({ reviews: [], summary: [] });
+  const [filterReviewRating, setFilterReviewRating] = useState<number | "semua">("semua");
+  const [filterReviewProduct, setFilterReviewProduct] = useState<string>("semua");
+  const [showAddReviewModal, setShowAddReviewModal] = useState(false);
+  const [newReviewForm, setNewReviewForm] = useState({
+    product_name: "",
+    variation: "",
+    marketplace: "Shopee",
+    buyer_name: "",
+    rating: 5,
+    comment: "",
+    tags: ""
+  });
+  const [savingReview, setSavingReview] = useState(false);
 
   const isInitialLoad = useRef(true);
   const isFetchingRef = useRef(false);
@@ -81,20 +98,25 @@ export default function LaporanPage() {
       const d1 = await r1.json();
       setData(Array.isArray(d1) ? d1 : []);
 
-      // Fetch all data for financial reconciliation (pesanan per Order ID agar omzet tidak dobel)
-      const [rSales, rRetur, rSettlement] = await Promise.all([
+      // Fetch all data for financial reconciliation & customer reviews
+      const [rSales, rRetur, rSettlement, rReviews] = await Promise.all([
         fetch("/api/penjualan-online?grouped=1"),
         fetch("/api/returns/online"),
-        fetch("/api/settlement/online")
+        fetch("/api/settlement/online"),
+        fetch("/api/reviews")
       ]);
       const dSales = await rSales.json();
       const dRetur = await rRetur.json();
       const dSettlement = await rSettlement.json();
+      const dReviews = await rReviews.json();
       setKeuanganData({
         sales: Array.isArray(dSales) ? dSales : [],
         retur: Array.isArray(dRetur) ? dRetur : (dRetur.retur_online || []),
         settlement: dSettlement.settlement_online || []
       });
+      if (dReviews && Array.isArray(dReviews.reviews)) {
+        setReviewsData(dReviews);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -439,6 +461,63 @@ export default function LaporanPage() {
     toast.success(`Berhasil mengekspor ${rows.length} baris data laporan keuangan!`);
   };
 
+  // Review & Rating Memoizations
+  const displayedReviews = useMemo(() => {
+    return (reviewsData.reviews || []).filter((r: any) => {
+      if (filterReviewRating !== "semua" && Number(r.rating) !== Number(filterReviewRating)) return false;
+      if (filterReviewProduct !== "semua" && r.product_name !== filterReviewProduct) return false;
+      return true;
+    });
+  }, [reviewsData.reviews, filterReviewRating, filterReviewProduct]);
+
+  const avgOverallRating = useMemo(() => {
+    const list = reviewsData.reviews || [];
+    if (!list.length) return 5;
+    const sum = list.reduce((s: number, r: any) => s + (Number(r.rating) || 5), 0);
+    return sum / list.length;
+  }, [reviewsData.reviews]);
+
+  const recommendedCount = useMemo(() => {
+    return (reviewsData.summary || []).filter((s: any) => s.average_rating >= 4.5).length;
+  }, [reviewsData.summary]);
+
+  const handleSaveReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReviewForm.product_name.trim() || !newReviewForm.comment.trim()) {
+      toast.error("Nama produk dan komentar ulasan wajib diisi");
+      return;
+    }
+    setSavingReview(true);
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newReviewForm,
+          tags: newReviewForm.tags.split(",").map(t => t.trim()).filter(Boolean)
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal menyimpan ulasan");
+      toast.success("Ulasan pembeli berhasil disimpan!");
+      setShowAddReviewModal(false);
+      setNewReviewForm({
+        product_name: "",
+        variation: "",
+        marketplace: "Shopee",
+        buyer_name: "",
+        rating: 5,
+        comment: "",
+        tags: ""
+      });
+      await fetchData(true);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyimpan");
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
   const totalPO = data.reduce((s, d) => s + (d.total_po ?? 0), 0);
   const totalRetail = data.reduce((s, d) => s + (d.total_retail ?? 0), 0);
   const totalAll = totalPO + totalRetail;
@@ -516,6 +595,30 @@ export default function LaporanPage() {
                 </label>
               </>
             )}
+
+            {activeTab === "review" && (
+              <button
+                type="button"
+                onClick={() => setShowAddReviewModal(true)}
+                style={{
+                  background: "#F59E0B",
+                  color: "white",
+                  padding: "9px 15px",
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 10px rgba(245,158,11,0.25)"
+                }}
+              >
+                <Plus size={15} />
+                Tambah Ulasan Pelanggan
+              </button>
+            )}
           </div>
         </div>
 
@@ -532,6 +635,12 @@ export default function LaporanPage() {
             style={{ padding: "14px 0", cursor: "pointer", borderBottom: activeTab === "produk" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "produk" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}
           >
             <PieChart size={18}/> Analisis Kategori & PO
+          </div>
+          <div 
+            onClick={() => setActiveTab("review")}
+            style={{ padding: "14px 0", cursor: "pointer", borderBottom: activeTab === "review" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "review" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}
+          >
+            <Star size={18} fill={activeTab === "review" ? "#F59E0B" : "none"} color={activeTab === "review" ? "#F59E0B" : "#64748B"} /> Review & Rating Produk (Acuan Repeat PO)
           </div>
         </div>
 
@@ -828,7 +937,7 @@ export default function LaporanPage() {
                 </div>
               </div>
             </>
-          ) : (
+          ) : activeTab === "produk" ? (
             <>
               {/* Product Analytics Tab (Kategori & PO) */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
@@ -942,8 +1051,437 @@ export default function LaporanPage() {
                 </div>
               </div>
             </>
+          ) : (
+            <>
+              {/* Review & Rating Pelanggan (Acuan Repeat PO) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                
+                {/* 3 KPI Cards Review & Kepuasan */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+                  {/* KPI 1: Rata-rata Rating */}
+                  <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 54, height: 54, borderRadius: 16, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #FDE68A" }}>
+                      <Star size={28} fill="#F59E0B" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Rata-rata Rating Toko</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "baseline", gap: 6 }}>
+                        {avgOverallRating.toFixed(1)} <span style={{ fontSize: 14, color: "#F59E0B", fontWeight: 700 }}>⭐⭐⭐⭐⭐</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#059669", fontWeight: 700, marginTop: 2 }}>🟢 Kepuasan Pembeli Sangat Tinggi</div>
+                    </div>
+                  </div>
+
+                  {/* KPI 2: Model Layak Repeat Produksi */}
+                  <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 54, height: 54, borderRadius: 16, background: "#ECFDF5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #A7F3D0" }}>
+                      <ThumbsUp size={26} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Rekomendasi Repeat PO</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: "#059669" }}>
+                        {recommendedCount} Model
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Rating di atas 4.5 & minim komplain</div>
+                    </div>
+                  </div>
+
+                  {/* KPI 3: Total Ulasan Terkumpul */}
+                  <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ width: 54, height: 54, borderRadius: 16, background: "#EFF6FF", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #BFDBFE" }}>
+                      <MessageSquare size={26} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Ulasan Pembeli</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: "#1E293B" }}>
+                        {(reviewsData.reviews || []).length} Ulasan
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Terverifikasi Shopee & TikTok Shop</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 1: Panduan Acuan Produksi SPK */}
+                <div style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%)", borderRadius: 18, border: "1px solid #BFDBFE", padding: "18px 22px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "#3B82F6", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 14, fontWeight: 800, color: "#1E3A8A", margin: 0, marginBottom: 4 }}>
+                      Kecerdasan Produksi: Jadikan Ulasan Pembeli Sebagai Acuan Repeat Order
+                    </h3>
+                    <p style={{ fontSize: 12, color: "#3B82F6", margin: 0, lineHeight: 1.5 }}>
+                      Produk dengan rating <b>≥ 4.5 bintang</b> membuktikan pola cutting, bahan kain, dan jahitan vendor CMT telah diterima sangat baik oleh pasar. Prioritaskan model ini untuk dibuatkan SPK potong & jahit batch baru guna memaksimalkan perputaran modal konveksi Anda.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Section 2: Rekomendasi Per Model Celana (Decision Matrix) */}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Star size={18} fill="#F59E0B" color="#F59E0B" /> Matriks Pertimbangan Produksi Ulang (Per Model)
+                    </h2>
+                    <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Dianalisis dari ulasan nyata marketplace</span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
+                    {(reviewsData.summary || []).map((stat: any, idx: number) => {
+                      const isRecommended = stat.average_rating >= 4.5;
+                      const isWarning = stat.average_rating >= 3.8 && stat.average_rating < 4.5;
+                      return (
+                        <div key={idx} style={{ background: "white", borderRadius: 20, border: isRecommended ? "1.5px solid #10B981" : isWarning ? "1.5px solid #F59E0B" : "1.5px solid #EF4444", padding: 22, boxShadow: "0 4px 16px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+                              <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", margin: 0 }}>{stat.product_name}</h3>
+                              <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", padding: "4px 8px", borderRadius: 8, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                <Star size={14} fill="#F59E0B" color="#F59E0B" />
+                                <span style={{ fontSize: 13, fontWeight: 900, color: "#B45309" }}>{stat.average_rating}</span>
+                                <span style={{ fontSize: 10, color: "#92400E" }}>({stat.total_reviews} review)</span>
+                              </div>
+                            </div>
+
+                            {/* Tags Sorotan Ulasan Pembeli */}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                              {stat.positive_tags?.map((tag: string, tIdx: number) => (
+                                <span key={tIdx} style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "#F1F5F9", color: "#475569" }}>
+                                  ✓ {tag}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Rekomendasi Box */}
+                            <div style={{
+                              padding: "12px 14px",
+                              borderRadius: 12,
+                              background: isRecommended ? "#ECFDF5" : isWarning ? "#FFFBEB" : "#FEF2F2",
+                              border: isRecommended ? "1px solid #A7F3D0" : isWarning ? "1px solid #FDE68A" : "1px solid #FECACA",
+                              marginBottom: 16
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 900, color: isRecommended ? "#047857" : isWarning ? "#B45309" : "#B91C1C", marginBottom: 3 }}>
+                                {isRecommended ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                                {stat.recommendation}
+                              </div>
+                              <p style={{ fontSize: 11.5, color: isRecommended ? "#065F46" : isWarning ? "#92400E" : "#991B1B", margin: 0, lineHeight: 1.45 }}>
+                                {stat.notes}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+                            {isRecommended && (
+                              <a
+                                href="/buat-spk"
+                                style={{
+                                  flex: 1,
+                                  background: "#10B981",
+                                  color: "white",
+                                  padding: "9px 12px",
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  textAlign: "center",
+                                  textDecoration: "none",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 6,
+                                  boxShadow: "0 2px 6px rgba(16,185,129,0.3)"
+                                }}
+                              >
+                                Buat SPK / Produksi Ulang
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setFilterReviewProduct(stat.product_name)}
+                              style={{
+                                padding: "9px 12px",
+                                borderRadius: 10,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: "#F8FAFC",
+                                border: "1px solid #CBD5E1",
+                                color: "#334155",
+                                cursor: "pointer"
+                              }}
+                            >
+                              Lihat Semua Ulasan
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Section 3: Daftar Ulasan Customer (Feed) */}
+                <div style={{ background: "white", borderRadius: 20, border: "1px solid #E2E8F0", padding: "20px 24px", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20, borderBottom: "1px solid #F1F5F9", paddingBottom: 16 }}>
+                    <div>
+                      <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>
+                        Feed Ulasan Nyata Pembeli
+                      </h2>
+                      <p style={{ fontSize: 12, color: "#64748B", margin: 0, marginTop: 2 }}>
+                        Membantu evaluasi kualitas jahitan, kenyamanan bahan jeans, dan akurasi ukuran.
+                      </p>
+                    </div>
+
+                    {/* Filter Bintang & Produk */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <select
+                        value={filterReviewProduct}
+                        onChange={(e) => setFilterReviewProduct(e.target.value)}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "white" }}
+                      >
+                        <option value="semua">Semua Model Produk</option>
+                        {(reviewsData.summary || []).map((s: any) => (
+                          <option key={s.product_name} value={s.product_name}>{s.product_name}</option>
+                        ))}
+                      </select>
+
+                      <div style={{ display: "flex", gap: 4 }}>
+                        {["semua", 5, 4, 3].map((r: any) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setFilterReviewRating(r as any)}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              border: filterReviewRating === r ? "1px solid #F59E0B" : "1px solid #E2E8F0",
+                              background: filterReviewRating === r ? "#FFFBEB" : "white",
+                              color: filterReviewRating === r ? "#B45309" : "#64748B"
+                            }}
+                          >
+                            {r === "semua" ? "Semua Bintang" : `⭐ ${r}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feed Items */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {displayedReviews.length === 0 ? (
+                      <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>
+                        Belum ada ulasan yang sesuai dengan filter ini.
+                      </div>
+                    ) : (
+                      displayedReviews.map((rev: any) => (
+                        <div key={rev.id} style={{ padding: 18, borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#CBD5E1", color: "#334155", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {rev.buyer_name?.charAt(0).toUpperCase() || "U"}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
+                                  {rev.buyer_name}
+                                  <span style={{
+                                    fontSize: 9.5,
+                                    fontWeight: 800,
+                                    padding: "1px 6px",
+                                    borderRadius: 4,
+                                    background: rev.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
+                                    color: rev.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
+                                    border: rev.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
+                                  }}>
+                                    {rev.marketplace}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: "#64748B" }}>
+                                  {rev.product_name} {rev.variation ? `· ${rev.variation}` : ""}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={14}
+                                  fill={i < rev.rating ? "#F59E0B" : "none"}
+                                  color={i < rev.rating ? "#F59E0B" : "#CBD5E1"}
+                                />
+                              ))}
+                              <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 6 }}>
+                                {new Date(rev.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.5, margin: 0, marginBottom: 10, background: "white", padding: "10px 14px", borderRadius: 10, border: "1px solid #F1F5F9" }}>
+                            "{rev.comment}"
+                          </p>
+
+                          {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              {rev.tags.map((t: string, tid: number) => (
+                                <span key={tid} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#E2E8F0", color: "#334155" }}>
+                                  #{t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </>
           )}
         </div>
+
+        {/* Modal Tambah Ulasan Customer */}
+        {showAddReviewModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(4px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ background: "white", borderRadius: 20, width: "100%", maxWidth: 540, boxShadow: "0 20px 40px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+              <div style={{ padding: "18px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F8FAFC" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Star size={20} fill="#F59E0B" color="#F59E0B" />
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>Tambah Ulasan Pelanggan</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddReviewModal(false)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", display: "flex", alignItems: "center" }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveReview} style={{ padding: "20px 24px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                      Nama Produk / Model Celana *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="contoh: LAVAIRA ID - Highwaist Jeans Straight Fit"
+                      value={newReviewForm.product_name}
+                      onChange={(e) => setNewReviewForm({ ...newReviewForm, product_name: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                        Variasi / Ukuran
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="contoh: Retro Fold, 30"
+                        value={newReviewForm.variation}
+                        onChange={(e) => setNewReviewForm({ ...newReviewForm, variation: e.target.value })}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                        Marketplace
+                      </label>
+                      <select
+                        value={newReviewForm.marketplace}
+                        onChange={(e) => setNewReviewForm({ ...newReviewForm, marketplace: e.target.value })}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A", background: "white" }}
+                      >
+                        <option value="Shopee">Shopee</option>
+                        <option value="TikTok Shop">TikTok Shop</option>
+                        <option value="Tokopedia">Tokopedia</option>
+                        <option value="Offline / WhatsApp">Offline / WhatsApp</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                        Nama Pembeli
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="contoh: anita_lestari"
+                        value={newReviewForm.buyer_name}
+                        onChange={(e) => setNewReviewForm({ ...newReviewForm, buyer_name: e.target.value })}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                        Rating Bintang (1 - 5)
+                      </label>
+                      <select
+                        value={newReviewForm.rating}
+                        onChange={(e) => setNewReviewForm({ ...newReviewForm, rating: Number(e.target.value) })}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A", background: "white" }}
+                      >
+                        <option value={5}>⭐⭐⭐⭐⭐ 5 Bintang (Sangat Puas)</option>
+                        <option value={4}>⭐⭐⭐⭐ 4 Bintang (Bagus)</option>
+                        <option value={3}>⭐⭐⭐ 3 Bintang (Cukup / Masukan)</option>
+                        <option value={2}>⭐⭐ 2 Bintang (Kurang Puas)</option>
+                        <option value={1}>⭐ 1 Bintang (Komplain Berat)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                      Isi Komentar / Ulasan Pembeli *
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="contoh: Bahannya sangat lembut, jahitannya rapi dan potongannya pas di pinggang..."
+                      value={newReviewForm.comment}
+                      onChange={(e) => setNewReviewForm({ ...newReviewForm, comment: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A", resize: "vertical" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 5 }}>
+                      Tag Sorotan (pisahkan dengan koma)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="contoh: Jahitan Rapi, Bahan Lembut, Ukuran Pas"
+                      value={newReviewForm.tags}
+                      onChange={(e) => setNewReviewForm({ ...newReviewForm, tags: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 13, color: "#0F172A" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddReviewModal(false)}
+                    style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #CBD5E1", background: "white", color: "#64748B", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingReview}
+                    style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "#F59E0B", color: "white", fontWeight: 800, fontSize: 13, cursor: savingReview ? "not-allowed" : "pointer", boxShadow: "0 4px 10px rgba(245,158,11,0.25)" }}
+                  >
+                    {savingReview ? "Menyimpan..." : "Simpan Ulasan"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </>
