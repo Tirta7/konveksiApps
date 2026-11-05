@@ -10,3 +10,4 @@ export async function POST() {
     return NextResponse.json({ error: e.message || "Gagal sinkron ulasan marketplace" }, { status: 500 });
   }
 }
+

@@ -547,25 +547,78 @@ export default function LaporanPage() {
     toast.success(`Berhasil mengekspor ${rows.length} baris data laporan keuangan!`);
   };
 
-  // Review & Rating Memoizations
+  // Review & Rating Memoizations (Hanya review murni organik dari API / CSV Seller Center)
+  const DUMMY_BUYER_NAMES = useMemo(() => new Set([
+    "anita_lestari_92",
+    "siti_nurhaliza_b",
+    "rina_wahyuni77",
+    "clarissa_putri_fashion",
+    "dian_permata_sari",
+    "mutia_ramadhani"
+  ]), []);
+
+  const cleanOrganicReviews = useMemo(() => {
+    return (reviewsData.reviews || []).filter((r: any) => !DUMMY_BUYER_NAMES.has(r.buyer_name));
+  }, [reviewsData.reviews, DUMMY_BUYER_NAMES]);
+
+  const cleanOrganicSummary = useMemo(() => {
+    if (cleanOrganicReviews.length === 0) return [];
+    const statsMap = new Map<string, any>();
+    cleanOrganicReviews.forEach((r: any) => {
+      const pName = r.product_name || "Produk Jeans";
+      if (!statsMap.has(pName)) {
+        statsMap.set(pName, {
+          product_name: pName,
+          total_reviews: 0,
+          average_rating: 0,
+          rating_sum: 0,
+          positive_tags: [],
+          recommendation: "SANGAT DIREKOMENDASIKAN REPEAT PO",
+          notes: "Kepuasan pembeli sangat tinggi. Pola, jahitan, dan bahan terbukti disukai pasar. Prioritaskan buat SPK potong & jahit lagi."
+        });
+      }
+      const st = statsMap.get(pName);
+      st.total_reviews += 1;
+      st.rating_sum += Number(r.rating || 5);
+      if (Array.isArray(r.tags)) {
+        r.tags.forEach((t: string) => {
+          if (!st.positive_tags.includes(t) && st.positive_tags.length < 5) st.positive_tags.push(t);
+        });
+      }
+    });
+    return Array.from(statsMap.values()).map(st => {
+      st.average_rating = Number((st.rating_sum / st.total_reviews).toFixed(1));
+      if (st.average_rating >= 4.5) {
+        st.recommendation = "SANGAT DIREKOMENDASIKAN REPEAT PO";
+        st.notes = "Kepuasan pembeli sangat tinggi. Pola, jahitan, dan bahan terbukti disukai pasar. Prioritaskan buat SPK potong & jahit lagi.";
+      } else if (st.average_rating >= 3.8) {
+        st.recommendation = "PERLU EVALUASI POLA";
+        st.notes = "Ada masukan terkait ukuran atau panjang celana. Disarankan konsultasi dengan tukang potong sebelum repeat batch besar.";
+      } else {
+        st.recommendation = "STOP PRODUKSI";
+        st.notes = "Rating rendah / komplain pembeli tinggi. Hentikan produksi ulang model ini untuk menghindari retur tinggi.";
+      }
+      return st;
+    });
+  }, [cleanOrganicReviews]);
+
   const displayedReviews = useMemo(() => {
-    return (reviewsData.reviews || []).filter((r: any) => {
+    return cleanOrganicReviews.filter((r: any) => {
       if (filterReviewRating !== "semua" && Number(r.rating) !== Number(filterReviewRating)) return false;
       if (filterReviewProduct !== "semua" && r.product_name !== filterReviewProduct) return false;
       return true;
     });
-  }, [reviewsData.reviews, filterReviewRating, filterReviewProduct]);
+  }, [cleanOrganicReviews, filterReviewRating, filterReviewProduct]);
 
   const avgOverallRating = useMemo(() => {
-    const list = reviewsData.reviews || [];
-    if (!list.length) return 5;
-    const sum = list.reduce((s: number, r: any) => s + (Number(r.rating) || 5), 0);
-    return sum / list.length;
-  }, [reviewsData.reviews]);
+    if (!cleanOrganicReviews.length) return 5;
+    const sum = cleanOrganicReviews.reduce((s: number, r: any) => s + (Number(r.rating) || 5), 0);
+    return sum / cleanOrganicReviews.length;
+  }, [cleanOrganicReviews]);
 
   const recommendedCount = useMemo(() => {
-    return (reviewsData.summary || []).filter((s: any) => s.average_rating >= 4.5).length;
-  }, [reviewsData.summary]);
+    return cleanOrganicSummary.filter((s: any) => s.average_rating >= 4.5).length;
+  }, [cleanOrganicSummary]);
 
   const totalPO = data.reduce((s, d) => s + (d.total_po ?? 0), 0);
   const totalRetail = data.reduce((s, d) => s + (d.total_retail ?? 0), 0);
@@ -1127,7 +1180,7 @@ export default function LaporanPage() {
           ) : (
             <>
               {/* Review & Rating Pelanggan (Acuan Repeat PO) */}
-              {(reviewsData.reviews || []).length === 0 ? (
+              {cleanOrganicReviews.length === 0 ? (
                 <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", padding: "64px 24px", textAlign: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
                   <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", border: "1px solid #BFDBFE" }}>
                     <Star size={36} color="#3B82F6" />
@@ -1223,7 +1276,7 @@ export default function LaporanPage() {
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Ulasan Pembeli</div>
                       <div style={{ fontSize: 28, fontWeight: 900, color: "#1E293B" }}>
-                        {(reviewsData.reviews || []).length} Ulasan
+                        {cleanOrganicReviews.length} Ulasan
                       </div>
                       <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Terverifikasi Shopee & TikTok Shop</div>
                     </div>
@@ -1255,7 +1308,7 @@ export default function LaporanPage() {
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
-                    {(reviewsData.summary || []).map((stat: any, idx: number) => {
+                    {cleanOrganicSummary.map((stat: any, idx: number) => {
                       const isRecommended = stat.average_rating >= 4.5;
                       const isWarning = stat.average_rating >= 3.8 && stat.average_rating < 4.5;
                       return (
@@ -1365,7 +1418,7 @@ export default function LaporanPage() {
                         style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "white" }}
                       >
                         <option value="semua">Semua Model Produk</option>
-                        {(reviewsData.summary || []).map((s: any) => (
+                        {cleanOrganicSummary.map((s: any) => (
                           <option key={s.product_name} value={s.product_name}>{s.product_name}</option>
                         ))}
                       </select>

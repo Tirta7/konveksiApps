@@ -9,7 +9,20 @@ export async function GET(req: Request) {
       data.product_reviews = [];
     }
 
-    // Agregasi per Produk (Hanya dari ulasan organik riil API / CSV)
+    // Bersihkan total dan pastikan review dummy tidak pernah muncul
+    const dummyNames = new Set([
+      "anita_lestari_92",
+      "siti_nurhaliza_b",
+      "rina_wahyuni77",
+      "clarissa_putri_fashion",
+      "dian_permata_sari",
+      "mutia_ramadhani"
+    ]);
+    if (Array.isArray(data.product_reviews) && data.product_reviews.some((r: any) => dummyNames.has(r.buyer_name))) {
+      data.product_reviews = data.product_reviews.filter((r: any) => !dummyNames.has(r.buyer_name));
+      writeData(data);
+    }
+
     const productStatsMap = new Map<string, {
       product_name: string;
       total_reviews: number;
