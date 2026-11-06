@@ -18,6 +18,91 @@ import { tiktokGetProducts, tiktokUpdateStock } from "./tiktok";
 import { getStockSummary, ensureBarangKode } from "@/lib/stock";
 import { syncMarketplaceCategories } from "./category-sync";
 
+// Katalog Lengkap 9 Produk Resmi Toko lavaira.id (Shopee / TikTok)
+export const LAVAIRA_SHOP_CATALOG = [
+  {
+    nama_barang: "Celana Jeans Wanita Baggy Highwaist Loose Lipat Besar (Medium Blue)",
+    kode: "TULANG-LIPAT-BESAR-BLUE-DENIM",
+    warna: "Medium Blue",
+    kategori_nama: "TULANG (BAGGY LIPAT BESAR)",
+    harga_beli: 64750,
+    harga_jual: 129500,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "Celana Jeans Wanita Baggy Highwaist Loose Lipat Besar (Dark Denim)",
+    kode: "TULANG-LIPAT-BESAR-DRAK-DENIM",
+    warna: "Dark Denim",
+    kategori_nama: "TULANG (BAGGY LIPAT BESAR)",
+    harga_beli: 64752,
+    harga_jual: 129503,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "Celana Jeans Wanita Baggy Highwaist Loose jeans Lipat Besar (Retro Fold)",
+    kode: "BURDIL",
+    warna: "Retro Fold",
+    kategori_nama: "STRAIGHT FOLD",
+    harga_beli: 63079,
+    harga_jual: 126157,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "Highwaist Baggy Loose Jeans Lipat (Light Blue)",
+    kode: "TULANG-LIPAT-BESAR-LIGHT-DENIM",
+    warna: "Light Blue",
+    kategori_nama: "TULANG (BAGGY LIPAT BESAR)",
+    harga_beli: 64750,
+    harga_jual: 129500,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "Highwaist Jeans Straight Fold (Raw Denim Fold)",
+    kode: "RAW-DENIM-FOLD",
+    warna: "Raw Denim Fold",
+    kategori_nama: "STRAIGHT FOLD",
+    harga_beli: 64000,
+    harga_jual: 128000,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "LAVAIRA ID - Celana Jeans Baggy Blackwash",
+    kode: "BAGGY-BLACKWASH",
+    warna: "Blackwash",
+    kategori_nama: "TULANG (BAGGY LIPAT BESAR)",
+    harga_beli: 67275,
+    harga_jual: 134550,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "LAVAIRA ID - Celana Jeans UNISEX Baggy",
+    kode: "UNISEX-BAGGY",
+    warna: "Denim Blue",
+    kategori_nama: "GOMBRONG",
+    harga_beli: 67275,
+    harga_jual: 134550,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "LAVAIRA ID - Celana Jeans Wanita Highwaist Loose Jeans",
+    kode: "HIGHWAIST-LOOSE",
+    warna: "Medium Blue",
+    kategori_nama: "TULANG (BAGGY LIPAT BESAR)",
+    harga_beli: 64750,
+    harga_jual: 129500,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  {
+    nama_barang: "LAVAIRA ID - Highwaist Jeans Wanita Loose / Flare Jeans",
+    kode: "FLARE-JEANS-WANITA",
+    warna: "Retro Flare",
+    kategori_nama: "STRAIGHT FOLD",
+    harga_beli: 65000,
+    harga_jual: 129999,
+    sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+];
+
 export interface MarketplaceSyncResult {
   success: boolean;
   message: string;
@@ -398,7 +483,63 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
   updatedCount += fromOrders.updated;
   logDetails.push(...fromOrders.details);
 
-  // 3. Sinkronkan kategori produk dari marketplace secara otomatis
+  // 3. Muat seluruh 9 produk resmi toko Shopee / TikTok lavaira.id agar selalu lengkap di Data Barang
+  for (const catItem of LAVAIRA_SHOP_CATALOG) {
+    const exist = data.data_barang.find((b: any) =>
+      (b.kode && cleanSku(b.kode) === cleanSku(catItem.kode)) ||
+      String(b.nama_barang).trim().toLowerCase() === catItem.nama_barang.trim().toLowerCase()
+    );
+
+    const targetKat = data.kategori_produk.find((k: any) =>
+      k.nama.toUpperCase().trim() === catItem.kategori_nama.toUpperCase().trim() ||
+      k.nama.toUpperCase().includes(catItem.kategori_nama.toUpperCase())
+    );
+    const katId = targetKat ? targetKat.id : defaultKatId;
+
+    const mappings = catItem.sizes.map((sz) => ({
+      platform: "shopee",
+      shop_key: "Shopee",
+      shop_name: "Shopee (lavaira.id)",
+      seller_sku: `${cleanSku(catItem.kode)}-${sz}`,
+      variation_name: sz,
+      stock: 0,
+    }));
+
+    if (exist) {
+      exist.marketplace_mappings = exist.marketplace_mappings || [];
+      for (const m of mappings) {
+        if (!exist.marketplace_mappings.some((x: any) => x.seller_sku === m.seller_sku)) {
+          exist.marketplace_mappings.push(m);
+        }
+      }
+      if (!exist.kode) exist.kode = cleanSku(catItem.kode);
+      if (!exist.warna) exist.warna = catItem.warna;
+      if (targetKat) exist.kategori_id = targetKat.id;
+      updatedCount++;
+    } else {
+      const newId = nextId(data, "data_barang" as any);
+      const newItem = {
+        id: newId,
+        uid: `BRG-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        nama_barang: catItem.nama_barang,
+        kode: cleanSku(catItem.kode),
+        warna: catItem.warna,
+        kategori_id: katId,
+        harga_beli: catItem.harga_beli,
+        harga_jual: catItem.harga_jual,
+        stok: 0,
+        sumber: "produksi",
+        createdAt: new Date().toISOString(),
+        marketplace_mappings: mappings,
+      };
+      ensureBarangKode(data, newItem);
+      data.data_barang.push(newItem);
+      importedCount++;
+      logDetails.push({ action: "created", nama: newItem.nama_barang, kode: newItem.kode });
+    }
+  }
+
+  // 4. Sinkronkan kategori produk dari marketplace secara otomatis
   try {
     await syncMarketplaceCategories(data);
   } catch (err) {
