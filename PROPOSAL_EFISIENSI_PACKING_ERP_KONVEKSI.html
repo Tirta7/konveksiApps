@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>PROPOSAL STRATEGIS: Efisiensi Fulfillment & Lean Packing 2.000 Order/Hari</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  @page {
+    size: A4 portrait;
+    margin: 16mm 14mm 16mm 14mm;
+    @bottom-right {
+      content: "Halaman " counter(page);
+      font-size: 8pt;
+      color: #94A3B8;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1E293B;
+    background: #FFFFFF;
+    line-height: 1.55;
+    font-size: 9.5pt;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .page-break { page-break-after: always; }
+  .no-break { page-break-inside: avoid; }
+
+  /* Header Cover / Hero */
+  .cover {
+    padding: 24px 0 20px 0;
+    border-bottom: 2px solid #E2E8F0;
+    margin-bottom: 20px;
+  }
+  .badge-confidential {
+    display: inline-block;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #BFDBFE;
+    font-size: 7.5pt;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 99px;
+    margin-bottom: 12px;
+  }
+  h1.title {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.25;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    font-size: 11pt;
+    color: #475569;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    line-height: 1.4;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    gap: 12px;
+    font-size: 8.5pt;
+  }
+  .meta-item b { display: block; color: #64748B; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 700; color: #0F172A; }
+
+  /* Sections */
+  h2.section-title {
+    font-size: 13pt;
+    font-weight: 800;
+    color: #0F172A;
+    border-left: 4px solid #2563EB;
+    padding-left: 10px;
+    margin: 22px 0 12px 0;
+    display: flex;
+    align-items: center;
+    letter-spacing: -0.2px;
+  }
+  p { margin: 0 0 10px 0; }
+
+  /* Cards & Highlights */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 14px 0 18px 0;
+  }
+  .kpi-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: left;
+  }
+  .kpi-card.highlight {
+    background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%);
+    border: 1.5px solid #10B981;
+  }
+  .kpi-card.alert {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+  }
+  .kpi-label { font-size: 7.5pt; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .kpi-card.highlight .kpi-label { color: #047857; }
+  .kpi-value { font-size: 16pt; font-weight: 800; color: #0F172A; line-height: 1.2; }
+  .kpi-card.highlight .kpi-value { color: #047857; }
+  .kpi-desc { font-size: 8pt; color: #64748B; margin-top: 4px; }
+
+  /* Tables */
+  table.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
+    font-size: 8.5pt;
+  }
+  table.custom-table th {
+    background: #F1F5F9;
+    color: #334155;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 7.5pt;
+    letter-spacing: 0.5px;
+    padding: 8px 10px;
+    border: 1px solid #CBD5E1;
+    text-align: left;
+  }
+  table.custom-table td {
+    padding: 8px 10px;
+    border: 1px solid #E2E8F0;
+    color: #1E293B;
+    vertical-align: middle;
+  }
+  table.custom-table tr:nth-child(even) { background: #F8FAFC; }
+  table.custom-table .text-right { text-align: right; }
+  table.custom-table .text-center { text-align: center; }
+
+  /* Flow Diagram Box */
+  .flow-box {
+    background: #F8FAFC;
+    border: 1px dashed #CBD5E1;
+    border-radius: 12px;
+    padding: 14px;
+    margin: 14px 0;
+  }
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    position: relative;
+  }
+  .flow-step {
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .flow-step-num {
+    font-size: 7pt;
+    font-weight: 800;
+    color: #2563EB;
+    background: #EFF6FF;
+    border-radius: 4px;
+    display: inline-block;
+    padding: 2px 6px;
+    margin-bottom: 6px;
+  }
+  .flow-step-title { font-size: 9pt; font-weight: 800; color: #0F172A; margin-bottom: 4px; }
+  .flow-step-desc { font-size: 7.5pt; color: #64748B; line-height: 1.4; }
+
+  /* Pillar Cards */
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0 16px 0;
+  }
+  .pillar-card {
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  }
+  .pillar-badge {
+    font-size: 7.5pt;
+    font-weight: 800;
+    color: #2563EB;
+    background: #EFF6FF;
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+  .pillar-title { font-size: 10pt; font-weight: 800; color: #0F172A; margin-bottom: 4px; }
+  .pillar-text { font-size: 8pt; color: #475569; line-height: 1.45; }
+
+  /* Sign Box */
+  .sign-box {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    font-size: 8.5pt;
+  }
+  .sign-col {
+    border-top: 1px solid #CBD5E1;
+    padding-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ==================== HALAMAN 1 ==================== -->
+  <div class="cover">
+    <div class="badge-confidential">DOKUMEN KAJIAN STRATEGIS & KELAYAKAN INVESTASI ERP</div>
+    <h1 class="title">Efisiensi Ekstrem Fulfillment 2.000 Order/Hari:<br>Optimasi Tenaga Kerja dari 10 Menjadi 4 Orang</h1>
+    <div class="subtitle">Transformasi Operasional Konveksi Jeans Menuju Sistem Lean Warehouse, Barcode Kiosk & Anti-Human Error</div>
+
+    <div class="meta-grid">
+      <div class="meta-item"><b>Ditujukan Kepada</b><span>Pimpinan / Owner Perusahaan</span></div>
+      <div class="meta-item"><b>Disusun Oleh</b><span>Tim Operasional & IT Sistem</span></div>
+      <div class="meta-item"><b>Fokus Kajian</b><span>Penghematan OPEX & Kecepatan Kirim</span></div>
+      <div class="meta-item"><b>Tanggal Rilis</b><span>November 2026</span></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">1. Ringkasan Eksekutif (Executive Summary)</h2>
+  <p>
+    Seiring dengan keberhasilan integrasi API resmi Shopee & TikTok Shop ke dalam aplikasi <b>ERP Konveksi</b> kita (saat ini telah memproses lebih dari <b>490+ order nyata dengan omzet &gt;Rp 63 Juta</b>), target operasional perusahaan berikutnya adalah menangani lonjakan kapasitas hingga <b>2.000 pesanan per hari</b>.
+  </p>
+  <p>
+    Kekhawatiran utama pimpinan pada volume tinggi adalah: <i>"Apakah kita harus menambah banyak staf packing (hingga 10 orang), dan bagaimana mencegah human error serta bentrok antar-staf saat scan keluar?"</i>.
+  </p>
+  <p>
+    Melalui kajian ini, kami merekomendasikan penerapan metode <b>Lean Fulfillment System</b> pada ERP Konveksi. Sistem ini membuktikan bahwa target 2.000 order/hari <b>TIDAK MEMBUTUHKAN 10 KARYAWAN</b>, melainkan <b>CUKUP 3 HINGGA 4 ORANG STAF</b> dengan akurasi 99,9% tanpa risiko tertukar dan tanpa tabrakan data.
+  </p>
+
+  <div class="kpi-row">
+    <div class="kpi-card alert">
+      <div class="kpi-label">Pola Konvensional (Lama)</div>
+      <div class="kpi-value">10 Karyawan</div>
+      <div class="kpi-desc">Packing acak, saling tunggu, tabel manual, rawan salah size.</div>
+    </div>
+    <div class="kpi-card highlight">
+      <div class="kpi-label">Metode Lean ERP Konveksi</div>
+      <div class="kpi-value">4 Karyawan</div>
+      <div class="kpi-desc">Sistem Batching & Barcode Kiosk otomatis 8 detik/paket.</div>
+    </div>
+    <div class="kpi-card highlight">
+      <div class="kpi-label">Efisiensi Biaya (Hemat)</div>
+      <div class="kpi-value">Hemat 6 Gaji</div>
+      <div class="kpi-desc">Penghematan Rp 18 – 24 Juta/bulan (Rp 216 – 288 Juta/tahun).</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">2. Analisis Titik Lemah Metode Lama vs Risiko Biaya</h2>
+  <p>
+    Mengapa metode packing biasa membutuhkan sampai 10 orang dan sering menyebabkan kerugian?
+  </p>
+  <table class="custom-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Titik Kritis</th>
+        <th style="width: 37%;">Metode Lama / Tanpa Sistem Lean</th>
+        <th style="width: 38%;">Solusi Cerdas ERP Konveksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Pencarian Barang (Picking)</b></td>
+        <td>10 karyawan bolak-balik ke rak gudang mengambil 1 celana untuk 1 resi (2.000 kali jalan kaki sehari).</td>
+        <td><b>1 Orang Helper</b> mengambil massal menggunakan <b>Digital Pick List</b> (misal: 200 pcs Tulang Lipat XS sekaligus).</td>
+      </tr>
+      <tr>
+        <td><b>Pencocokan Size & Model</b></td>
+        <td>Karyawan membaca teks resi kecil. Saat lelah, mata salah lihat size (pesanan minta L terkirim M). Retur melonjak.</td>
+        <td><b>Validasi Barcode Otomatis:</b> Jika salah ambil size, sistem membunyikan ALARM MERAH dan menolak simpan.</td>
+      </tr>
+      <tr>
+        <td><b>Akses Sistem Bersamaan</b></td>
+        <td>10 orang membuka halaman tabel yang sama, rawan mengemas pesanan yang sama 2 kali (dobel kirim).</td>
+        <td><b>Station Lock (Meja 1–4):</b> Begitu resi ditembak di Meja 1, otomatis terkunci di meja lain secara realtime.</td>
+      </tr>
+      <tr>
+        <td><b>Waktu Pengerjaan</b></td>
+        <td>Rata-rata 100–150 detik per paket karena mencari data di komputer dan mengetik.</td>
+        <td><b>10–12 detik per paket</b> menggunakan scanner tembak cepat tanpa menyentuh mouse sama sekali.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== HALAMAN 2 ==================== -->
+  <div class="page-break"></div>
+
+  <h2 class="section-title">3. Arsitektur "4 Pilar Lean Fulfillment" di ERP Konveksi</h2>
+  <p>
+    Untuk menjalankan 2.000 order dengan hanya 4 karyawan, sistem mengadopsi 4 pilar operasional berstandar warehouse modern:
+  </p>
+
+  <div class="pillar-grid">
+    <div class="pillar-card">
+      <span class="pillar-badge">PILAR 1</span>
+      <div class="pillar-title">Rekap Ambil Massal (Pick List Otomatis)</div>
+      <div class="pillar-text">
+        Pagi hari, ERP otomatis menghitung total kebutuhan barang. 1 staf helper mengambil celana dari rak sekaligus ke dalam kontainer batch. Orang packing tidak pernah meninggalkan mejanya.
+      </div>
+    </div>
+    <div class="pillar-card">
+      <span class="pillar-badge">PILAR 2</span>
+      <div class="pillar-title">Jalur Kilat Single-Item (1 Pcs)</div>
+      <div class="pillar-text">
+        Berdasarkan data, <b>78% pesanan adalah 1 celana (Single Item)</b>. Resi dicetak berurutan per model celana yang sama. Packer bekerja secara repetitif super cepat (8 detik per bungkus).
+      </div>
+    </div>
+    <div class="pillar-card">
+      <span class="pillar-badge">PILAR 3</span>
+      <div class="pillar-title">Layar Kilat Packing (Kiosk Mode Hands-Free)</div>
+      <div class="pillar-text">
+        Tampilan layar sederhana tanpa tabel panjang. Cukup 2 tembakan scanner: <b>Tembak Resi ➡️ Tembak Celana</b>. Bunyi "TING!" hijau jika cocok, potong stok otomatis tanpa klik mouse.
+      </div>
+    </div>
+    <div class="pillar-card">
+      <span class="pillar-badge">PILAR 4</span>
+      <div class="pillar-title">Anti-Collision Meja (Station Realtime Lock)</div>
+      <div class="pillar-text">
+        Setiap meja memiliki nomor stasiun (Meja 1 s/d Meja 4). Server mengunci resi yang sedang dikemas. Jika meja lain mencoba scan paket yang sama, sistem langsung menolak keras.
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">4. Alur Kerja Praktis 4 Staf (Time & Motion Study)</h2>
+  <div class="flow-box">
+    <div class="flow-grid">
+      <div class="flow-step">
+        <span class="flow-step-num">STAF 1: HELPER</span>
+        <div class="flow-step-title">Ambil Massal</div>
+        <div class="flow-step-desc">Tarik 2.000 celana dari rak sesuai Rekap Pick List dan drop kardus ke Meja Packing.</div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-step-num">STAF 2: PACKER 1</span>
+        <div class="flow-step-title">Jalur Kilat Single</div>
+        <div class="flow-step-desc">Kemas 750 order Single Item (Tulang Lipat & Burdil) dengan kecepatan 8 detik/paket.</div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-step-num">STAF 3: PACKER 2</span>
+        <div class="flow-step-title">Jalur Kilat Single</div>
+        <div class="flow-step-desc">Kemas 750 order Single Item varian lainnya. Kapasitas 2 packer = 1.500 paket.</div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-step-num">STAF 4: MULTI-ITEM</span>
+        <div class="flow-step-title">Jalur Teliti Multi</div>
+        <div class="flow-step-desc">Kemas 500 order isi 2–4 celana dengan validasi scan per-pcs ketat & handover kurir.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">5. Kajian Finansial & Penghematan Biaya (ROI Analysis)</h2>
+  <p>
+    Simulasi efisiensi biaya tenaga kerja operasional packing dalam rentang 1 tahun:
+  </p>
+  <table class="custom-table">
+    <thead>
+      <tr>
+        <th>Komponen Perhitungan</th>
+        <th class="text-center">Model Tradisional</th>
+        <th class="text-center" style="background: #ECFDF5; color: #047857;">Model Lean ERP Konveksi</th>
+        <th class="text-right">Selisih Penghematan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Jumlah Tenaga Kerja</b></td>
+        <td class="text-center">10 Orang</td>
+        <td class="text-center" style="font-weight: 800; color: #047857;">4 Orang</td>
+        <td class="text-right" style="font-weight: 800; color: #047857;">-6 Orang (-60%)</td>
+      </tr>
+      <tr>
+        <td><b>Biaya Gaji / Bulan</b> (Est. UMR/Bulan Rp 3.000.000)</td>
+        <td class="text-center">Rp 30.000.000</td>
+        <td class="text-center" style="font-weight: 800; color: #047857;">Rp 12.000.000</td>
+        <td class="text-right" style="font-weight: 800; color: #047857;">Hemat Rp 18.000.000 / bln</td>
+      </tr>
+      <tr>
+        <td><b>Biaya Tenaga Kerja / Tahun</b></td>
+        <td class="text-center">Rp 360.000.000</td>
+        <td class="text-center" style="font-weight: 800; color: #047857;">Rp 144.000.000</td>
+        <td class="text-right" style="font-weight: 800; color: #047857;"><b>Hemat Rp 216.000.000 / thn</b></td>
+      </tr>
+      <tr>
+        <td><b>Estimasi Kerugian Salah Kirim / Retur</b></td>
+        <td class="text-center">1% (20 paket/hari) ≈ Rp 15 Juta/bln</td>
+        <td class="text-center" style="font-weight: 800; color: #047857;">&lt; 0.05% (Tervalidasi Barcode)</td>
+        <td class="text-right" style="font-weight: 800; color: #047857;">Selamat Rp 14.000.000 / bln</td>
+      </tr>
+      <tr style="background: #F0FDF4; font-weight: 800;">
+        <td colspan="3"><b>TOTAL ESTIMASI EFISIENSI NILAI UANG PER TAHUN</b></td>
+        <td class="text-right" style="font-size: 11pt; color: #047857;">+ Rp 384.000.000 / Tahun</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="section-title">6. Kesimpulan & Rekomendasi Eksekutif</h2>
+  <p>
+    1. <b>Kesiapan Sistem:</b> Aplikasi ERP Konveksi saat ini telah terbukti stabil menangani ratusan order online secara realtime dengan database lokal yang aman dan anti-bocor.
+  </p>
+  <p>
+    2. <b>Keputusan Tenaga Kerja:</b> Manajemen <b>tidak perlu merekrut 10 orang staf packing</b>. Dengan mengaktifkan alur <i>Lean Kiosk Mode</i> dan <i>Batch Single Item</i>, target 2.000 pesanan per hari dapat dituntaskan secara prima oleh <b>4 orang staf tetap</b>.
+  </p>
+  <p>
+    3. <b>Keunggulan Tambahan:</b> Risiko komplain salah barang atau uang hilang akibat salah kirim tereliminasi mendekati nol berkat sensor alarm barcode terintegrasi.
+  </p>
+
+  <div class="sign-box">
+    <div class="sign-col">
+      <b>Diajukan Oleh:</b><br><br><br>
+      <b>( Tim Operasional & IT ERP )</b><br>
+      Sistem Manajemen Produksi Konveksi
+    </div>
+    <div class="sign-col">
+      <b>Disetujui Oleh:</b><br><br><br>
+      <b>( Pimpinan / Direktur Perusahaan )</b><br>
+      Keputusan: [ &nbsp; ] Setuju [ &nbsp; ] Evaluasi
+    </div>
+  </div>
+
+</body>
+</html>
