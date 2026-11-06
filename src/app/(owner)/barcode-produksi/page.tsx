@@ -40,6 +40,7 @@ export default function BarcodeProduksiPage() {
   // Filters & View state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSizeFilter, setSelectedSizeFilter] = useState("all");
+  const [selectedWarnaFilter, setSelectedWarnaFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [printSizeTarget, setPrintSizeTarget] = useState<string | null>(null);
 
@@ -255,14 +256,16 @@ export default function BarcodeProduksiPage() {
       const matchQuery = !q || (
         (b.kodeBarcode || "").toLowerCase().includes(q) ||
         (b.size || "").toLowerCase().includes(q) ||
-        (b.model || "").toLowerCase().includes(q)
+        (b.model || "").toLowerCase().includes(q) ||
+        (b.warna || "").toLowerCase().includes(q)
       );
 
       const matchSize = selectedSizeFilter === "all" || String(b.size).toLowerCase() === selectedSizeFilter.toLowerCase();
+      const matchWarna = selectedWarnaFilter === "all" || String(b.warna || "").toLowerCase() === selectedWarnaFilter.toLowerCase();
 
-      return matchQuery && matchSize;
+      return matchQuery && matchSize && matchWarna;
     });
-  }, [barcodes, selectedPoId, searchQuery, selectedSizeFilter]);
+  }, [barcodes, selectedPoId, searchQuery, selectedSizeFilter, selectedWarnaFilter]);
 
   const selectedPoInfo = poList.find(p => p.id === selectedPoId);
 
@@ -279,6 +282,13 @@ export default function BarcodeProduksiPage() {
     const allForPo = barcodes.filter(b => String(b.poId) === selectedPoId);
     const set = new Set<string>();
     allForPo.forEach(b => set.add(b.size));
+    return Array.from(set);
+  }, [barcodes, selectedPoId]);
+
+  const allWarnaInSelectedPo = useMemo(() => {
+    const allForPo = barcodes.filter(b => String(b.poId) === selectedPoId);
+    const set = new Set<string>();
+    allForPo.forEach(b => { if (b.warna) set.add(b.warna); });
     return Array.from(set);
   }, [barcodes, selectedPoId]);
 
@@ -583,7 +593,7 @@ export default function BarcodeProduksiPage() {
               Semua Ukuran ({filteredBarcodes.length})
             </button>
             {allSizesInSelectedPo.map(sz => {
-              const count = barcodes.filter(b => String(b.poId) === selectedPoId && b.size === sz).length;
+              const count = barcodes.filter(b => String(b.poId) === selectedPoId && b.size === sz && (selectedWarnaFilter === "all" || String(b.warna || "").toLowerCase() === selectedWarnaFilter.toLowerCase())).length;
               const isSelected = selectedSizeFilter.toLowerCase() === sz.toLowerCase();
               return (
                 <button
@@ -601,6 +611,52 @@ export default function BarcodeProduksiPage() {
                   }}
                 >
                   Size {sz} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* WARNA PILLS FILTER (JIKA 1 PO MEMILIKI BEBERAPA PILIHAN WARNA) */}
+        {allWarnaInSelectedPo.length > 1 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--border-color)", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>
+              Filter Warna:
+            </span>
+            <button
+              onClick={() => setSelectedWarnaFilter("all")}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: selectedWarnaFilter === "all" ? "1.5px solid #2563EB" : "1px solid var(--border-color)",
+                background: selectedWarnaFilter === "all" ? "#EFF6FF" : "white",
+                color: selectedWarnaFilter === "all" ? "#1D4ED8" : "var(--text-primary)",
+                fontSize: 11.5,
+                fontWeight: selectedWarnaFilter === "all" ? 800 : 600,
+                cursor: "pointer"
+              }}
+            >
+              Semua Warna ({filteredBarcodes.length})
+            </button>
+            {allWarnaInSelectedPo.map(w => {
+              const count = barcodes.filter(b => String(b.poId) === selectedPoId && b.warna === w && (selectedSizeFilter === "all" || String(b.size).toLowerCase() === selectedSizeFilter.toLowerCase())).length;
+              const isSelected = selectedWarnaFilter.toLowerCase() === w.toLowerCase();
+              return (
+                <button
+                  key={w}
+                  onClick={() => setSelectedWarnaFilter(w)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: isSelected ? "1.5px solid #2563EB" : "1px solid var(--border-color)",
+                    background: isSelected ? "#EFF6FF" : "white",
+                    color: isSelected ? "#1D4ED8" : "var(--text-primary)",
+                    fontSize: 11.5,
+                    fontWeight: isSelected ? 800 : 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  {w} ({count})
                 </button>
               );
             })}

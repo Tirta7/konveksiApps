@@ -73,6 +73,7 @@ export async function GET() {
     return {
       ...po,
       warna: po.warna || pemotongan?.target_warna || "",
+      warna_breakdown: po.warna_breakdown || (po.warna ? [{ warna: po.warna, jumlah: po.jumlahTerbit }] : []),
       nama_kain: po.nama_kain || pemotongan?.nama_barang || "-",
       jenis_jahitan: po.jenis_jahitan || pemotongan?.jenis_jahitan || "",
       tipe_benang: po.tipe_benang || pemotongan?.tipe_benang || "",
@@ -153,11 +154,39 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Olah multi-warna / warna_breakdown
+  const rawWarnaBreakdown = Array.isArray(body.warna_breakdown) ? body.warna_breakdown : [];
+  let warnaBreakdown: { warna: string; jumlah: number }[] = rawWarnaBreakdown
+    .filter((w: any) => w && String(w.warna || "").trim() && Number(w.jumlah || 0) > 0)
+    .map((w: any) => ({ warna: String(w.warna).trim(), jumlah: Number(w.jumlah) }));
+
+  if (warnaBreakdown.length === 0) {
+    const fallbackWarna = body.warna ? String(body.warna).trim() : (pemotongan.target_warna || "");
+    if (fallbackWarna) {
+      const parts = fallbackWarna.split(",").map((s: string) => s.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        const perColor = Math.floor(Number(jumlahTerbit) / parts.length);
+        const rem = Number(jumlahTerbit) % parts.length;
+        warnaBreakdown = parts.map((w: string, idx: number) => ({
+          warna: w,
+          jumlah: perColor + (idx === 0 ? rem : 0)
+        }));
+      } else if (parts.length === 1) {
+        warnaBreakdown = [{ warna: parts[0], jumlah: Number(jumlahTerbit) }];
+      }
+    }
+  }
+
+  const warnaStr = warnaBreakdown.length > 0
+    ? warnaBreakdown.map((w: any) => w.warna).join(", ")
+    : (body.warna ? String(body.warna).trim() : (pemotongan.target_warna || ""));
+
   const newPo = {
     id: poId,
     noPo,
     model: pemotongan.model,
-    warna: body.warna ? String(body.warna).trim() : (pemotongan.target_warna || ""),
+    warna: warnaStr,
+    warna_breakdown: warnaBreakdown,
     pemotongan_id: pemotongan.id,
     nama_kain: pemotongan.nama_barang || "",
     jenis_jahitan: pemotongan.jenis_jahitan || "",
@@ -181,6 +210,10 @@ export async function POST(req: NextRequest) {
   if (!data.barcode_item) data.barcode_item = [];
 
   // Catat transaksi awal di Ledger
+  const warnaNote = warnaBreakdown.length > 1
+    ? warnaBreakdown.map((w: any) => `${w.warna} (${w.jumlah} pcs)`).join(" + ")
+    : newPo.warna;
+
   data.po_ledgers.push({
     id: nextId(data, "po_ledgers"),
     poId,
@@ -188,14 +221,59 @@ export async function POST(req: NextRequest) {
     ke_vendor_id: Number(vendorId),
     jumlah: Number(jumlahTerbit),
     tanggal: now,
-    catatan: `Penerbitan PO Awal${newPo.warna ? ` · Warna/Washing: ${newPo.warna}` : ""}`
+    catatan: `Penerbitan PO Awal${warnaNote ? ` · Warna/Washing: ${warnaNote}` : ""}`
   });
+
+  // Antrean kuota warna untuk alokasi per pcs barcode
+  const remainingColorQuota: { warna: string; sisa: number }[] = warnaBreakdown.map(w => ({
+    warna: w.warna,
+    sisa: Number(w.jumlah)
+  }));
 
   // Generate barcodes per item
   for (const sizeItem of sizeBreakdown) {
+    const sizeQty = Number(sizeItem.jumlah);
+
+    // Hitung alokasi warna untuk size ini secara proporsional
+    const colorsForThisSize: string[] = [];
+    if (remainingColorQuota.length > 0) {
+      const totalSisa = remainingColorQuota.reduce((s, c) => s + c.sisa, 0);
+      let assignedInSize = 0;
+
+      for (let ci = 0; ci < remainingColorQuota.length; ci++) {
+        const cq = remainingColorQuota[ci];
+        if (ci === remainingColorQuota.length - 1) {
+          // Warna terakhir mengambil sisa porsi di size ini
+          const take = Math.min(cq.sisa, sizeQty - assignedInSize);
+          for (let k = 0; k < take; k++) colorsForThisSize.push(cq.warna);
+          cq.sisa -= take;
+          assignedInSize += take;
+        } else {
+          const ratio = totalSisa > 0 ? cq.sisa / totalSisa : 0;
+          let take = Math.round(sizeQty * ratio);
+          take = Math.min(take, cq.sisa, sizeQty - assignedInSize);
+          for (let k = 0; k < take; k++) colorsForThisSize.push(cq.warna);
+          cq.sisa -= take;
+          assignedInSize += take;
+        }
+      }
+
+      // Jika masih ada sisa di size ini yang belum teralokasi, ambil dari kuota yang masih ada
+      while (colorsForThisSize.length < sizeQty) {
+        const available = remainingColorQuota.find(c => c.sisa > 0);
+        if (!available) {
+          colorsForThisSize.push(warnaBreakdown[0]?.warna || newPo.warna || "");
+        } else {
+          colorsForThisSize.push(available.warna);
+          available.sisa--;
+        }
+      }
+    }
+
     for (let i = 0; i < sizeItem.jumlah; i++) {
       const barcodeId = nextId(data, "barcode_item");
       const kodeBarcode = `${noPo}-${sizeItem.size}-${String(i + 1).padStart(3, '0')}`;
+      const itemWarna = colorsForThisSize[i] || newPo.warna || "";
       
       // Generate QR base64
       const qrData = await QRCode.toDataURL(kodeBarcode);
@@ -205,7 +283,7 @@ export async function POST(req: NextRequest) {
         poId,
         noPo,
         model: pemotongan.model,
-        warna: newPo.warna || "",
+        warna: itemWarna,
         kodeBarcode,
         size: sizeItem.size,
         qrCode: qrData,

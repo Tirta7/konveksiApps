@@ -176,6 +176,8 @@ export default function BuatPOProduksi() {
     target_selesai: ""
   });
   const [sizeBreakdown, setSizeBreakdown] = useState<{size: string; jumlah: number; maxSisa: number}[]>([]);
+  const [warnaBreakdown, setWarnaBreakdown] = useState<{ warna: string; jumlah: number }[]>([]);
+  const [customWarnaInput, setCustomWarnaInput] = useState("");
 
   // Fetch all related master and transaction data
   const fetchAll = () => {
@@ -498,12 +500,75 @@ export default function BuatPOProduksi() {
       } else {
         setSizeBreakdown(p.sizeBreakdown.map((s: any) => ({ size: s.size, jumlah: 0, maxSisa: s.sisa })));
       }
+      if (p.target_warna) {
+        const parts = String(p.target_warna).split(",").map((s: string) => s.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          setWarnaBreakdown(parts.map(w => ({ warna: w, jumlah: 0 })));
+        } else {
+          setWarnaBreakdown([]);
+        }
+      } else {
+        setWarnaBreakdown([]);
+      }
     } else {
       setSizeBreakdown([]);
+      setWarnaBreakdown([]);
     }
   };
 
   const totalPcs = sizeBreakdown.reduce((sum, item) => sum + (Number(item.jumlah) || 0), 0);
+  const totalColorQty = warnaBreakdown.reduce((sum, w) => sum + Number(w.jumlah || 0), 0);
+
+  const autoDistributeColors = (colors: { warna: string; jumlah: number }[], targetTotal: number) => {
+    if (colors.length === 0 || targetTotal <= 0) return colors;
+    const perColor = Math.floor(targetTotal / colors.length);
+    let remainder = targetTotal - (perColor * colors.length);
+    return colors.map((c) => {
+      const extra = remainder > 0 ? 1 : 0;
+      remainder -= extra;
+      return { ...c, jumlah: perColor + extra };
+    });
+  };
+
+  const togglePresetColor = (w: string) => {
+    setWarnaBreakdown(prev => {
+      const exists = prev.some(item => item.warna.toLowerCase() === w.toLowerCase());
+      let nextList: { warna: string; jumlah: number }[];
+      if (exists) {
+        nextList = prev.filter(item => item.warna.toLowerCase() !== w.toLowerCase());
+      } else {
+        nextList = [...prev, { warna: w, jumlah: 0 }];
+      }
+      return autoDistributeColors(nextList, totalPcs);
+    });
+  };
+
+  const addCustomColor = () => {
+    const val = customWarnaInput.trim();
+    if (!val) return;
+    setWarnaBreakdown(prev => {
+      if (prev.some(item => item.warna.toLowerCase() === val.toLowerCase())) return prev;
+      const nextList = [...prev, { warna: val, jumlah: 0 }];
+      return autoDistributeColors(nextList, totalPcs);
+    });
+    setCustomWarnaInput("");
+  };
+
+  const updateColorQty = (index: number, val: number) => {
+    setWarnaBreakdown(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], jumlah: Math.max(0, val) };
+      return next;
+    });
+  };
+
+  const removeColor = (index: number) => {
+    setWarnaBreakdown(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      return autoDistributeColors(next, totalPcs);
+    });
+  };
+
   const totalSisaPotongan = pemotonganList.reduce((sum, p) => sum + (p.sizeBreakdown || []).reduce((s: number, x: any) => s + (x.sisa || 0), 0), 0);
   const totalDimintaPcs = cmtRequests.reduce((sum, r) => sum + (Number(r.total_request) || 0), 0);
   const totalDipenuhiPcs = cmtRequests.reduce((sum, r) => sum + (Number(r.total_dipenuhi) || 0), 0);
@@ -519,13 +584,24 @@ export default function BuatPOProduksi() {
       return;
     }
 
+    if (warnaBreakdown.length > 1 && totalColorQty !== totalPcs) {
+      toast.error(`Total alokasi warna (${totalColorQty} pcs) belum sama dengan Total PO (${totalPcs} pcs). Sesuaikan jumlah per warna atau klik 'Bagi Rata Otomatis'.`);
+      return;
+    }
+
     if (!_bgRefresh.current) setLoading(true);
     try {
+      const finalWarnaBreakdown = warnaBreakdown.length === 1 && totalColorQty !== totalPcs
+        ? [{ warna: warnaBreakdown[0].warna, jumlah: totalPcs }]
+        : warnaBreakdown;
+
       const res = await fetch("/api/po-produksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          warna: finalWarnaBreakdown.map(w => w.warna).join(", "),
+          warna_breakdown: finalWarnaBreakdown,
           jumlahTerbit: totalPcs,
           sizeBreakdown: sizeBreakdown.filter(s => s.jumlah > 0)
         })
@@ -760,6 +836,8 @@ export default function BuatPOProduksi() {
               setProcessRequest(null);
               setForm({ pemotonganId: "", vendorId: "", warna: "", catatan: "", target_selesai: "" });
               setSizeBreakdown([]);
+              setWarnaBreakdown([]);
+              setCustomWarnaInput("");
               setActiveTab("manual");
             }}
             style={{ background: "none", border: "none", color: "#2563EB", fontSize: 13, fontWeight: 800, cursor: "pointer", marginTop: 8 }}
@@ -1842,43 +1920,147 @@ export default function BuatPOProduksi() {
                     )}
                   </div>
 
-                  {/* Varian Warna / Target Washing (1 Bahan Kain Bisa Jadi 3 Model Warna / Lebih) */}
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <label style={{ fontSize: 11.5, fontWeight: 700, color: "#334155" }}>
-                        Varian Warna / Target Washing
+                  {/* Varian Warna / Target Washing (1 PO Bisa Memilih Beberapa Warna Pilihan & Jumlah Pcs per Warna) */}
+                  <div style={{ marginBottom: 14, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 800, color: "#1E293B" }}>
+                        🎨 Varian Warna / Target Washing (Bisa Pilih Beberapa Warna)
                       </label>
-                      <span style={{ fontSize: 10.5, color: "#0284C7", fontWeight: 700 }}>1 Bahan Kain bisa dipecah ke 3 model warna atau lebih</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Contoh: RETRO FOLD, RAW DENIM, MEDIUM BLUE, SNOW BLACK..."
-                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 12, fontWeight: 700, color: "#0F172A", background: "#F8FAFC", outline: "none", marginBottom: 6 }}
-                      value={form.warna}
-                      onChange={e => setForm({ ...form, warna: e.target.value })}
-                    />
-                    {/* Quick Preset Color Pills */}
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                      {["Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash", "Dark Indigo"].map(w => (
-                        <button
-                          key={w}
-                          type="button"
-                          onClick={() => setForm(prev => ({ ...prev, warna: w }))}
-                          style={{
-                            padding: "3px 8px",
-                            borderRadius: 6,
+                      {warnaBreakdown.length > 0 && totalPcs > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {warnaBreakdown.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setWarnaBreakdown(prev => autoDistributeColors(prev, totalPcs))}
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                padding: "2px 8px",
+                                borderRadius: 5,
+                                background: "#EEF2FF",
+                                color: "#4F46E5",
+                                border: "1px solid #C7D2FE",
+                                cursor: "pointer"
+                              }}
+                            >
+                              ⚡ Bagi Rata Otomatis
+                            </button>
+                          )}
+                          <span style={{
                             fontSize: 10.5,
-                            fontWeight: 700,
-                            border: form.warna === w ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
-                            background: form.warna === w ? "#EFF6FF" : "white",
-                            color: form.warna === w ? "#1D4ED8" : "#475569",
-                            cursor: "pointer"
-                          }}
-                        >
-                          + {w}
-                        </button>
-                      ))}
+                            fontWeight: 800,
+                            padding: "2px 7px",
+                            borderRadius: 5,
+                            background: totalColorQty === totalPcs ? "#DCFCE7" : "#FEF3C7",
+                            color: totalColorQty === totalPcs ? "#166534" : "#92400E",
+                            border: totalColorQty === totalPcs ? "1px solid #BBF7D0" : "1px solid #FDE68A"
+                          }}>
+                            {totalColorQty === totalPcs ? `✅ Alokasi Pas: ${totalColorQty} pcs` : `⚠️ Alokasi: ${totalColorQty} / ${totalPcs} pcs`}
+                          </span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Quick Preset Color Pills (Multi-Select Toggle) */}
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+                      {["Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash", "Dark Indigo"].map(w => {
+                        const isSelected = warnaBreakdown.some(item => item.warna.toLowerCase() === w.toLowerCase());
+                        return (
+                          <button
+                            key={w}
+                            type="button"
+                            onClick={() => togglePresetColor(w)}
+                            style={{
+                              padding: "4px 9px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              border: isSelected ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
+                              background: isSelected ? "#2563EB" : "white",
+                              color: isSelected ? "white" : "#475569",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4
+                            }}
+                          >
+                            {isSelected ? "✓" : "+"} {w}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Color Input */}
+                    <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Ketik warna lain... (lalu klik Tambah)"
+                        style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, background: "white", outline: "none" }}
+                        value={customWarnaInput}
+                        onChange={e => setCustomWarnaInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomColor(); } }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomColor}
+                        style={{ padding: "6px 12px", background: "#0F172A", color: "white", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        + Tambah
+                      </button>
+                    </div>
+
+                    {/* Daftar Warna Terpilih & Alokasi Pcs per Warna */}
+                    {warnaBreakdown.length > 0 ? (
+                      <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 10px" }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#64748B", marginBottom: 6, textTransform: "uppercase" }}>
+                          Rincian Jumlah Pcs per Warna:
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {warnaBreakdown.map((wb, idx) => (
+                            <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "4px 8px", background: "#F8FAFC", borderRadius: 6, border: "1px solid #F1F5F9" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: "#1E293B" }}>
+                                  {idx + 1}. {wb.warna}
+                                </span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={wb.jumlah === 0 ? "" : wb.jumlah}
+                                  placeholder="0"
+                                  onChange={e => updateColorQty(idx, Number(e.target.value) || 0)}
+                                  style={{
+                                    width: 75,
+                                    padding: "4px 8px",
+                                    borderRadius: 6,
+                                    border: "1.5px solid #CBD5E1",
+                                    fontSize: 12,
+                                    fontWeight: 800,
+                                    textAlign: "right",
+                                    background: "white",
+                                    outline: "none"
+                                  }}
+                                />
+                                <span style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>pcs</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeColor(idx)}
+                                  title="Hapus warna"
+                                  style={{ background: "none", border: "none", color: "#EF4444", cursor: "pointer", padding: "2px 4px", fontSize: 13, fontWeight: 800 }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#94A3B8", fontStyle: "italic" }}>
+                        Belum ada warna dipilih. Klik tombol warna di atas untuk memilih satu atau beberapa warna pilihan.
+                      </div>
+                    )}
                   </div>
 
                   {/* Target & Catatan 2-Col */}
@@ -2332,6 +2514,8 @@ export default function BuatPOProduksi() {
                   onClick={() => {
                     setForm({ pemotonganId: "", vendorId: "", warna: "", catatan: "", target_selesai: "" });
                     setSizeBreakdown([]);
+                    setWarnaBreakdown([]);
+                    setCustomWarnaInput("");
                     setProcessRequest(null);
                     toast.info("Form SPK di-reset");
                   }}

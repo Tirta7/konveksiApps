@@ -255,7 +255,13 @@ export default function CetakPOPage() {
                 {po.warna && (
                   <tr>
                     <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Varian Warna / Washing</td>
-                    <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{po.warna}</strong> (Target Finishing / Washing)</td>
+                    <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>
+                      : <strong>{po.warna}</strong>
+                      {po.warna_breakdown && po.warna_breakdown.length > 1 && (
+                        <span> [Rincian: {po.warna_breakdown.map((w: any) => `${w.warna}: ${w.jumlah} pcs`).join(" · ")}]</span>
+                      )}
+                      {" "}(Target Finishing / Washing)
+                    </td>
                   </tr>
                 )}
                 <tr>
