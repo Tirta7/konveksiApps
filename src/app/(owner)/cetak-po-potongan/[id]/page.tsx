@@ -216,7 +216,7 @@ export default function CetakPOPotonganPage() {
               </tr>
               <tr>
                 <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Model Pola / Item</td>
-                <td style={{ whiteSpace: "nowrap", padding: "1.5px 8px 1.5px 0" }}>: <strong>{pemotongan.model}</strong></td>
+                <td style={{ whiteSpace: "nowrap", padding: "1.5px 8px 1.5px 0" }}>: <strong>{pemotongan.model}</strong> {(pemotongan.target_warna || pemotongan.warna) ? `· [${pemotongan.target_warna || pemotongan.warna}]` : ""}</td>
                 <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Estimasi Konsumsi</td>
                 <td style={{ whiteSpace: "nowrap", padding: "1.5px 0" }}>: {pemotongan.pemakaian_cm || 0} cm / pcs</td>
               </tr>
@@ -249,6 +249,12 @@ export default function CetakPOPotonganPage() {
                   <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Jenis Jahitan</td>
                   <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{pemotongan.jenis_jahitan || "Rantai (Chainstitch), Obras 5 Benang, Make-up Standard Jeans, Double Stitch, Bartack"}</strong></td>
                 </tr>
+                {(pemotongan.target_warna || pemotongan.warna) && (
+                  <tr>
+                    <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Rencana Varian Warna</td>
+                    <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{pemotongan.target_warna || pemotongan.warna}</strong> (Target Washing / Finishing)</td>
+                  </tr>
+                )}
                 <tr>
                   <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Type / Warna Benang</td>
                   <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{pemotongan.tipe_benang || "Benang Astra Jeans 20/2 (Gold Jeans / Kuning Emas)"}</strong></td>

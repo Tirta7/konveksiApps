@@ -694,6 +694,15 @@ export default function PemotonganKainPage() {
                         <div style={{ marginTop: 2, color: "#0F172A", fontWeight: 800, fontSize: 13 }}>
                           Pola: <span style={{ color: "#2563EB" }}>{item.model}</span>
                         </div>
+                        {(item.target_warna || item.warna) && (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                            {String(item.target_warna || item.warna).split(",").map((w: string) => w.trim()).filter(Boolean).map((w: string, widx: number) => (
+                              <span key={widx} style={{ fontSize: 10, fontWeight: 800, color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 4 }}>
+                                {w}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
                           {Number(item.meter_kain).toFixed(2)}m • {(item.selectedRolls || []).length} Roll ({item.pemakaian_cm || 0} cm/pcs)
                         </div>
@@ -1297,14 +1306,90 @@ export default function PemotonganKainPage() {
                             </label>
                             <span style={{ fontSize: 9.5, color: "#0284C7", fontWeight: 700 }}>1 Bahan Kain bisa dipecah ke 3 model warna atau lebih</span>
                           </div>
+
+                          {/* Quick Preset Buttons (Multi-Select Toggle) */}
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+                            {["Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash", "Dark Indigo"].map(w => {
+                              const currentList = (form.target_warna || "").split(",").map(s => s.trim()).filter(Boolean);
+                              const isSelected = currentList.some(item => item.toLowerCase() === w.toLowerCase());
+                              return (
+                                <button
+                                  key={w}
+                                  type="button"
+                                  onClick={() => {
+                                    let nextList: string[];
+                                    if (isSelected) {
+                                      nextList = currentList.filter(item => item.toLowerCase() !== w.toLowerCase());
+                                    } else {
+                                      nextList = [...currentList, w];
+                                    }
+                                    setForm({ ...form, target_warna: nextList.join(", ") });
+                                  }}
+                                  style={{
+                                    padding: "3px 8px",
+                                    borderRadius: 6,
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    border: isSelected ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
+                                    background: isSelected ? "#2563EB" : "white",
+                                    color: isSelected ? "white" : "#475569",
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                    transition: "all 0.15s ease"
+                                  }}
+                                >
+                                  {isSelected ? "✓" : "+"} {w}
+                                </button>
+                              );
+                            })}
+                          </div>
+
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="Contoh: Retro Fold, Raw Denim, Medium Blue..."
-                            style={{ padding: "8px 12px", fontSize: 12, borderRadius: 8, border: "1px solid #CBD5E1", width: "100%" }}
+                            placeholder="Contoh: Retro Fold, Raw Denim, Medium Blue (klik tombol atau ketik bebas)..."
+                            style={{ padding: "8px 12px", fontSize: 12, borderRadius: 8, border: "1px solid #CBD5E1", width: "100%", background: "#F8FAFC" }}
                             value={form.target_warna}
                             onChange={e => setForm({ ...form, target_warna: e.target.value })}
                           />
+
+                          {/* Selected Tags Display */}
+                          {form.target_warna && (
+                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 6 }}>
+                              {form.target_warna.split(",").map(s => s.trim()).filter(Boolean).map((w, idx) => (
+                                <span
+                                  key={idx}
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 10.5,
+                                    fontWeight: 800,
+                                    padding: "2px 8px",
+                                    borderRadius: 5,
+                                    background: "#EFF6FF",
+                                    color: "#1D4ED8",
+                                    border: "1px solid #BFDBFE"
+                                  }}
+                                >
+                                  {w}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentList = form.target_warna.split(",").map(s => s.trim()).filter(Boolean);
+                                      const nextList = currentList.filter((_, i) => i !== idx);
+                                      setForm({ ...form, target_warna: nextList.join(", ") });
+                                    }}
+                                    style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer", padding: 0, marginLeft: 2, fontSize: 11, fontWeight: 800, lineHeight: 1 }}
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
