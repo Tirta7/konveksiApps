@@ -1072,6 +1072,636 @@
   ],
   "data_barang": [
     {
+      "id": 101,
+      "uid": "BRG-MEDBLU",
+      "nama_barang": "Celana Jeans Wanita Baggy Highwaist Loose Lipat Besar (Medium Blue)",
+      "kode": "TULANG-LIPAT-BESAR-BLUE-DENIM",
+      "warna": "Medium Blue",
+      "kategori_id": 2,
+      "harga_beli": 64750,
+      "harga_jual": 129500,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-BLUE-DENIM-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "uid": "BRG-DRKDNM",
+      "nama_barang": "Celana Jeans Wanita Baggy Highwaist Loose Lipat Besar (Dark Denim)",
+      "kode": "TULANG-LIPAT-BESAR-DRAK-DENIM",
+      "warna": "Dark Denim",
+      "kategori_id": 2,
+      "harga_beli": 64752,
+      "harga_jual": 129503,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "uid": "BRG-RETFLD",
+      "nama_barang": "Celana Jeans Wanita Baggy Highwaist Loose jeans Lipat Besar (Retro Fold)",
+      "kode": "BURDIL",
+      "warna": "Retro Fold",
+      "kategori_id": 4,
+      "harga_beli": 63079,
+      "harga_jual": 126157,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BURDIL-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "uid": "BRG-LGTBLU",
+      "nama_barang": "Highwaist Baggy Loose Jeans Lipat (Light Blue)",
+      "kode": "TULANG-LIPAT-BESAR-LIGHT-DENIM",
+      "warna": "Light Blue",
+      "kategori_id": 2,
+      "harga_beli": 64750,
+      "harga_jual": 129500,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "TULANG-LIPAT-BESAR-LIGHT-DENIM-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "uid": "BRG-RAWDNM",
+      "nama_barang": "Highwaist Jeans Straight Fold (Raw Denim Fold)",
+      "kode": "RAW-DENIM-FOLD",
+      "warna": "Raw Denim Fold",
+      "kategori_id": 4,
+      "harga_beli": 64000,
+      "harga_jual": 128000,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "RAW-DENIM-FOLD-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "uid": "BRG-BLKWSH",
+      "nama_barang": "LAVAIRA ID - Celana Jeans Baggy Blackwash",
+      "kode": "BAGGY-BLACKWASH",
+      "warna": "Blackwash",
+      "kategori_id": 2,
+      "harga_beli": 67275,
+      "harga_jual": 134550,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "BAGGY-BLACKWASH-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "uid": "BRG-UNIXBG",
+      "nama_barang": "LAVAIRA ID - Celana Jeans UNISEX Baggy",
+      "kode": "UNISEX-BAGGY",
+      "warna": "Denim Blue",
+      "kategori_id": 1,
+      "harga_beli": 67275,
+      "harga_jual": 134550,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "UNISEX-BAGGY-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "uid": "BRG-HIWLOS",
+      "nama_barang": "LAVAIRA ID - Celana Jeans Wanita Highwaist Loose Jeans",
+      "kode": "HIGHWAIST-LOOSE",
+      "warna": "Medium Blue",
+      "kategori_id": 2,
+      "harga_beli": 64750,
+      "harga_jual": 129500,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "HIGHWAIST-LOOSE-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "uid": "BRG-FLRWNT",
+      "nama_barang": "LAVAIRA ID - Highwaist Jeans Wanita Loose / Flare Jeans",
+      "kode": "FLARE-JEANS-WANITA",
+      "warna": "Retro Flare",
+      "kategori_id": 4,
+      "harga_beli": 65000,
+      "harga_jual": 129999,
+      "stok": 0,
+      "sumber": "produksi",
+      "marketplace_mappings": [
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-XS",
+          "variation_name": "XS",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-S",
+          "variation_name": "S",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-M",
+          "variation_name": "M",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-L",
+          "variation_name": "L",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-XL",
+          "variation_name": "XL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-XXL",
+          "variation_name": "XXL",
+          "stock": 0
+        },
+        {
+          "platform": "shopee",
+          "shop_key": "Shopee",
+          "shop_name": "Shopee (lavaira.id)",
+          "seller_sku": "FLARE-JEANS-WANITA-XXXL",
+          "variation_name": "XXXL",
+          "stock": 0
+        }
+      ]
+    },
+    {
       "id": 1,
       "uid": "BRG-PFHW9Y",
       "nama_barang": "Kulot Pecah Pola New",
@@ -1097,159 +1727,6 @@
       "kode": "TBJ-0002",
       "warna": "Retro Fold",
       "kategori_nama": "PECAH POLA"
-    },
-    {
-      "id": 3,
-      "uid": "BRG-AL8ZK2",
-      "nama_barang": "Highwaist Jeans Straight Fold (Retro Fold)",
-      "kode": "RETRO-FOLD",
-      "warna": "Retro Fold",
-      "kategori_id": 4,
-      "harga_beli": 67165,
-      "harga_jual": 134330,
-      "stok": 0,
-      "sumber": "produksi",
-      "createdAt": "2026-11-06T22:19:19.241Z",
-      "marketplace_mappings": [
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-L",
-          "raw_sku": "RETRO FOLD L"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-XS",
-          "raw_sku": "RETRO FOLD XS"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-M",
-          "raw_sku": "RETRO FOLD M"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-XL",
-          "raw_sku": "RETRO FOLD XL"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-S",
-          "raw_sku": "RETRO FOLD S"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-XXXL3XL",
-          "raw_sku": "RETRO FOLD XXXL/3XL"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RETRO-FOLD-XXL",
-          "raw_sku": "RETRO FOLD XXL"
-        }
-      ],
-      "kategori_nama": "STRAIGHT FOLD"
-    },
-    {
-      "id": 4,
-      "uid": "BRG-J89ZQO",
-      "nama_barang": "Highwaist Jeans Straight Fold (Raw Denim Fold)",
-      "kode": "RAW-DENIM-FOLD",
-      "warna": "Raw Denim Fold",
-      "kategori_id": 4,
-      "harga_beli": 71827,
-      "harga_jual": 143654,
-      "stok": 0,
-      "sumber": "produksi",
-      "createdAt": "2026-11-06T22:19:19.241Z",
-      "marketplace_mappings": [
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RAW-DENIM-FOLD-S",
-          "raw_sku": "RAW DENIM FOLD S"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RAW-DENIM-FOLD-L",
-          "raw_sku": "RAW DENIM FOLD L"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RAW-DENIM-FOLD-XL",
-          "raw_sku": "RAW DENIM FOLD XL"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RAW-DENIM-FOLD-M",
-          "raw_sku": "RAW DENIM FOLD M"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RAW-DENIM-FOLD-XXXL3XL",
-          "raw_sku": "RAW DENIM FOLD XXXL/3XL"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "RAW-DENIM-FOLD-XXL",
-          "raw_sku": "RAW DENIM FOLD XXL"
-        }
-      ],
-      "kategori_nama": "STRAIGHT FOLD"
-    },
-    {
-      "id": 5,
-      "uid": "BRG-VUDN4C",
-      "nama_barang": "Highwaist Baggy Loose Jeans Lipat (Dark Denim)",
-      "kode": "TULANG-LIPAT-BESAR-DRAK-DENIM",
-      "warna": "Dark Denim",
-      "kategori_id": 2,
-      "harga_beli": 72577,
-      "harga_jual": 145154,
-      "stok": 0,
-      "sumber": "produksi",
-      "createdAt": "2026-11-06T22:19:19.241Z",
-      "marketplace_mappings": [
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-S",
-          "raw_sku": "TULANG LIPAT BESAR DRAK DENIM S"
-        },
-        {
-          "platform": "shopee",
-          "shop_key": "Shopee",
-          "shop_name": "Shopee",
-          "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-XL",
-          "raw_sku": "TULANG LIPAT BESAR DRAK DENIM XL"
-        }
-      ],
-      "kategori_nama": "TULANG (BAGGY LIPAT BESAR)"
     }
   ],
   "data_supplier": [

@@ -142,6 +142,7 @@ export default function PenjualanOnlinePage() {
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [activeDatePreset, setActiveDatePreset] = useState<string>("semua");
+  const [sortBy, setSortBy] = useState<"terbaru" | "terlama" | "sla_terdekat" | "nominal_terbesar">("terbaru");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showGuide, setShowGuide] = useState(true);
@@ -576,8 +577,39 @@ export default function PenjualanOnlinePage() {
     return `${pad(dateObj.getDate())}/${pad(dateObj.getMonth() + 1)}/${dateObj.getFullYear()} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
   };
 
-  // Urutkan pesanan terbaru lebih dulu & potong sesuai halaman
-  const sortedData = [...filteredData].reverse();
+  const getOrderTime = (item: any): number => {
+    const raw = item.tanggal_pesanan || item.waktu_pesanan || item.created_at || item.tanggal_diimpor;
+    const d = parseOrderDate(raw);
+    return d ? d.getTime() : 0;
+  };
+
+  const getSlaTime = (item: any): number => {
+    const raw = item.jatuh_tempo || computeJatuhTempo(item.tanggal_pesanan || item.waktu_pesanan, item.tipe_pesanan);
+    const d = parseOrderDate(raw);
+    return d ? d.getTime() : 9999999999999;
+  };
+
+  const getAmount = (item: any): number => {
+    return parseInt(String(item.order_amount || "0").replace(/[^\d-]/g, "")) || 0;
+  };
+
+  // Urutkan pesanan sesuai filter sortBy (Terbaru, Terlama / FIFO, SLA Terdekat, Nominal)
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (sortBy === "terbaru") {
+      return getOrderTime(b) - getOrderTime(a);
+    }
+    if (sortBy === "terlama") {
+      // FIFO: Pesanan lama didahulukan untuk segera dipacking / dilayani
+      return getOrderTime(a) - getOrderTime(b);
+    }
+    if (sortBy === "sla_terdekat") {
+      return getSlaTime(a) - getSlaTime(b);
+    }
+    if (sortBy === "nominal_terbesar") {
+      return getAmount(b) - getAmount(a);
+    }
+    return 0;
+  });
   const totalItems = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -925,6 +957,34 @@ export default function PenjualanOnlinePage() {
             <option value="Pre-order">Pre-order ({countPreOrder})</option>
           </select>
 
+          {/* Dropdown Urutkan / Sort Filter */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase" }}>Urutkan:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              style={{
+                padding: "8px 12px",
+                background: sortBy !== "terbaru" ? "#EFF6FF" : "#F8FAFC",
+                border: sortBy !== "terbaru" ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 800,
+                color: sortBy !== "terbaru" ? "#1D4ED8" : "#334155",
+                outline: "none",
+                cursor: "pointer",
+              }}
+            >
+              <option value="terbaru">⚡ Waktu Order: Terbaru Masuk</option>
+              <option value="terlama">📦 Waktu Order: Terlama Masuk (FIFO / Antrean Awal)</option>
+              <option value="sla_terdekat">🚨 Batas Waktu SLA Terdekat</option>
+              <option value="nominal_terbesar">💰 Nominal Belanja Terbesar</option>
+            </select>
+          </div>
+
           {/* Toggle View Mode */}
           <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", background: "#E2E8F0", padding: 3, borderRadius: 8 }}>
             <button onClick={() => setViewMode("table")} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 800, borderRadius: 6, background: viewMode === "table" ? "white" : "transparent", color: viewMode === "table" ? "#0F172A" : "#64748B", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: viewMode === "table" ? "0 2px 4px rgba(0,0,0,0.05)" : "none", transition: "all 0.2s" }}>
@@ -1197,9 +1257,12 @@ export default function PenjualanOnlinePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedData.map(d => {
+                    {paginatedData.map((d, idx) => {
                       const isSelected = selectedPenjualan?.id === d.id;
                       const isSudahDiscan = d.status_kemas === "Sudah Discan";
+                      const queueNum = startIndex + idx + 1;
+                      const orderDate = parseOrderDate(d.tanggal_pesanan || d.waktu_pesanan || d.created_at || d.tanggal_diimpor);
+                      const isToday = orderDate && new Date().toDateString() === orderDate.toDateString();
                       return (
                       <tr 
                         key={d.id} 
@@ -1214,8 +1277,16 @@ export default function PenjualanOnlinePage() {
                       >
                         {/* 1. Order ID & Waktu */}
                         <td style={{ padding: "14px 18px" }}>
-                          <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6 }}>
-                            {d.order_id}
+                          <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 10, fontWeight: 900, background: "#F1F5F9", color: "#64748B", padding: "1px 6px", borderRadius: 4 }}>
+                              #{queueNum}
+                            </span>
+                            <span>{d.order_id}</span>
+                            {isToday && (
+                              <span style={{ fontSize: 9.5, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0" }}>
+                                ⚡ Baru Masuk
+                              </span>
+                            )}
                             {d.marketplace && (
                               <span style={{ 
                                 fontFamily: "inherit", fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 4, 
@@ -1227,7 +1298,7 @@ export default function PenjualanOnlinePage() {
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: 11, color: "#64748B", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                          <div style={{ fontSize: 11, color: isToday ? "#059669" : "#64748B", marginTop: 5, display: "flex", alignItems: "center", gap: 4, fontWeight: isToday ? 700 : 500 }}>
                             <Calendar size={11}/> Psn: {d.tanggal_pesanan || "-"}
                           </div>
                           <div style={{ fontSize: 11, color: d.tipe_pesanan === "Pre-order" ? "#D97706" : "#64748B", marginTop: 2, display: "flex", alignItems: "center", gap: 4, fontWeight: d.tipe_pesanan === "Pre-order" ? 700 : 400 }}>
