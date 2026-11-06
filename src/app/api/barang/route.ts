@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { readData, writeData, nextId } from "@/lib/data-store";
-import { getStockSummary, ensureBarangKode } from "@/lib/stock";
+import { getStockSummary, ensureBarangKode, skuCode } from "@/lib/stock";
 
 const KANAL = ["Retail Offline", "Penjualan Grosir", "Penjualan Online"];
 
@@ -72,16 +72,24 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = readData();
     if (!data.data_barang) data.data_barang = [];
-    const { nama_barang, kategori_id, harga_beli, harga_jual, stok } = body;
+    const { nama_barang, kategori_id, harga_beli, harga_jual, stok, kode } = body;
     if (!nama_barang) return NextResponse.json({ error: "Nama barang wajib diisi" }, { status: 400 });
     const dup = data.data_barang.find((b: any) => String(b.nama_barang).trim().toLowerCase() === String(nama_barang).trim().toLowerCase());
     if (dup) return NextResponse.json({ error: `Nama barang sudah ada (${dup.kode || dup.uid})` }, { status: 400 });
+
+    let customKode = kode ? String(kode).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "") : "";
+    if (customKode) {
+      const dupKode = data.data_barang.find((b: any) => b.kode && b.kode.toUpperCase() === customKode);
+      if (dupKode) return NextResponse.json({ error: `Kode SKU "${customKode}" sudah dipakai oleh ${dupKode.nama_barang}` }, { status: 400 });
+    }
+
     const id = nextId(data, "data_barang" as any);
     const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newItem = {
       id, uid: `BRG-${randomStr}`,
       nama_barang, 
       warna: body.warna ? String(body.warna).trim() : "",
+      kode: customKode || undefined,
       kategori_id: Number(kategori_id) || 0,
       harga_beli: Number(harga_beli) || 0,
       harga_jual: Number(harga_jual) || 0,
@@ -104,14 +112,26 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const data = readData();
     if (!data.data_barang) data.data_barang = [];
-    const { id, nama_barang, kategori_id, harga_beli, harga_jual, stok } = body;
+    const { id, nama_barang, kategori_id, harga_beli, harga_jual, stok, kode } = body;
     if (!id) return NextResponse.json({ error: "ID dibutuhkan" }, { status: 400 });
     const idx = data.data_barang.findIndex((b: any) => String(b.id) === String(id));
     if (idx === -1) return NextResponse.json({ error: "Barang tidak ditemukan" }, { status: 404 });
     const link = linkedInfo(data, id);
+
+    let newKode = data.data_barang[idx].kode;
+    if (kode !== undefined) {
+      const cleaned = String(kode).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+      if (cleaned) {
+        const dupKode = data.data_barang.find((b: any) => String(b.id) !== String(id) && b.kode && b.kode.toUpperCase() === cleaned);
+        if (dupKode) return NextResponse.json({ error: `Kode SKU "${cleaned}" sudah dipakai oleh ${dupKode.nama_barang}` }, { status: 400 });
+        newKode = cleaned;
+      }
+    }
+
     data.data_barang[idx] = {
       ...data.data_barang[idx],
-      nama_barang, 
+      nama_barang,
+      kode: newKode,
       warna: body.warna !== undefined ? String(body.warna).trim() : (data.data_barang[idx].warna || ""),
       kategori_id: Number(kategori_id) || 0,
       harga_beli: Number(harga_beli) || 0,
@@ -119,6 +139,16 @@ export async function PUT(req: Request) {
       // Barang produksi: stok TIDAK bisa diubah manual (mengikuti ledger Gudang & Stok + scan penjualan)
       ...(link.linked ? {} : { stok: Number(stok) || 0 }),
     };
+
+    // Update SKU pada barcode_item yang terhubung jika kode berubah
+    if (newKode && data.barcode_item) {
+      for (const item of data.barcode_item) {
+        if (String(item.barang_id) === String(id)) {
+          item.sku = skuCode(newKode, item.size);
+        }
+      }
+    }
+
     writeData(data);
     return NextResponse.json(data.data_barang[idx]);
   } catch (e: any) {

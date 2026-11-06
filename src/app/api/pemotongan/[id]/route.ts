@@ -108,6 +108,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     pemakaian_cm: Number(pemakaian_cm) || 0,
     tukang_potong_id: Number(tukang_potong_id),
     model,
+    target_warna: body.target_warna !== undefined ? body.target_warna : (existingData.target_warna || ""),
+    target_warna_breakdown: body.target_warna_breakdown !== undefined ? body.target_warna_breakdown : (existingData.target_warna_breakdown || []),
     total_pcs: Number(total_pcs),
     jenis_jahitan: body.jenis_jahitan !== undefined ? body.jenis_jahitan : (existingData.jenis_jahitan || ""),
     tipe_benang: body.tipe_benang !== undefined ? body.tipe_benang : (existingData.tipe_benang || ""),

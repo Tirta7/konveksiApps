@@ -52,6 +52,7 @@ export default function PemotonganKainPage() {
     tukang_potong_id: string;
     model: string;
     target_warna: string;
+    target_warna_breakdown?: { warna: string; jumlah: number }[];
     selectedRolls: any[];
     sizeBreakdown: any[];
     target_selesai: string;
@@ -69,6 +70,7 @@ export default function PemotonganKainPage() {
     tukang_potong_id: "", 
     model: "",
     target_warna: "",
+    target_warna_breakdown: [],
     selectedRolls: [],
     sizeBreakdown: [{ size: "M", jumlah: "" }],
     target_selesai: "",
@@ -440,6 +442,7 @@ export default function PemotonganKainPage() {
                 tukang_potong_id: "", 
                 model: "", 
                 target_warna: "",
+                target_warna_breakdown: [],
                 selectedRolls: [], 
                 sizeBreakdown: [{ size: "M", jumlah: "" }], 
                 target_selesai: "",
@@ -918,6 +921,7 @@ export default function PemotonganKainPage() {
                                 tukang_potong_id: String(item.tukang_potong_id),
                                 model: item.model,
                                 target_warna: item.target_warna || item.warna || "",
+                                target_warna_breakdown: item.target_warna_breakdown || [],
                                 selectedRolls: item.selectedRolls || [],
                                 sizeBreakdown: item.sizeBreakdown || [{ size: "M", jumlah: "" }],
                                 target_selesai: item.target_selesai || "",
@@ -1380,7 +1384,8 @@ export default function PemotonganKainPage() {
                                     onClick={() => {
                                       const currentList = form.target_warna.split(",").map(s => s.trim()).filter(Boolean);
                                       const nextList = currentList.filter((_, i) => i !== idx);
-                                      setForm({ ...form, target_warna: nextList.join(", ") });
+                                      const nextBd = (form.target_warna_breakdown || []).filter(b => b.warna.toLowerCase() !== w.toLowerCase());
+                                      setForm({ ...form, target_warna: nextList.join(", "), target_warna_breakdown: nextBd });
                                     }}
                                     style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer", padding: 0, marginLeft: 2, fontSize: 11, fontWeight: 800, lineHeight: 1 }}
                                   >
@@ -1390,6 +1395,115 @@ export default function PemotonganKainPage() {
                               ))}
                             </div>
                           )}
+
+                          {/* Alokasi Jumlah Pcs per Varian Warna */}
+                          {(() => {
+                            const colors = (form.target_warna || "").split(",").map(s => s.trim()).filter(Boolean);
+                            if (colors.length === 0) return null;
+                            const breakdown = form.target_warna_breakdown || [];
+                            const allocated = breakdown.reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+                            const isMatch = allocated === totalPcs && totalPcs > 0;
+
+                            const handleAutoDistribute = () => {
+                              if (!colors.length || totalPcs <= 0) return;
+                              const perCol = Math.floor(totalPcs / colors.length);
+                              let rem = totalPcs - (perCol * colors.length);
+                              const newBd = colors.map((c, i) => ({
+                                warna: c,
+                                jumlah: perCol + (i === 0 ? rem : 0)
+                              }));
+                              setForm({ ...form, target_warna_breakdown: newBd });
+                            };
+
+                            const handleUpdateQty = (w: string, val: number) => {
+                              const cur = [...breakdown];
+                              const idx = cur.findIndex(b => b.warna.toLowerCase() === w.toLowerCase());
+                              if (idx !== -1) {
+                                cur[idx] = { ...cur[idx], jumlah: val };
+                              } else {
+                                cur.push({ warna: w, jumlah: val });
+                              }
+                              setForm({ ...form, target_warna_breakdown: cur });
+                            };
+
+                            return (
+                              <div style={{ marginTop: 10, background: "#F1F5F9", border: "1.5px solid #CBD5E1", borderRadius: 10, padding: "10px 12px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#1E293B", textTransform: "uppercase" }}>
+                                    📊 Pembagian Pcs per Varian Warna:
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    {colors.length > 1 && totalPcs > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={handleAutoDistribute}
+                                        style={{
+                                          fontSize: 10.5,
+                                          fontWeight: 800,
+                                          padding: "3px 8px",
+                                          borderRadius: 5,
+                                          background: "#EEF2FF",
+                                          color: "#4F46E5",
+                                          border: "1px solid #C7D2FE",
+                                          cursor: "pointer"
+                                        }}
+                                      >
+                                        ⚡ Bagi Rata Otomatis
+                                      </button>
+                                    )}
+                                    {totalPcs > 0 && (
+                                      <span style={{
+                                        fontSize: 10.5,
+                                        fontWeight: 800,
+                                        padding: "2px 8px",
+                                        borderRadius: 5,
+                                        background: isMatch ? "#DCFCE7" : "#FEF3C7",
+                                        color: isMatch ? "#166534" : "#92400E",
+                                        border: isMatch ? "1px solid #BBF7D0" : "1px solid #FDE68A"
+                                      }}>
+                                        {isMatch ? `✅ Alokasi Pas: ${allocated} pcs` : `⚠️ Alokasi: ${allocated} / ${totalPcs} pcs`}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {colors.map((w, idx) => {
+                                    const bd = breakdown.find(b => b.warna.toLowerCase() === w.toLowerCase());
+                                    const qty = bd ? bd.jumlah : "";
+                                    return (
+                                      <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", padding: "6px 10px", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                                        <span style={{ fontSize: 12, fontWeight: 800, color: "#0F172A" }}>
+                                          {idx + 1}. {w}
+                                        </span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            placeholder="0"
+                                            value={qty === 0 ? "" : qty}
+                                            onChange={e => handleUpdateQty(w, Number(e.target.value) || 0)}
+                                            style={{
+                                              width: 80,
+                                              padding: "4px 8px",
+                                              borderRadius: 6,
+                                              border: "1.5px solid #CBD5E1",
+                                              fontSize: 12,
+                                              fontWeight: 800,
+                                              textAlign: "right",
+                                              outline: "none",
+                                              background: "#F8FAFC"
+                                            }}
+                                          />
+                                          <span style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>pcs</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
 

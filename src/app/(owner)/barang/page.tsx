@@ -26,7 +26,7 @@ export default function BarangPage() {
   const [fSumber, setFSumber] = useState("semua");
   const [open, setOpen] = useState<Set<number>>(new Set());
 
-  const [formData, setFormData] = useState({ kategori_id: "", nama_barang: "", warna: "", harga_beli: "", harga_jual: "", stok: "" });
+  const [formData, setFormData] = useState({ kategori_id: "", nama_barang: "", warna: "", kode: "", harga_beli: "", harga_jual: "", stok: "" });
 
   const fetchData = useCallback(async () => {
     try {
@@ -96,7 +96,7 @@ export default function BarangPage() {
   const openAdd = () => {
     setEditingId(null);
     setEditingLinked(false);
-    setFormData({ kategori_id: "", nama_barang: "", warna: "", harga_beli: "", harga_jual: "", stok: "" });
+    setFormData({ kategori_id: "", nama_barang: "", warna: "", kode: "", harga_beli: "", harga_jual: "", stok: "" });
     setShowModal(true);
   };
   const openEdit = (item: any) => {
@@ -106,6 +106,7 @@ export default function BarangPage() {
       kategori_id: String(item.kategori_id || ""),
       nama_barang: item.nama_barang,
       warna: item.warna || "",
+      kode: item.kode || "",
       harga_beli: item.harga_beli ? String(item.harga_beli) : "",
       harga_jual: item.harga_jual ? String(item.harga_jual) : "",
       stok: item.stok ? String(item.stok) : "",
@@ -532,6 +533,21 @@ export default function BarangPage() {
                       {w}
                     </button>
                   ))}
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Kode Induk / SKU Prefix (Shopee / TikTok)</label>
+                <input
+                  type="text"
+                  value={formData.kode}
+                  onChange={(e) => setFormData({ ...formData, kode: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") })}
+                  placeholder="Contoh: BURDIL-RETRO, BURDIL-RAW, TBJ-0002"
+                  style={inp}
+                />
+                <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, lineHeight: 1.4 }}>
+                  💡 SKU per size otomatis: <b style={{ color: "#2563EB" }}>{formData.kode ? `${formData.kode}-[SIZE]` : "[KODE]-[SIZE]"}</b> (contoh: <code style={{ background: "#EEF2FF", padding: "1px 5px", borderRadius: 4 }}>{formData.kode || "BURDIL-RETRO"}-M</code>).
+                  <br />
+                  <b>Multi-Toko Online:</b> Cukup samakan <b>Seller SKU</b> di 4-5 toko online Shopee/TikTok Anda dengan format SKU ini agar pesanan dari semua toko otomatis sinkron memotong stok gudang yang sama.
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>

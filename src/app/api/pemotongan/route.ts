@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     tukang_potong_id: Number(tukang_potong_id),
     model,
     target_warna: body.target_warna || body.warna || "",
+    target_warna_breakdown: body.target_warna_breakdown || [],
     total_pcs: Number(total_pcs),
     sizeBreakdown, // e.g. [{ size: 'M', jumlah: 100, sisa: 100 }]
     status: finalStatus,

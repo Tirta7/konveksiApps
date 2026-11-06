@@ -500,7 +500,9 @@ export default function BuatPOProduksi() {
       } else {
         setSizeBreakdown(p.sizeBreakdown.map((s: any) => ({ size: s.size, jumlah: 0, maxSisa: s.sisa })));
       }
-      if (p.target_warna) {
+      if (p.target_warna_breakdown && p.target_warna_breakdown.length > 0) {
+        setWarnaBreakdown(p.target_warna_breakdown.map((b: any) => ({ warna: b.warna, jumlah: Number(b.jumlah) || 0 })));
+      } else if (p.target_warna) {
         const parts = String(p.target_warna).split(",").map((s: string) => s.trim()).filter(Boolean);
         if (parts.length > 0) {
           setWarnaBreakdown(parts.map(w => ({ warna: w, jumlah: 0 })));
@@ -1771,6 +1773,9 @@ export default function BuatPOProduksi() {
                                         });
                                         if (bestPemo) {
                                           setSizeBreakdown(distributeEvenly(bestPemo, targetQty));
+                                          if (bestPemo.target_warna_breakdown && bestPemo.target_warna_breakdown.length > 0) {
+                                            setWarnaBreakdown(bestPemo.target_warna_breakdown.map((b: any) => ({ warna: b.warna, jumlah: Number(b.jumlah) || 0 })));
+                                          }
                                         }
                                         setActiveTab("manual");
                                       }}
