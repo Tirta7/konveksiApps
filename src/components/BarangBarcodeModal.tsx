@@ -4,7 +4,7 @@ import { X, Printer, Barcode as BarcodeIcon, CheckCircle2, ShoppingBag, Package,
 import { toast } from "sonner";
 import { printBarangLabels } from "@/components/barang-label-print";
 
-type Pcs = { kode: string; size: string; sku: string | null; status: "siap_jual" | "terjual" | "retur_banding" | "stok_reject"; noPo: string; masuk_at: string | null; terjual_at: string | null; terjual_kanal: string | null; no_transaksi: string | null };
+type Pcs = { kode: string; size: string; sku: string | null; warna?: string; status: "siap_jual" | "terjual" | "retur_banding" | "stok_reject"; noPo: string; masuk_at: string | null; terjual_at: string | null; terjual_kanal: string | null; no_transaksi: string | null };
 type Resp = { pcs: Pcs[]; sizes: { size: string; total: number; tersedia: number; terjual: number }[]; total: number; tersedia: number; terjual: number };
 
 const fmtTgl = (s?: string | null) => (s ? new Date(s).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-");
@@ -45,7 +45,11 @@ export default function BarangBarcodeModal({ barang, onClose }: { barang: any; o
     rotate180: false,
   });
 
-  const toLabel = (p: Pcs) => ({ kode: p.kode, nama_barang: barang.nama_barang, size: p.size, sku: p.sku, harga_jual: Number(barang.harga_jual || 0), noPo: p.noPo });
+  const toLabel = (p: Pcs) => {
+    const labelWarna = p.warna || barang.warna;
+    const labelNama = labelWarna ? `${barang.nama_barang} · ${labelWarna}` : barang.nama_barang;
+    return { kode: p.kode, nama_barang: labelNama, size: p.size, sku: p.sku, harga_jual: Number(barang.harga_jual || 0), noPo: p.noPo };
+  };
   const doPrint = (pcs: Pcs[]) => {
     const avail = pcs.filter((p) => p.status === "siap_jual");
     if (!avail.length) return toast.error("Tidak ada pcs tersedia untuk dicetak");
@@ -102,7 +106,14 @@ export default function BarangBarcodeModal({ barang, onClose }: { barang: any; o
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EEF2FF", color: "#4F46E5", display: "flex", alignItems: "center", justifyContent: "center" }}><BarcodeIcon size={20} /></div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#0F172A" }}>Barcode per Pcs — {barang.nama_barang}</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "center", gap: 8 }}>
+                <span>Barcode per Pcs — {barang.nama_barang}</span>
+                {barang.warna && (
+                  <span style={{ fontSize: 11, fontWeight: 800, background: "#EFF6FF", color: "#2563EB", padding: "2px 8px", borderRadius: 6, border: "1px solid #BFDBFE" }}>
+                    {barang.warna}
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: "#64748B" }}>{barang.kode || barang.uid} · Harga jual Rp {Number(barang.harga_jual || 0).toLocaleString("id-ID")}</div>
             </div>
           </div>
@@ -220,7 +231,14 @@ export default function BarangBarcodeModal({ barang, onClose }: { barang: any; o
                         </td>
                         <td style={{ padding: "6px 10px", fontFamily: "monospace", fontWeight: 800 }}>{p.kode}</td>
                         <td style={{ padding: "6px 10px", fontWeight: 800 }}>{p.size}</td>
-                        <td style={{ padding: "6px 10px" }}>{p.noPo}</td>
+                        <td style={{ padding: "6px 10px" }}>
+                          <div style={{ fontWeight: 600 }}>{p.noPo}</div>
+                          {p.warna && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#2563EB", background: "#EFF6FF", padding: "1px 5px", borderRadius: 4, display: "inline-block", marginTop: 2 }}>
+                              {p.warna}
+                            </span>
+                          )}
+                        </td>
                         <td style={{ padding: "6px 10px", color: "#64748B" }}>{fmtTgl(p.masuk_at)}</td>
                         <td style={{ padding: "6px 10px" }}>
                           {p.status === "siap_jual" ? (

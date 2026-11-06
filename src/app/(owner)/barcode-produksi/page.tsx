@@ -31,7 +31,7 @@ import QRCode from "qrcode";
 export default function BarcodeProduksiPage() {
   const [barcodes, setBarcodes] = useState<any[]>([]);
   const [pipelineStages, setPipelineStages] = useState<any[]>([]);
-  const [poList, setPoList] = useState<{id: string; noPo: string; total: number; model?: string; vendor_nama?: string; status?: string}[]>([]);
+  const [poList, setPoList] = useState<{id: string; noPo: string; total: number; model?: string; warna?: string; vendor_nama?: string; status?: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPoId, setSelectedPoId] = useState<string>("");
   const [selectedBarcode, setSelectedBarcode] = useState<any | null>(null);
@@ -95,7 +95,7 @@ export default function BarcodeProduksiPage() {
 
       const poDetailsMap = new Map((Array.isArray(resPo) ? resPo : []).map((p: any) => [String(p.id), p]));
 
-      const poMap = new Map<string, {id: string; noPo: string; total: number; model?: string; vendor_nama?: string; status?: string}>();
+      const poMap = new Map<string, {id: string; noPo: string; total: number; model?: string; warna?: string; vendor_nama?: string; status?: string}>();
       barcodeData.forEach((b: any) => {
         const key = String(b.poId);
         if (!poMap.has(key)) {
@@ -105,6 +105,7 @@ export default function BarcodeProduksiPage() {
             noPo: b.noPo, 
             total: 0,
             model: detail ? detail.model : b.model,
+            warna: detail?.warna || b.warna || "",
             vendor_nama: detail ? detail.vendor_nama : undefined,
             status: detail ? detail.status : undefined
           });
@@ -161,14 +162,18 @@ export default function BarcodeProduksiPage() {
 
   // Helper untuk mengubah item barcode produksi menjadi LabelPcs unified (40x30 mm)
   const mapToLabelPcs = (items: any[]): LabelPcs[] => {
-    return items.map((b) => ({
-      kode: b.kodeBarcode,
-      nama_barang: b.nama_barang || b.model || selectedPoInfo?.model || "Produk",
-      size: b.size,
-      sku: b.sku || b.kode_barang || b.noPo || selectedPoInfo?.noPo || "",
-      harga_jual: b.harga_jual != null ? Number(b.harga_jual) : undefined,
-      noPo: b.noPo || selectedPoInfo?.noPo,
-    }));
+    return items.map((b) => {
+      const w = b.warna || selectedPoInfo?.warna;
+      const baseName = b.nama_barang || b.model || selectedPoInfo?.model || "Produk";
+      return {
+        kode: b.kodeBarcode,
+        nama_barang: w ? `${baseName} · ${w}` : baseName,
+        size: b.size,
+        sku: b.sku || b.kode_barang || b.noPo || selectedPoInfo?.noPo || "",
+        harga_jual: b.harga_jual != null ? Number(b.harga_jual) : undefined,
+        noPo: b.noPo || selectedPoInfo?.noPo,
+      };
+    });
   };
 
   // 1-Klik Cetak langsung ke printer roll Zebra ZD230 via ZPL native
@@ -671,7 +676,13 @@ export default function BarcodeProduksiPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span className="badge info" style={{ fontSize: 15, padding: "5px 12px" }}>PO: {selectedPoInfo?.noPo}</span>
                 <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
-                  Model: <strong style={{ color: "var(--text-primary)" }}>{selectedPoInfo?.model || "Standard"}</strong> • Total: <strong style={{ color: "#2563EB" }}>{filteredBarcodes.length} pcs</strong>
+                  Model: <strong style={{ color: "var(--text-primary)" }}>{selectedPoInfo?.model || "Standard"}</strong>
+                  {selectedPoInfo?.warna && (
+                    <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: 6, background: "#EFF6FF", color: "#1D4ED8", fontWeight: 800, border: "1px solid #BFDBFE" }}>
+                      Warna: {selectedPoInfo.warna}
+                    </span>
+                  )}
+                  {" • "}Total: <strong style={{ color: "#2563EB" }}>{filteredBarcodes.length} pcs</strong>
                 </span>
               </div>
 
@@ -789,11 +800,18 @@ export default function BarcodeProduksiPage() {
                               {/* Top Section: Nama Barang di kiri, Size di kanan */}
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginTop: 12, marginBottom: 6 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 12.5, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.3, color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  <div style={{ fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.3, color: "#000", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                     {b.nama_barang || b.model || "JEANS"}
                                   </div>
-                                  <div style={{ fontSize: 9, fontWeight: 700, color: "#64748B", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                    {b.sku || b.kode_barang || b.noPo || "-"}
+                                  <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 2, flexWrap: "wrap" }}>
+                                    {(b.warna || selectedPoInfo?.warna) && (
+                                      <span style={{ fontSize: 8.5, fontWeight: 800, padding: "1px 5px", borderRadius: 4, background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE" }}>
+                                        {b.warna || selectedPoInfo?.warna}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: "#64748B", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                      {b.sku || b.kode_barang || b.noPo || "-"}
+                                    </span>
                                   </div>
                                 </div>
                                 

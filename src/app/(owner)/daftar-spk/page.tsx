@@ -131,9 +131,10 @@ export default function DaftarSPKPage() {
         const vName = getVendorName(po.vendorId).toLowerCase();
         const matchPo = (po.noPo || "").toLowerCase().includes(q);
         const matchModel = (po.model || "").toLowerCase().includes(q);
+        const matchWarna = (po.warna || "").toLowerCase().includes(q);
         const matchCatatan = (po.catatan || "").toLowerCase().includes(q);
         const matchVendor = vName.includes(q);
-        if (!matchPo && !matchModel && !matchCatatan && !matchVendor) return false;
+        if (!matchPo && !matchModel && !matchWarna && !matchCatatan && !matchVendor) return false;
       }
 
       // Status
@@ -420,7 +421,14 @@ export default function DaftarSPKPage() {
 
                       {/* MODEL & SIZE BREAKDOWN */}
                       <td style={{ padding: "16px 16px" }}>
-                        <div style={{ fontWeight: 800, color: "#0F172A", fontSize: 14 }}>{po.model}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 800, color: "#0F172A", fontSize: 14 }}>{po.model}</span>
+                          {po.warna && (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 5 }}>
+                              {po.warna}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: 12, color: "#2563EB", fontWeight: 700, marginTop: 2 }}>
                           Total: {po.jumlahTerbit} pcs
                         </div>
@@ -605,7 +613,7 @@ export default function DaftarSPKPage() {
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                    Model: <strong>{detailData?.model || "—"}</strong> · Terbit: {formatTgl(detailData?.tanggalTerbit)}
+                    Model: <strong>{detailData?.model || "—"}{detailData?.warna ? ` · [${detailData?.warna}]` : ""}</strong> · Terbit: {formatTgl(detailData?.tanggalTerbit)}
                   </div>
                 </div>
               </div>

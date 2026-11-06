@@ -309,6 +309,7 @@ export function getStockInbound(data: any): any[] {
       po_id: t.po_id,
       noPo: po?.noPo || `PO #${t.po_id}`,
       model: po?.model || "-",
+      warna: po?.warna || "",
       kategori: po?.model || "Tanpa Kategori",
       tahap: h.kind === "gudang" ? "Gudang Produksi" : h.kind === "siap_jual" ? "QC Siap Jual" : stageName(data, doneSlug),
       tahap_slug: doneSlug,

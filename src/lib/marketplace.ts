@@ -310,7 +310,8 @@ export function lookupRetur(data: any, code: string, user?: string) {
     kode,
     size: b.size,
     barang_id: b.barang_id,
-    nama_barang: barang?.nama_barang || "-",
+    nama_barang: barang?.nama_barang ? (b.warna || barang.warna ? `${barang.nama_barang} · ${b.warna || barang.warna}` : barang.nama_barang) : "-",
+    warna: b.warna || barang?.warna || "",
     status: b.status,
   };
 

@@ -171,6 +171,7 @@ export default function BuatPOProduksi() {
   const [form, setForm] = useState({
     pemotonganId: "",
     vendorId: "",
+    warna: "",
     catatan: "",
     target_selesai: ""
   });
@@ -325,6 +326,7 @@ export default function BuatPOProduksi() {
         poId: po.id,
         noPo: po.noPo,
         model: po.model,
+        warna: po.warna || "",
         tahap: "Jahit / CMT",
         tanggal_kirim: po.tanggalTerbit,
         lamaHari: daysSince(po.tanggalTerbit),
@@ -756,7 +758,7 @@ export default function BuatPOProduksi() {
             onClick={() => {
               setResult(null);
               setProcessRequest(null);
-              setForm({ pemotonganId: "", vendorId: "", catatan: "", target_selesai: "" });
+              setForm({ pemotonganId: "", vendorId: "", warna: "", catatan: "", target_selesai: "" });
               setSizeBreakdown([]);
               setActiveTab("manual");
             }}
@@ -1685,6 +1687,7 @@ export default function BuatPOProduksi() {
                                         setForm({
                                           pemotonganId: bestPemo ? String(bestPemo.id) : "",
                                           vendorId: String(r.vendor_id),
+                                          warna: bestPemo?.target_warna || "",
                                           catatan: `Pemenuhan request #${r.id} (${r.total_request} pcs) dari ${r.vendor_nama}`,
                                           target_selesai: ""
                                         });
@@ -1837,6 +1840,45 @@ export default function BuatPOProduksi() {
                         Pilih stok potongan yang memiliki sisa kuantitas untuk dialokasikan ke CMT.
                       </div>
                     )}
+                  </div>
+
+                  {/* Varian Warna / Target Washing (1 Bahan Kain Bisa Jadi 3 Model Warna / Lebih) */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: "#334155" }}>
+                        Varian Warna / Target Washing
+                      </label>
+                      <span style={{ fontSize: 10.5, color: "#0284C7", fontWeight: 700 }}>1 Bahan Kain bisa dipecah ke 3 model warna atau lebih</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Contoh: RETRO FOLD, RAW DENIM, MEDIUM BLUE, SNOW BLACK..."
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #CBD5E1", fontSize: 12, fontWeight: 700, color: "#0F172A", background: "#F8FAFC", outline: "none", marginBottom: 6 }}
+                      value={form.warna}
+                      onChange={e => setForm({ ...form, warna: e.target.value })}
+                    />
+                    {/* Quick Preset Color Pills */}
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                      {["Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash", "Dark Indigo"].map(w => (
+                        <button
+                          key={w}
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, warna: w }))}
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            border: form.warna === w ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
+                            background: form.warna === w ? "#EFF6FF" : "white",
+                            color: form.warna === w ? "#1D4ED8" : "#475569",
+                            cursor: "pointer"
+                          }}
+                        >
+                          + {w}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Target & Catatan 2-Col */}
@@ -2288,7 +2330,7 @@ export default function BuatPOProduksi() {
                 <button
                   type="button"
                   onClick={() => {
-                    setForm({ pemotonganId: "", vendorId: "", catatan: "", target_selesai: "" });
+                    setForm({ pemotonganId: "", vendorId: "", warna: "", catatan: "", target_selesai: "" });
                     setSizeBreakdown([]);
                     setProcessRequest(null);
                     toast.info("Form SPK di-reset");

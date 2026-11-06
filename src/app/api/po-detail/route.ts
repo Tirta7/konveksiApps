@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
       id: po.id,
       noPo: po.noPo,
       model: po.model,
+      warna: po.warna || pemotongan?.target_warna || "",
       jumlahTerbit: po.jumlahTerbit,
       sizeBreakdown: po.sizeBreakdown,
       status: po.status,

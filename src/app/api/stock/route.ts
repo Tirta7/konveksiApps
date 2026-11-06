@@ -92,24 +92,30 @@ export async function GET(req: NextRequest) {
 }
 
 /** Cari / buat barang jadi berdasarkan alokasi. */
-function resolveBarang(data: any, alloc: any, kategoriNama: string): any {
+function resolveBarang(data: any, alloc: any, kategoriNama: string, warna: string = ""): any {
   if (!data.data_barang) data.data_barang = [];
   if (alloc.barang_id != null && alloc.barang_id !== "") {
     const b = data.data_barang.find((x: any) => String(x.id) === String(alloc.barang_id));
     if (!b) throw new Error("Barang yang dipilih tidak ditemukan");
+    if (!b.warna && (alloc.warna || warna)) b.warna = alloc.warna || warna;
     ensureBarangKode(data, b);
     return b;
   }
   const nama = String(alloc.nama_baru || "").trim();
   if (!nama) throw new Error("Pilih barang atau isi nama barang baru");
   const existing = data.data_barang.find((x: any) => String(x.nama_barang).trim().toLowerCase() === nama.toLowerCase());
-  if (existing) { ensureBarangKode(data, existing); return existing; }
+  if (existing) {
+    if (!existing.warna && (alloc.warna || warna)) existing.warna = alloc.warna || warna;
+    ensureBarangKode(data, existing);
+    return existing;
+  }
   const kat = (data.kategori_produk || []).find((k: any) => String(k.nama).toLowerCase() === String(kategoriNama).toLowerCase());
   const id = nextId(data, "data_barang" as any);
   const b: any = {
     id,
     uid: `BRG-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
     nama_barang: nama,
+    warna: alloc.warna || warna || "",
     kategori_id: alloc.kategori_id ? Number(alloc.kategori_id) : (kat?.id || 0),
     harga_beli: 0,
     harga_jual: Number(alloc.harga_jual) || 0,
@@ -182,7 +188,7 @@ export async function POST(req: NextRequest) {
       const sumber = `${inbound.tahap}${inbound.vendor_nama && inbound.vendor_nama !== "-" ? ` · ${inbound.vendor_nama}` : ""}`;
       const movementIds: number[] = [];
       for (const a of alokasi) {
-        const barang = resolveBarang(data, a, inbound.kategori);
+        const barang = resolveBarang(data, a, inbound.kategori, inbound.warna || "");
         const kode = barang.kode as string;
         const items = a.items.map((it: SizeQty) => ({ ...it, sku: skuCode(kode, it.size) }));
         const jumlah = sumQty(items);
@@ -195,6 +201,7 @@ export async function POST(req: NextRequest) {
           barang_id: barang.id,
           kode,
           nama_barang: barang.nama_barang,
+          warna: inbound.warna || barang.warna || "",
           kategori: inbound.kategori,
           po_id: inbound.po_id,
           noPo: inbound.noPo,
@@ -212,7 +219,13 @@ export async function POST(req: NextRequest) {
         // Tautkan barcode produksi → SKU barang jadi, status siap_jual
         for (const it of items) {
           markBarcodes(data, inbound.po_id, [it], inbound.tahap_slug, (b) => {
-            b.status = "siap_jual"; b.stockAt = now; b.barang_id = barang.id; b.sku = it.sku;
+            b.status = "siap_jual";
+            b.stockAt = now;
+            b.barang_id = barang.id;
+            b.sku = it.sku;
+            if (!b.warna && (inbound.warna || barang.warna)) {
+              b.warna = inbound.warna || barang.warna;
+            }
           }, "done");
         }
       }

@@ -80,7 +80,9 @@ export async function POST(req: Request) {
     const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newItem = {
       id, uid: `BRG-${randomStr}`,
-      nama_barang, kategori_id: Number(kategori_id) || 0,
+      nama_barang, 
+      warna: body.warna ? String(body.warna).trim() : "",
+      kategori_id: Number(kategori_id) || 0,
       harga_beli: Number(harga_beli) || 0,
       harga_jual: Number(harga_jual) || 0,
       // stok manual hanya untuk barang non-produksi (tanpa barcode); barang produksi stoknya dari Gudang & Stok
@@ -109,7 +111,9 @@ export async function PUT(req: Request) {
     const link = linkedInfo(data, id);
     data.data_barang[idx] = {
       ...data.data_barang[idx],
-      nama_barang, kategori_id: Number(kategori_id) || 0,
+      nama_barang, 
+      warna: body.warna !== undefined ? String(body.warna).trim() : (data.data_barang[idx].warna || ""),
+      kategori_id: Number(kategori_id) || 0,
       harga_beli: Number(harga_beli) || 0,
       harga_jual: Number(harga_jual) || 0,
       // Barang produksi: stok TIDAK bisa diubah manual (mengikuti ledger Gudang & Stok + scan penjualan)

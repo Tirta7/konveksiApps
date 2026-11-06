@@ -772,6 +772,7 @@ export default function AlurProduksiPage() {
         poId: po.id,
         noPo: po.noPo,
         model: po.model,
+        warna: po.warna || "",
         tahap: "Jahit / CMT",
         tanggal_kirim: po.tanggalTerbit,
         lamaHari: daysSince(po.tanggalTerbit),
@@ -803,6 +804,7 @@ export default function AlurProduksiPage() {
         poId: t.po_id,
         noPo: po?.noPo || `PO #${t.po_id}`,
         model: po?.model || "-",
+        warna: po?.warna || t.warna || "",
         tahap: stageNameBySlug(t.ke),
         tanggal_kirim: t.tanggal_kirim,
         lamaHari: daysSince(t.tanggal_kirim),
@@ -945,6 +947,7 @@ export default function AlurProduksiPage() {
         const vendorName = getVendorName(po.vendorId).toLowerCase();
         const match = (po.noPo || "").toLowerCase().includes(q) ||
                       (po.model || "").toLowerCase().includes(q) ||
+                      (po.warna || "").toLowerCase().includes(q) ||
                       vendorName.includes(q);
         if (!match) return false;
       }
@@ -1921,6 +1924,11 @@ export default function AlurProduksiPage() {
 
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span>Model: <strong style={{ color: "#0F172A" }}>{po.model}</strong></span>
+                        {po.warna && (
+                          <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 5 }}>
+                            {po.warna}
+                          </span>
+                        )}
                         <span style={{ color: "#94A3B8" }}>&bull;</span>
                         <span style={{ color: "#2563EB", fontWeight: 800 }}>Total {po.jumlahTerbit.toLocaleString("id-ID")} pcs</span>
                         {liveStatus && (

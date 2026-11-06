@@ -51,6 +51,7 @@ export default function PemotonganKainPage() {
     pemakaian_cm: string;
     tukang_potong_id: string;
     model: string;
+    target_warna: string;
     selectedRolls: any[];
     sizeBreakdown: any[];
     target_selesai: string;
@@ -67,6 +68,7 @@ export default function PemotonganKainPage() {
     pemakaian_cm: "", 
     tukang_potong_id: "", 
     model: "",
+    target_warna: "",
     selectedRolls: [],
     sizeBreakdown: [{ size: "M", jumlah: "" }],
     target_selesai: "",
@@ -437,6 +439,7 @@ export default function PemotonganKainPage() {
                 pemakaian_cm: "", 
                 tukang_potong_id: "", 
                 model: "", 
+                target_warna: "",
                 selectedRolls: [], 
                 sizeBreakdown: [{ size: "M", jumlah: "" }], 
                 target_selesai: "",
@@ -905,6 +908,7 @@ export default function PemotonganKainPage() {
                                 pemakaian_cm: item.pemakaian_cm,
                                 tukang_potong_id: String(item.tukang_potong_id),
                                 model: item.model,
+                                target_warna: item.target_warna || item.warna || "",
                                 selectedRolls: item.selectedRolls || [],
                                 sizeBreakdown: item.sizeBreakdown || [{ size: "M", jumlah: "" }],
                                 target_selesai: item.target_selesai || "",
@@ -1284,6 +1288,23 @@ export default function PemotonganKainPage() {
                               <option key={k.id} value={k.nama}>{k.nama}</option>
                             ))}
                           </select>
+                        </div>
+
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                            <label className="label" style={{ fontWeight: 700, fontSize: 11, color: "#475569", margin: 0 }}>
+                              Rencana Varian Warna / Washing Target
+                            </label>
+                            <span style={{ fontSize: 9.5, color: "#0284C7", fontWeight: 700 }}>1 Bahan Kain bisa dipecah ke 3 model warna atau lebih</span>
+                          </div>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Contoh: Retro Fold, Raw Denim, Medium Blue..."
+                            style={{ padding: "8px 12px", fontSize: 12, borderRadius: 8, border: "1px solid #CBD5E1", width: "100%" }}
+                            value={form.target_warna}
+                            onChange={e => setForm({ ...form, target_warna: e.target.value })}
+                          />
                         </div>
                       </div>
 

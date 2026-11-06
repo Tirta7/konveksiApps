@@ -251,6 +251,7 @@ export function getBarangBarcodes(data: any, barangId: any) {
         kode: b.kodeBarcode,
         size: b.size,
         sku: b.sku || null,
+        warna: b.warna || po?.warna || "",
         status: b.status,
         po_id: b.poId,
         noPo: po?.noPo || `PO #${b.poId}`,

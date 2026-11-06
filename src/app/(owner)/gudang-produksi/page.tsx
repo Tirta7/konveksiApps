@@ -219,8 +219,9 @@ export default function GudangProduksiPage() {
   const q = search.toLowerCase().trim();
   const matchSearch = (t: any) => {
     if (!q) return true;
+    const po = poById(t.po_id);
     const v = vendorById(t.vendor_id)?.nama || t.vendor_nama || "";
-    return [t.noPo, t.model, v, stageLabel(t.dari), stageLabel(t.ke)].join(" ").toLowerCase().includes(q);
+    return [t.noPo, t.model, po?.warna, t.warna, v, stageLabel(t.dari), stageLabel(t.ke)].join(" ").toLowerCase().includes(q);
   };
 
   const pcsMasuk = masuk.reduce((s, t) => s + Number(t.jumlah_kirim || 0), 0);
@@ -820,9 +821,14 @@ export default function GudangProduksiPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                     <StageChip slug={t.dari} /> <ChevronRight size={14} color="#94A3B8" /> <StageChip slug={t.ke} />
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "2px 8px", borderRadius: 6 }}>{t.noPo}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{t.model}</span>
+                    {(poById(t.po_id)?.warna || t.warna) && (
+                      <span style={{ fontSize: 10.5, fontWeight: 800, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 5 }}>
+                        {poById(t.po_id)?.warna || t.warna}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>
                     Dikirim {fmtDate(t.tanggal_kirim)} · <b style={{ color: "#D97706" }}>{Number(t.jumlah_kirim).toLocaleString("id-ID")} pcs</b>
@@ -856,9 +862,14 @@ export default function GudangProduksiPage() {
                   <div style={{ padding: "16px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                       <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "2px 8px", borderRadius: 6 }}>{t.noPo}</span>
                           <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{t.model}</span>
+                          {(poById(t.po_id)?.warna || t.warna) && (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 5 }}>
+                              {poById(t.po_id)?.warna || t.warna}
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>
                           Asal: <b>{stageLabel(t.dari)}</b> · Diterima {fmtDate(t.tanggal_terima)}
@@ -920,9 +931,14 @@ export default function GudangProduksiPage() {
                   <div style={{ padding: "16px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                       <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 15, fontWeight: 900, fontFamily: "monospace", color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "2px 8px", borderRadius: 6 }}>{t.noPo}</span>
                           <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{t.model}</span>
+                          {(poById(t.po_id)?.warna || t.warna) && (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 5 }}>
+                              {poById(t.po_id)?.warna || t.warna}
+                            </span>
+                          )}
                         </div>
                         <StageChip slug={t.ke} />
                       </div>

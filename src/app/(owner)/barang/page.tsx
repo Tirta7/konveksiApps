@@ -26,7 +26,7 @@ export default function BarangPage() {
   const [fSumber, setFSumber] = useState("semua");
   const [open, setOpen] = useState<Set<number>>(new Set());
 
-  const [formData, setFormData] = useState({ kategori_id: "", nama_barang: "", harga_beli: "", harga_jual: "", stok: "" });
+  const [formData, setFormData] = useState({ kategori_id: "", nama_barang: "", warna: "", harga_beli: "", harga_jual: "", stok: "" });
 
   const fetchData = useCallback(async () => {
     try {
@@ -96,7 +96,7 @@ export default function BarangPage() {
   const openAdd = () => {
     setEditingId(null);
     setEditingLinked(false);
-    setFormData({ kategori_id: "", nama_barang: "", harga_beli: "", harga_jual: "", stok: "" });
+    setFormData({ kategori_id: "", nama_barang: "", warna: "", harga_beli: "", harga_jual: "", stok: "" });
     setShowModal(true);
   };
   const openEdit = (item: any) => {
@@ -105,6 +105,7 @@ export default function BarangPage() {
     setFormData({
       kategori_id: String(item.kategori_id || ""),
       nama_barang: item.nama_barang,
+      warna: item.warna || "",
       harga_beli: item.harga_beli ? String(item.harga_beli) : "",
       harga_jual: item.harga_jual ? String(item.harga_jual) : "",
       stok: item.stok ? String(item.stok) : "",
@@ -118,7 +119,7 @@ export default function BarangPage() {
     return data.filter((b) =>
       (fKategori === "semua" || String(b.kategori_id) === fKategori) &&
       (fSumber === "semua" || b.sumber === fSumber) &&
-      (!s || [b.nama_barang, b.kode, b.uid, b.kategori_nama].some((v) => String(v || "").toLowerCase().includes(s)))
+      (!s || [b.nama_barang, b.warna, b.kode, b.uid, b.kategori_nama].some((v) => String(v || "").toLowerCase().includes(s)))
     );
   }, [data, q, fKategori, fSumber]);
 
@@ -348,7 +349,14 @@ export default function BarangPage() {
                     <tr className="brg-row" onClick={() => toggle(item.id)} style={{ borderTop: "1px solid #F1F5F9", cursor: "pointer", background: isOpen ? "#F8FAFC" : undefined }}>
                       <td style={{ padding: "14px 0 14px 14px", color: "#94A3B8" }}>{isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</td>
                       <td style={{ padding: "14px" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{item.nama_barang}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{item.nama_barang}</span>
+                          {item.warna && (
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 5 }}>
+                              {item.warna}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
                           <span style={{ fontFamily: "monospace", fontSize: 12, color: "#64748B" }}>{item.kode || item.uid}</span>
                           {item.sumber === "produksi"
@@ -514,6 +522,17 @@ export default function BarangPage() {
               <div>
                 <label style={lbl}>Nama Barang</label>
                 <input type="text" value={formData.nama_barang} onChange={(e) => setFormData({ ...formData, nama_barang: e.target.value })} placeholder="Contoh: Jeans Reguler Hitam" style={inp} required />
+              </div>
+              <div>
+                <label style={lbl}>Model Warna / Target Washing (Opsional)</label>
+                <input type="text" value={formData.warna} onChange={(e) => setFormData({ ...formData, warna: e.target.value })} placeholder="Contoh: Retro Fold, Raw Denim, Medium Blue" style={inp} />
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {["Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash"].map((w) => (
+                    <button key={w} type="button" onClick={() => setFormData({ ...formData, warna: w })} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, border: "1px solid #CBD5E1", background: formData.warna === w ? "#2563EB" : "#F8FAFC", color: formData.warna === w ? "white" : "#475569", cursor: "pointer" }}>
+                      {w}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>

@@ -213,7 +213,7 @@ export default function CetakPOPage() {
               </tr>
               <tr>
                 <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Spesifikasi Model</td>
-                <td style={{ whiteSpace: "nowrap", padding: "1.5px 8px 1.5px 0" }}>: <strong>{po.model}</strong></td>
+                <td style={{ whiteSpace: "nowrap", padding: "1.5px 8px 1.5px 0" }}>: <strong>{po.model}</strong>{po.warna ? ` · [WARNA: ${po.warna}]` : ""}</td>
                 <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Alamat Vendor</td>
                 <td style={{ whiteSpace: "nowrap", padding: "1.5px 0", overflow: "hidden", textOverflow: "ellipsis" }}>: {vendor?.alamat || "-"}</td>
               </tr>
@@ -252,6 +252,12 @@ export default function CetakPOPage() {
                   <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Jenis Jahitan</td>
                   <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{pemotongan?.jenis_jahitan || "Rantai (Chainstitch), Obras 5 Benang, Make-up Standard Jeans, Double Stitch, Bartack"}</strong></td>
                 </tr>
+                {po.warna && (
+                  <tr>
+                    <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Varian Warna / Washing</td>
+                    <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{po.warna}</strong> (Target Finishing / Washing)</td>
+                  </tr>
+                )}
                 <tr>
                   <td style={{ whiteSpace: "nowrap", padding: "1.5px 6px 1.5px 0", fontWeight: 700 }}>Type / Warna Benang</td>
                   <td style={{ padding: "1.5px 0", wordBreak: "break-word" }}>: <strong>{pemotongan?.tipe_benang || "Benang Astra Jeans 20/2 (Gold Jeans / Kuning Emas)"}</strong></td>

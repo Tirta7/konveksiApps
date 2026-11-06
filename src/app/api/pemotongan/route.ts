@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     pemakaian_cm: Number(pemakaian_cm) || 0,
     tukang_potong_id: Number(tukang_potong_id),
     model,
+    target_warna: body.target_warna || body.warna || "",
     total_pcs: Number(total_pcs),
     sizeBreakdown, // e.g. [{ size: 'M', jumlah: 100, sisa: 100 }]
     status: finalStatus,

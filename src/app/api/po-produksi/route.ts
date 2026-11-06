@@ -72,6 +72,7 @@ export async function GET() {
 
     return {
       ...po,
+      warna: po.warna || pemotongan?.target_warna || "",
       nama_kain: po.nama_kain || pemotongan?.nama_barang || "-",
       jenis_jahitan: po.jenis_jahitan || pemotongan?.jenis_jahitan || "",
       tipe_benang: po.tipe_benang || pemotongan?.tipe_benang || "",
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
     id: poId,
     noPo,
     model: pemotongan.model,
+    warna: body.warna ? String(body.warna).trim() : (pemotongan.target_warna || ""),
     pemotongan_id: pemotongan.id,
     nama_kain: pemotongan.nama_barang || "",
     jenis_jahitan: pemotongan.jenis_jahitan || "",
@@ -172,7 +174,6 @@ export async function POST(req: NextRequest) {
     tanggalTerbit: now
   };
 
-  
   data.po_produksi.push(newPo);
 
   // Safely initialize arrays if they don't exist yet in the JSON
@@ -187,7 +188,7 @@ export async function POST(req: NextRequest) {
     ke_vendor_id: Number(vendorId),
     jumlah: Number(jumlahTerbit),
     tanggal: now,
-    catatan: "Penerbitan PO Awal"
+    catatan: `Penerbitan PO Awal${newPo.warna ? ` · Warna/Washing: ${newPo.warna}` : ""}`
   });
 
   // Generate barcodes per item
@@ -202,6 +203,9 @@ export async function POST(req: NextRequest) {
       data.barcode_item.push({
         id: barcodeId,
         poId,
+        noPo,
+        model: pemotongan.model,
+        warna: newPo.warna || "",
         kodeBarcode,
         size: sizeItem.size,
         qrCode: qrData,
