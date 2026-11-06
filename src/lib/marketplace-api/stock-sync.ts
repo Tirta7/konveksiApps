@@ -46,17 +46,170 @@ function cleanSku(sku: string): string {
     .replace(/[^A-Z0-9_-]/g, "");
 }
 
+const KNOWN_SIZES = [
+  "XXXL/3XL", "XXXL3XL", "3XL", "XXXL", "XXL", "XL", "XS", "S", "M", "L",
+  "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "38", "40"
+];
+
+function extractSize(str: string): string {
+  for (const sz of KNOWN_SIZES) {
+    const reg = new RegExp(`\\b${sz.replace(/\//g, "\\/")}\\b`, "i");
+    if (reg.test(str)) return sz === "XXXL/3XL" ? "XXXL" : sz.toUpperCase();
+  }
+  return "";
+}
+
+function cleanBaseSku(sku: string, variation?: string): string {
+  let s = cleanSku(sku);
+  if (!s && variation) s = cleanSku(variation);
+  for (const sz of KNOWN_SIZES) {
+    const cleanSz = cleanSku(sz);
+    if (s.endsWith("-" + cleanSz)) {
+      s = s.slice(0, -(cleanSz.length + 1));
+      break;
+    } else if (s.endsWith(cleanSz) && s.length > cleanSz.length) {
+      s = s.slice(0, -cleanSz.length).replace(/-+$/, "");
+      break;
+    }
+  }
+  return s.replace(/-+$/, "") || "BRG";
+}
+
+function cleanTitle(raw: string): string {
+  let t = String(raw || "").trim();
+  t = t.replace(/^LAVAIRA(\.ID|\s+ID)?\s*[-–:]\s*/i, "");
+  const parts = t.split(/\s*[-–]\s*/);
+  return parts[0]?.trim() || t;
+}
+
 /**
- * Tarik semua produk dan SKU dari toko marketplace yang terhubung ke Data Barang.
+ * Ekstrak produk & varian SKU dari riwayat pesanan marketplace (data.penjualan_online).
+ */
+export function importProductsFromOrders(data: any): { imported: number; updated: number; details: any[] } {
+  if (!Array.isArray(data.data_barang)) data.data_barang = [];
+  if (!Array.isArray(data.kategori_produk) || data.kategori_produk.length === 0) {
+    data.kategori_produk = [
+      { id: 1, nama: "JEANS WANITA" },
+      { id: 2, nama: "JEANS PRIA" },
+      { id: 3, nama: "KULOT" },
+    ];
+  }
+  const defaultKatId = data.kategori_produk[0].id;
+
+  const orders = data.penjualan_online || [];
+  if (orders.length === 0) return { imported: 0, updated: 0, details: [] };
+
+  const groups = new Map<string, {
+    baseSku: string;
+    productName: string;
+    marketplace: string;
+    variations: Set<string>;
+    sizes: Set<string>;
+    skus: Set<string>;
+    prices: number[];
+  }>();
+
+  for (const o of orders) {
+    const rawSku = (o.seller_sku || "").trim();
+    const rawVar = (o.variation || "").trim();
+    const rawProd = (o.product_name || "").trim();
+    if (!rawSku && !rawVar && !rawProd) continue;
+
+    const baseSku = cleanBaseSku(rawSku, rawVar);
+    const size = extractSize(rawSku) || extractSize(rawVar) || "ALL";
+
+    let g = groups.get(baseSku);
+    if (!g) {
+      g = {
+        baseSku,
+        productName: rawProd,
+        marketplace: o.marketplace || "Marketplace",
+        variations: new Set(),
+        sizes: new Set(),
+        skus: new Set(),
+        prices: [],
+      };
+      groups.set(baseSku, g);
+    }
+    if (size) g.sizes.add(size);
+    if (rawSku) g.skus.add(rawSku);
+    if (rawVar) g.variations.add(rawVar);
+    if (o.order_amount) g.prices.push(Number(o.order_amount));
+  }
+
+  let imported = 0;
+  let updated = 0;
+  const details: any[] = [];
+
+  for (const [baseSku, g] of groups.entries()) {
+    const avgPrice = g.prices.length > 0
+      ? Math.round(g.prices.reduce((a, b) => a + b, 0) / g.prices.length)
+      : 125000;
+    const color = guessColor(baseSku) || guessColor(g.productName) || Array.from(g.variations).map(guessColor).find(Boolean) || "";
+    const shortTitle = cleanTitle(g.productName);
+    const finalName = color && !shortTitle.toLowerCase().includes(color.toLowerCase())
+      ? `${shortTitle} (${color})`
+      : shortTitle;
+
+    const mappings = Array.from(g.skus).map((sk) => ({
+      platform: g.marketplace.toLowerCase().includes("shopee") ? "shopee" : "tiktok",
+      shop_key: g.marketplace,
+      shop_name: g.marketplace,
+      seller_sku: cleanSku(sk),
+      raw_sku: sk,
+    }));
+
+    let exist = data.data_barang.find(
+      (b: any) =>
+        (b.kode && cleanSku(b.kode) === baseSku) ||
+        String(b.nama_barang).trim().toLowerCase() === finalName.trim().toLowerCase()
+    );
+
+    if (exist) {
+      exist.marketplace_mappings = exist.marketplace_mappings || [];
+      for (const m of mappings) {
+        if (!exist.marketplace_mappings.some((x: any) => x.seller_sku === m.seller_sku)) {
+          exist.marketplace_mappings.push(m);
+        }
+      }
+      if (!exist.kode && baseSku) exist.kode = baseSku;
+      if (!exist.warna && color) exist.warna = color;
+      updated++;
+      details.push({ action: "updated", nama: exist.nama_barang, kode: exist.kode });
+    } else {
+      const newId = nextId(data, "data_barang" as any);
+      const newItem = {
+        id: newId,
+        uid: `BRG-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        nama_barang: finalName,
+        kode: baseSku,
+        warna: color,
+        kategori_id: defaultKatId,
+        harga_beli: Math.round(avgPrice * 0.5),
+        harga_jual: avgPrice,
+        stok: 0,
+        sumber: "produksi",
+        createdAt: new Date().toISOString(),
+        marketplace_mappings: mappings,
+      };
+      ensureBarangKode(data, newItem);
+      data.data_barang.push(newItem);
+      imported++;
+      details.push({ action: "created", nama: newItem.nama_barang, kode: newItem.kode });
+    }
+  }
+
+  return { imported, updated, details };
+}
+
+/**
+ * Tarik semua produk dan SKU dari toko marketplace yang terhubung dan riwayat pesanan ke Data Barang.
  */
 export async function importProductsFromMarketplace(data: any): Promise<MarketplaceSyncResult> {
   const activeShops = getShops(data).filter((s) => s.aktif);
-  if (activeShops.length === 0) {
-    return {
-      success: false,
-      message: "Belum ada toko yang terhubung atau aktif di Pengaturan -> Integrasi Marketplace. Hubungkan toko terlebih dahulu.",
-    };
-  }
+  let importedCount = 0;
+  let updatedCount = 0;
+  const logDetails: any[] = [];
 
   if (!Array.isArray(data.data_barang)) data.data_barang = [];
   if (!Array.isArray(data.kategori_produk) || data.kategori_produk.length === 0) {
@@ -68,10 +221,7 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
   }
   const defaultKatId = data.kategori_produk[0].id;
 
-  let importedCount = 0;
-  let updatedCount = 0;
-  const logDetails: any[] = [];
-
+  // 1. Tarik dari API toko aktif
   for (const rawShop of activeShops) {
     let shop: MarketplaceShop;
     try {
@@ -84,11 +234,9 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
     if (shop.platform === "shopee") {
       const shopeeProds = await shopeeGetProducts(shop);
       for (const p of shopeeProds) {
-        // Ambil base SKU atau buat dari nama
         let baseSku = cleanSku(p.item_sku);
         if (!baseSku && p.models?.length > 0) {
           const firstModelSku = cleanSku(p.models[0].model_sku);
-          // Bila SKU variasi berbentuk BURDIL-RETRO-M, ambil BURDIL-RETRO
           const parts = firstModelSku.split("-");
           baseSku = parts.length > 1 ? parts.slice(0, -1).join("-") : firstModelSku;
         }
@@ -96,7 +244,6 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
           baseSku = cleanSku(p.item_name.slice(0, 15));
         }
 
-        // Cari apakah produk sudah ada di Data Barang (berdasarkan nama atau kode)
         let exist = data.data_barang.find(
           (b: any) =>
             (b.kode && cleanSku(b.kode) === baseSku) ||
@@ -116,7 +263,6 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
         );
 
         if (exist) {
-          // Update mapping toko
           exist.marketplace_mappings = exist.marketplace_mappings || [];
           for (const mapItem of mappings) {
             const mIdx = exist.marketplace_mappings.findIndex(
@@ -129,7 +275,6 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
           updatedCount++;
           logDetails.push({ action: "updated", nama: exist.nama_barang, kode: exist.kode });
         } else {
-          // Buat barang baru
           const newId = nextId(data, "data_barang" as any);
           const newItem = {
             id: newId,
@@ -141,7 +286,7 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             harga_beli: Math.round(Number(p.price || 100000) * 0.5),
             harga_jual: Number(p.price || 100000),
             stok: 0,
-            sumber: "manual",
+            sumber: "produksi",
             createdAt: new Date().toISOString(),
             marketplace_mappings: mappings,
           };
@@ -203,7 +348,7 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             harga_beli: Math.round(price * 0.5),
             harga_jual: price,
             stok: 0,
-            sumber: "manual",
+            sumber: "produksi",
             createdAt: new Date().toISOString(),
             marketplace_mappings: mappings,
           };
@@ -214,6 +359,19 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
         }
       }
     }
+  }
+
+  // 2. Tarik / perbarui dari riwayat pesanan penjualan_online (selalu dieksekusi agar produk & SKU lengkap)
+  const fromOrders = importProductsFromOrders(data);
+  importedCount += fromOrders.imported;
+  updatedCount += fromOrders.updated;
+  logDetails.push(...fromOrders.details);
+
+  if (importedCount === 0 && updatedCount === 0 && activeShops.length === 0 && (!data.penjualan_online || data.penjualan_online.length === 0)) {
+    return {
+      success: false,
+      message: "Belum ada produk ditemukan di toko online maupun riwayat pesanan marketplace. Hubungkan toko di Pengaturan atau unggah CSV pesanan.",
+    };
   }
 
   return {
