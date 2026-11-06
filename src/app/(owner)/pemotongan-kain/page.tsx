@@ -1294,13 +1294,45 @@ export default function PemotonganKainPage() {
                             className="form-control" 
                             style={{ padding: "8px 12px", fontSize: 12, borderRadius: 8, border: "1px solid #CBD5E1" }}
                             value={form.model} 
-                            onChange={e => setForm({...form, model: e.target.value})}
+                            onChange={e => {
+                              const chosenModel = e.target.value;
+                              const matchedKat = kategoriList.find(k => k.nama === chosenModel);
+                              let newTargetWarna = form.target_warna;
+                              if (matchedKat && matchedKat.warna_options?.length > 0 && !form.target_warna) {
+                                newTargetWarna = matchedKat.warna_options.join(", ");
+                              }
+                              setForm({ ...form, model: chosenModel, target_warna: newTargetWarna });
+                            }}
                           >
                             <option value="">-- Pilih Model Pola --</option>
                             {kategoriList.map(k => (
-                              <option key={k.id} value={k.nama}>{k.nama}</option>
+                              <option key={k.id} value={k.nama}>
+                                {k.nama} {k.is_marketplace ? `· 🛒 Online Shop (${k.total_barang || 0} Barang)` : ""}
+                              </option>
                             ))}
                           </select>
+
+                          {/* Info Banner jika kategori berasal dari toko online */}
+                          {(() => {
+                            const matchedKat = kategoriList.find(k => k.nama === form.model);
+                            if (!matchedKat) return null;
+                            return (
+                              <div style={{ marginTop: 8, background: matchedKat.is_marketplace ? "#ECFDF5" : "#EFF6FF", border: `1px solid ${matchedKat.is_marketplace ? "#A7F3D0" : "#BFDBFE"}`, borderRadius: 8, padding: "8px 10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: matchedKat.is_marketplace ? "#065F46" : "#1E40AF" }}>
+                                  <span>{matchedKat.is_marketplace ? "🛒" : "📐"}</span>
+                                  <span>{matchedKat.is_marketplace ? "Kategori Terhubung dengan Online Shop API" : "Model Pola Konveksi"}</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: matchedKat.is_marketplace ? "#047857" : "#3B82F6", marginTop: 2, lineHeight: 1.4 }}>
+                                  {matchedKat.deskripsi || `Kategori ${matchedKat.nama}`}
+                                  {matchedKat.linked_barang?.length > 0 && (
+                                    <div style={{ marginTop: 4, fontWeight: 600 }}>
+                                      📦 Produk: {matchedKat.linked_barang.map((b: any) => `${b.nama} (${b.kode || b.warna || "SKU"})`).join(", ")}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div style={{ marginTop: 12 }}>
@@ -1313,36 +1345,49 @@ export default function PemotonganKainPage() {
 
                           {/* Quick Preset Buttons (Multi-Select Toggle) */}
                           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
-                            {["Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash", "Dark Indigo"].map(w => {
-                              const currentList = (form.target_warna || "").split(",").map(s => s.trim()).filter(Boolean);
-                              const isSelected = currentList.some(item => item.toLowerCase() === w.toLowerCase());
-                              return (
-                                <button
-                                  key={w}
-                                  type="button"
-                                  onClick={() => {
-                                    let nextList: string[];
-                                    if (isSelected) {
-                                      nextList = currentList.filter(item => item.toLowerCase() !== w.toLowerCase());
-                                    } else {
-                                      nextList = [...currentList, w];
-                                    }
-                                    setForm({ ...form, target_warna: nextList.join(", ") });
-                                  }}
-                                  style={{
-                                    padding: "3px 8px",
-                                    borderRadius: 6,
-                                    fontSize: 10.5,
-                                    fontWeight: 700,
-                                    border: isSelected ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
-                                    background: isSelected ? "#2563EB" : "white",
-                                    color: isSelected ? "white" : "#475569",
-                                    cursor: "pointer",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 3,
-                                    transition: "all 0.15s ease"
-                                  }}
+                            {(() => {
+                              const matchedKat = kategoriList.find(k => k.nama === form.model);
+                              const presets = Array.from(new Set([
+                                ...(matchedKat?.warna_options || []),
+                                "Retro Fold", "Raw Denim Fold", "Medium Blue", "Snow Black", "Light Blue", "Biowash", "Dark Indigo"
+                              ]));
+                              return presets.map(w => {
+                                const currentList = (form.target_warna || "").split(",").map(s => s.trim()).filter(Boolean);
+                                const isSelected = currentList.some(item => item.toLowerCase() === w.toLowerCase());
+                                return (
+                                  <button
+                                    key={w}
+                                    type="button"
+                                    onClick={() => {
+                                      let nextList: string[];
+                                      if (isSelected) {
+                                        nextList = currentList.filter(item => item.toLowerCase() !== w.toLowerCase());
+                                      } else {
+                                        nextList = [...currentList, w];
+                                      }
+                                      setForm({ ...form, target_warna: nextList.join(", ") });
+                                    }}
+                                    style={{
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      border: isSelected ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
+                                      background: isSelected ? "#2563EB" : "white",
+                                      color: isSelected ? "white" : "#475569",
+                                      cursor: "pointer",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 3,
+                                      transition: "all 0.15s ease"
+                                    }}
+                                  >
+                                    {isSelected ? "✓" : "+"} {w}
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
                                 >
                                   {isSelected ? "✓" : "+"} {w}
                                 </button>

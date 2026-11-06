@@ -33,6 +33,7 @@ export default function KategoriPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [detailModal, setDetailModal] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [syncingMarketplace, setSyncingMarketplace] = useState(false);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,6 +66,21 @@ export default function KategoriPage() {
       toast.error("Gagal mengambil data kategori");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncMarketplace = async () => {
+    setSyncingMarketplace(true);
+    try {
+      const res = await fetch("/api/kategori/sync", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || json.error || "Gagal sinkronkan kategori");
+      toast.success(json.message);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSyncingMarketplace(false);
     }
   };
 
@@ -302,6 +318,30 @@ export default function KategoriPage() {
             >
               <Scissors size={14} color="#64748B" /> Pemotongan Kain
             </Link>
+            <button
+              type="button"
+              onClick={handleSyncMarketplace}
+              disabled={syncingMarketplace}
+              title="Tarik & sinkronkan kategori produk dari API Shopee/TikTok & riwayat pesanan online"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "9px 15px",
+                borderRadius: 10,
+                border: "1px solid #C7D2FE",
+                background: "#EEF2FF",
+                color: "#4F46E5",
+                fontSize: 12.5,
+                fontWeight: 800,
+                cursor: syncingMarketplace ? "not-allowed" : "pointer",
+                boxShadow: "0 1px 3px rgba(79,70,229,0.1)",
+                opacity: syncingMarketplace ? 0.7 : 1,
+              }}
+            >
+              <RotateCcw size={14} className={syncingMarketplace ? "animate-spin" : ""} />
+              {syncingMarketplace ? "Menyinkronkan..." : "Tarik Kategori Marketplace"}
+            </button>
             <button
               onClick={openAdd}
               style={{
@@ -615,18 +655,28 @@ export default function KategoriPage() {
 
                       {/* NAMA KATEGORI */}
                       <td style={{ padding: "14px 18px", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>
                             {item.nama}
                           </span>
+                          {item.is_marketplace && (
+                            <span style={{ fontSize: 10, fontWeight: 800, background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", padding: "1px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                              🛒 Online Shop API
+                            </span>
+                          )}
                           {hasProduction && (
-                            <span style={{ fontSize: 10.5, fontWeight: 800, background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", padding: "1px 6px", borderRadius: 4 }}>
+                            <span style={{ fontSize: 10.5, fontWeight: 800, background: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE", padding: "1px 6px", borderRadius: 4 }}>
                               Aktif SPK
                             </span>
                           )}
                         </div>
                         <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
                           ID Sistem: #{item.id} &bull; {item.total_barang || 0} Barang Jadi
+                          {item.warna_options?.length > 0 && (
+                            <span style={{ color: "#2563EB", marginLeft: 6, fontWeight: 600 }}>
+                              &bull; Warna: {item.warna_options.join(", ")}
+                            </span>
+                          )}
                         </div>
                       </td>
 

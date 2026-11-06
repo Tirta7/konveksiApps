@@ -11,7 +11,30 @@ export async function GET() {
 
   const enriched = kategoriList.map((kat: any) => {
     // Count barang using this category
-    const linkedBarang = dataBarang.filter((b: any) => String(b.kategori_id) === String(kat.id) || b.kategori_nama === kat.nama);
+    const linkedBarang = dataBarang.filter((b: any) => {
+      const matchId = String(b.kategori_id) === String(kat.id);
+      const matchName = b.kategori_nama && b.kategori_nama.toUpperCase() === kat.nama.toUpperCase();
+      return matchId || matchName;
+    });
+
+    const isMarketplace = kat.sumber === "marketplace" || kat.sumber === "shopee" || kat.sumber === "tiktok" || linkedBarang.some((b: any) => (b.marketplace_mappings || []).length > 0);
+
+    // Kumpulkan variasi warna yang ada pada kategori ini
+    const warnaSet = new Set<string>();
+    linkedBarang.forEach((b: any) => {
+      if (b.warna) warnaSet.add(b.warna);
+    });
+
+    // Kumpulkan ukuran yang ada pada kategori ini
+    const sizeSet = new Set<string>();
+    linkedBarang.forEach((b: any) => {
+      (b.sizes || []).forEach((s: any) => {
+        if (s.size) sizeSet.add(s.size);
+      });
+      (b.marketplace_mappings || []).forEach((m: any) => {
+        if (m.variation_name) sizeSet.add(m.variation_name);
+      });
+    });
     
     // Count pemotongan using this model/pola
     const linkedPotong = pemotongan.filter((p: any) => 
@@ -42,7 +65,19 @@ export async function GET() {
 
     return {
       ...kat,
+      sumber: isMarketplace ? "marketplace" : kat.sumber || "internal",
+      is_marketplace: isMarketplace,
       total_barang: linkedBarang.length,
+      linked_barang: linkedBarang.map((b: any) => ({
+        id: b.id,
+        nama: b.nama_barang,
+        kode: b.kode,
+        warna: b.warna,
+        stok: b.stok,
+        marketplace_mappings: b.marketplace_mappings || [],
+      })),
+      warna_options: Array.from(warnaSet),
+      size_options: Array.from(sizeSet),
       total_pemotongan: linkedPotong.length,
       total_pcs_potong: totalPcs,
       vendor_tarifs: vendorTarifs,

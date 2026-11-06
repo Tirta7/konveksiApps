@@ -804,7 +804,7 @@
         }
       ],
       "jumlah": 400,
-      "sumber": "Washing · RANI LAUNDRY",
+      "sumber": "Washing \u00b7 RANI LAUNDRY",
       "transfer_id": 6,
       "keterangan": "Selesai proses Washing"
     },
@@ -823,7 +823,7 @@
         }
       ],
       "jumlah": 40,
-      "sumber": "Washing · PRADANA LAUNDRY",
+      "sumber": "Washing \u00b7 PRADANA LAUNDRY",
       "tahap_slug": "washing",
       "transfer_id": 4,
       "vendor_id": 3,
@@ -869,7 +869,7 @@
         }
       ],
       "jumlah": 335,
-      "sumber": "Gudang Produksi · Gudang Produksi",
+      "sumber": "Gudang Produksi \u00b7 Gudang Produksi",
       "transfer_id": 11,
       "keterangan": "Reject 165 pcs"
     },
@@ -896,7 +896,7 @@
         }
       ],
       "jumlah": 165,
-      "sumber": "Gudang Produksi · Gudang Produksi",
+      "sumber": "Gudang Produksi \u00b7 Gudang Produksi",
       "transfer_id": 11,
       "keterangan": "Selesai proses Gudang Produksi"
     },
@@ -917,7 +917,7 @@
       ],
       "jumlah": 1,
       "sumber": "Penjualan Online",
-      "keterangan": "JUAL-20261020-0004 · Order 585826375961576613 · e*** (@n***aa7)",
+      "keterangan": "JUAL-20261020-0004 \u00b7 Order 585826375961576613 \u00b7 e*** (@n***aa7)",
       "penjualan_id": 4,
       "no_transaksi": "JUAL-20261020-0004",
       "order_id": "585826375961576613",
@@ -1045,22 +1045,29 @@
       "id": 1,
       "uid": "KTG-APKKQ7",
       "nama": "GOMBRONG",
-      "deskripsi": "",
-      "createdAt": "2026-09-21T02:47:55.620Z"
+      "deskripsi": "Model pola Celana Jeans Gombrong & Wide Leg",
+      "sumber": "marketplace"
     },
     {
       "id": 2,
       "uid": "KTG-3A5R07",
-      "nama": "TULANG",
-      "deskripsi": "",
-      "createdAt": "2026-09-21T02:48:03.676Z"
+      "nama": "TULANG (BAGGY LIPAT BESAR)",
+      "deskripsi": "Model pola Baggy Highwaist Loose Jeans Lipat Besar",
+      "sumber": "marketplace"
     },
     {
       "id": 3,
       "uid": "KTG-O92RSL",
       "nama": "PECAH POLA",
-      "deskripsi": "",
-      "createdAt": "2026-09-21T02:48:15.760Z"
+      "deskripsi": "Model pola Kulot Pecah Pola & Kulot Viral TikTok",
+      "sumber": "marketplace"
+    },
+    {
+      "id": 4,
+      "uid": "KTG-STR001",
+      "nama": "STRAIGHT FOLD",
+      "deskripsi": "Model pola Highwaist Jeans Straight Fold (Retro & Raw Denim)",
+      "sumber": "marketplace"
     }
   ],
   "data_barang": [
@@ -1074,7 +1081,8 @@
       "stok": 400,
       "sumber": "produksi",
       "createdAt": "2026-10-18T22:36:13.234Z",
-      "kode": "TBJ-0001"
+      "kode": "TBJ-0001",
+      "kategori_nama": "PECAH POLA"
     },
     {
       "id": 2,
@@ -1087,7 +1095,8 @@
       "sumber": "produksi",
       "createdAt": "2026-10-19T18:23:49.377Z",
       "kode": "TBJ-0002",
-      "warna": "Retro Fold"
+      "warna": "Retro Fold",
+      "kategori_nama": "PECAH POLA"
     },
     {
       "id": 3,
@@ -1095,7 +1104,7 @@
       "nama_barang": "Highwaist Jeans Straight Fold (Retro Fold)",
       "kode": "RETRO-FOLD",
       "warna": "Retro Fold",
-      "kategori_id": 1,
+      "kategori_id": 4,
       "harga_beli": 67165,
       "harga_jual": 134330,
       "stok": 0,
@@ -1151,7 +1160,8 @@
           "seller_sku": "RETRO-FOLD-XXL",
           "raw_sku": "RETRO FOLD XXL"
         }
-      ]
+      ],
+      "kategori_nama": "STRAIGHT FOLD"
     },
     {
       "id": 4,
@@ -1159,7 +1169,7 @@
       "nama_barang": "Highwaist Jeans Straight Fold (Raw Denim Fold)",
       "kode": "RAW-DENIM-FOLD",
       "warna": "Raw Denim Fold",
-      "kategori_id": 1,
+      "kategori_id": 4,
       "harga_beli": 71827,
       "harga_jual": 143654,
       "stok": 0,
@@ -1208,7 +1218,8 @@
           "seller_sku": "RAW-DENIM-FOLD-XXL",
           "raw_sku": "RAW DENIM FOLD XXL"
         }
-      ]
+      ],
+      "kategori_nama": "STRAIGHT FOLD"
     },
     {
       "id": 5,
@@ -1216,7 +1227,7 @@
       "nama_barang": "Highwaist Baggy Loose Jeans Lipat (Dark Denim)",
       "kode": "TULANG-LIPAT-BESAR-DRAK-DENIM",
       "warna": "Dark Denim",
-      "kategori_id": 1,
+      "kategori_id": 2,
       "harga_beli": 72577,
       "harga_jual": 145154,
       "stok": 0,
@@ -1237,7 +1248,8 @@
           "seller_sku": "TULANG-LIPAT-BESAR-DRAK-DENIM-XL",
           "raw_sku": "TULANG LIPAT BESAR DRAK DENIM XL"
         }
-      ]
+      ],
+      "kategori_nama": "TULANG (BAGGY LIPAT BESAR)"
     }
   ],
   "data_supplier": [
@@ -31197,7 +31209,7 @@
         }
       ],
       "sizeBreakdown_diterima": [],
-      "catatan": "Hasil Washing (RANI LAUNDRY) → Gudang",
+      "catatan": "Hasil Washing (RANI LAUNDRY) \u2192 Gudang",
       "status": "Diverifikasi",
       "tanggal_kirim": "2026-10-18T22:34:46.699Z",
       "tanggal_terima": "2026-10-19T08:22:02.816Z",
@@ -31579,7 +31591,7 @@
       "ke_vendor_id": "GUDANG",
       "jumlah": 500,
       "tanggal": "2026-10-18T22:34:46.699Z",
-      "catatan": "Hasil Washing (RANI LAUNDRY) → Gudang"
+      "catatan": "Hasil Washing (RANI LAUNDRY) \u2192 Gudang"
     },
     {
       "id": 14,
@@ -31813,7 +31825,7 @@
           "target_selesai": "2026-09-26",
           "status": "Proses",
           "selesai_tgl": null,
-          "catatan": "400 pcs masuk stok · 40 pcs reject · 560 pcs belum masuk",
+          "catatan": "400 pcs masuk stok \u00b7 40 pcs reject \u00b7 560 pcs belum masuk",
           "terlambat_hari": 0
         },
         {
@@ -31918,7 +31930,7 @@
           "target_selesai": "2026-09-26",
           "status": "Selesai",
           "selesai_tgl": null,
-          "catatan": "Dilewati — PO tidak melalui tahap ini",
+          "catatan": "Dilewati \u2014 PO tidak melalui tahap ini",
           "terlambat_hari": 0
         },
         {
@@ -31932,7 +31944,7 @@
           "target_selesai": "2026-09-26",
           "status": "Selesai",
           "selesai_tgl": null,
-          "catatan": "Dilewati — PO tidak melalui tahap ini",
+          "catatan": "Dilewati \u2014 PO tidak melalui tahap ini",
           "terlambat_hari": 0
         }
       ],
@@ -33544,7 +33556,7 @@
       "order_amount": "127798",
       "seller_sku": "RETRO FOLD L",
       "buyer_username": "l***euuxdka",
-      "recipient": "￴ ￴ ￴ ￴ ￴ ￴ r**** ￴ ￴ ￴ ￴",
+      "recipient": "\ufff4 \ufff4 \ufff4 \ufff4 \ufff4 \ufff4 r**** \ufff4 \ufff4 \ufff4 \ufff4",
       "tanggal_pesanan": "05/09/2026 11:12:25",
       "phone": "(+62)819******02",
       "address": "******************************",

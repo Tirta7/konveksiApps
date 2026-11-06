@@ -16,6 +16,7 @@ import { ensureFreshToken } from "./sync";
 import { shopeeGetProducts, shopeeUpdateStock } from "./shopee";
 import { tiktokGetProducts, tiktokUpdateStock } from "./tiktok";
 import { getStockSummary, ensureBarangKode } from "@/lib/stock";
+import { syncMarketplaceCategories } from "./category-sync";
 
 export interface MarketplaceSyncResult {
   success: boolean;
@@ -396,6 +397,13 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
   importedCount += fromOrders.imported;
   updatedCount += fromOrders.updated;
   logDetails.push(...fromOrders.details);
+
+  // 3. Sinkronkan kategori produk dari marketplace secara otomatis
+  try {
+    await syncMarketplaceCategories(data);
+  } catch (err) {
+    console.error("Gagal sinkronkan kategori marketplace:", err);
+  }
 
   if (importedCount === 0 && updatedCount === 0 && activeShops.length === 0 && (!data.penjualan_online || data.penjualan_online.length === 0)) {
     return {
