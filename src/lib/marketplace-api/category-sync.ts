@@ -1,5 +1,6 @@
 import { nextId } from "@/lib/data-store";
-import { getShops, ensureFreshToken } from "@/lib/marketplace-api/common";
+import { getShops } from "@/lib/marketplace-api/common";
+import { ensureFreshToken } from "@/lib/marketplace-api/sync";
 import { shopeeGetProducts } from "@/lib/marketplace-api/shopee";
 import { tiktokGetProducts } from "@/lib/marketplace-api/tiktok";
 
@@ -152,3 +153,4 @@ function ensureCategoryInStore(data: any, nama: string, deskripsi: string, sumbe
   data.kategori_produk.push(newCat);
   return { action: "added", id };
 }
+

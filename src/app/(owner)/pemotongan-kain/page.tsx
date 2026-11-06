@@ -1388,12 +1388,6 @@ export default function PemotonganKainPage() {
                               });
                             })()}
                           </div>
-                                >
-                                  {isSelected ? "✓" : "+"} {w}
-                                </button>
-                              );
-                            })}
-                          </div>
 
                           <input
                             type="text"
