@@ -141,7 +141,7 @@ export default function BarangPage() {
   };
   const openEdit = (item: any) => {
     setEditingId(item.id);
-    setEditingLinked(!!item.stok_dari_gudang);
+    setEditingLinked(!!item.stok_dari_gudang && (item.lots?.length > 0));
     setFormData({
       kategori_id: String(item.kategori_id || ""),
       nama_barang: item.nama_barang,
@@ -552,8 +552,8 @@ export default function BarangPage() {
                       <td style={{ padding: "14px" }}>
                         {item.sumber === "produksi" ? (
                           <>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{item.barcode?.terjual || 0} pcs <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>({lakuPct}% laku)</span></div>
-                            <div style={{ height: 5, background: "#F1F5F9", borderRadius: 99, overflow: "hidden", margin: "4px 0" }}><div style={{ width: `${lakuPct}%`, height: "100%", background: "linear-gradient(90deg,#EC4899,#8B5CF6)" }} /></div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{(item.terjual_total ?? item.barcode?.terjual ?? 0)} pcs <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>({(item.laku_pct ?? lakuPct)}% laku)</span></div>
+                            <div style={{ height: 5, background: "#F1F5F9", borderRadius: 99, overflow: "hidden", margin: "4px 0" }}><div style={{ width: `${(item.laku_pct ?? lakuPct)}%`, height: "100%", background: "linear-gradient(90deg,#EC4899,#8B5CF6)" }} /></div>
                             <div style={{ display: "flex", gap: 4 }}>
                               {Object.entries(KANAL_UI).map(([k, u]) => item.terjual_kanal?.[k] ? (
                                 <span key={k} title={k} style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 10, fontWeight: 800, padding: "1px 5px", borderRadius: 5, background: u.bg, color: u.color }}><u.icon size={10} /> {item.terjual_kanal[k]}</span>

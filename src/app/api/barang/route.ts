@@ -5,6 +5,39 @@ import { getStockSummary, ensureBarangKode, skuCode } from "@/lib/stock";
 
 const KANAL = ["Retail Offline", "Penjualan Grosir", "Penjualan Online"];
 
+const KNOWN_SIZES = [
+  "XXXL/3XL", "XXXL3XL", "3XL", "XXXL", "XXL", "XL", "XS", "S", "M", "L",
+  "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "38", "40"
+];
+
+function extractSize(str: string): string {
+  for (const sz of KNOWN_SIZES) {
+    const reg = new RegExp(`\\b${sz.replace(/\//g, "\\/")}\\b`, "i");
+    if (reg.test(str)) return sz === "XXXL/3XL" ? "XXXL" : sz.toUpperCase();
+  }
+  return "";
+}
+
+function normalizeSize(str: string): string {
+  const sz = extractSize(str);
+  if (!sz) return "";
+  const s = sz.toUpperCase().replace(/[\/\s_-]/g, "");
+  if (s === "XXXL3XL" || s === "3XL" || s === "XXXL") return "XXXL";
+  if (s === "XXL2XL" || s === "2XL" || s === "XXL") return "XXL";
+  if (s === "XL1XL" || s === "1XL" || s === "XL") return "XL";
+  return sz;
+}
+
+function cleanSku(s: string): string {
+  return String(s || "").trim().toUpperCase().replace(/\s+/g, "-").replace(/[^A-Z0-9_-]/g, "");
+}
+
+const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "38", "40"];
+const sizeRank = (s: string) => {
+  const i = SIZE_ORDER.indexOf(String(s).toUpperCase());
+  return i === -1 ? 99 : i;
+};
+
 /** Apakah barang sudah punya jejak di ledger / barcode (stoknya dikelola Gudang & Stok). */
 function linkedInfo(data: any, id: any) {
   const movements = (data.stock_movements || []).filter((m: any) => String(m.barang_id) === String(id)).length;
@@ -22,6 +55,7 @@ export async function GET() {
     const pcsAll = data.barcode_item || [];
     const sales = data.penjualan_barcode || [];
     const returs = data.retur_marketplace || [];
+    const onlineOrders = data.penjualan_online || [];
 
     const list = (data.data_barang || []).map((b: any) => {
       const led = byBarang.get(String(b.id));
@@ -31,18 +65,110 @@ export async function GET() {
       const perKanal: Record<string, number> = {};
       for (const k of KANAL) perKanal[k] = 0;
       for (const x of terjualPcs) perKanal[x.terjual_kanal || "Lainnya"] = (perKanal[x.terjual_kanal || "Lainnya"] || 0) + 1;
-      // terjual per size
+
+      // Terjual barcode scan per size
       const terjualSize: Record<string, number> = {};
       for (const x of terjualPcs) terjualSize[x.size] = (terjualSize[x.size] || 0) + 1;
-      const omzet = sales.reduce((s: number, t: any) => s + (t.items || []).filter((i: any) => String(i.barang_id) === String(b.id) && terjualPcs.some((p: any) => p.kodeBarcode === i.kode && String(p.penjualan_id) === String(t.id))).reduce((a: number, i: any) => a + Number(i.harga || 0), 0), 0);
-      const stok = led ? led.stok_saat_ini : Number(b.stok || 0);
+
+      // Omzet barcode scan
+      const barcodeOmzet = sales.reduce((s: number, t: any) =>
+        s + (t.items || []).filter((i: any) =>
+          String(i.barang_id) === String(b.id) &&
+          terjualPcs.some((p: any) => p.kodeBarcode === i.kode && String(p.penjualan_id) === String(t.id))
+        ).reduce((a: number, i: any) => a + Number(i.harga || 0), 0),
+        0
+      );
+
+      // Hitung penjualan dari data online marketplace (Shopee / TikTok)
+      const mappedSkus = new Set((b.marketplace_mappings || []).map((m: any) => cleanSku(m.seller_sku || m.raw_sku)));
+      const bKode = cleanSku(b.kode);
+
+      let onlineSoldQty = 0;
+      let onlineOmzet = 0;
+      const onlineSoldBySize: Record<string, number> = {};
+
+      for (const o of onlineOrders) {
+        const sSku = cleanSku(o.seller_sku);
+        const isMatch =
+          mappedSkus.has(sSku) ||
+          (bKode && (sSku === bKode || sSku.startsWith(bKode + "-") || sSku.startsWith(bKode)));
+
+        if (isMatch) {
+          const qty = Number(o.quantity || 1);
+          onlineSoldQty += qty;
+          onlineOmzet += Number(o.order_amount || 0);
+          const sz = normalizeSize(o.seller_sku) || normalizeSize(o.variation) || "ALL";
+          onlineSoldBySize[sz] = (onlineSoldBySize[sz] || 0) + qty;
+        }
+      }
+
+      const totalTerjual = terjualPcs.length + onlineSoldQty;
+      perKanal["Penjualan Online"] = (perKanal["Penjualan Online"] || 0) + onlineSoldQty;
+      const omzet = barcodeOmzet + onlineOmzet;
+
+      const totalStok = led ? led.stok_saat_ini : Number(b.stok || 0);
+
+      // Susun rincian per size yang selalu terisi
+      let sizeRows: { size: string; jumlah: number; sku: string | null; terjual: number; sisa: number; awal: number; laku: number }[] = [];
+
+      if (led && led.sizes && led.sizes.length > 0) {
+        sizeRows = led.sizes.map((s: any) => {
+          const sold = (terjualSize[s.size] || 0) + (onlineSoldBySize[s.size] || 0);
+          const awal = s.jumlah + sold;
+          return {
+            size: s.size,
+            sku: s.sku || (b.kode ? skuCode(b.kode, s.size) : null),
+            jumlah: s.jumlah,
+            sisa: s.jumlah,
+            terjual: sold,
+            awal,
+            laku: awal > 0 ? Math.round((sold / awal) * 100) : 0,
+          };
+        });
+      } else {
+        // Kumpulkan size dari marketplace mapping, penjualan online, atau default jeans
+        const sizeSet = new Set<string>();
+        for (const m of (b.marketplace_mappings || [])) {
+          const sz = normalizeSize(m.seller_sku) || normalizeSize(m.variation_name);
+          if (sz) sizeSet.add(sz);
+        }
+        for (const sz of Object.keys(onlineSoldBySize)) {
+          const nSz = normalizeSize(sz);
+          if (nSz && nSz !== "ALL") sizeSet.add(nSz);
+        }
+        if (sizeSet.size === 0) {
+          ["27", "28", "29", "30", "31", "32"].forEach((s) => sizeSet.add(s));
+        }
+
+        const sortedSizes = Array.from(sizeSet).sort((x, y) => sizeRank(x) - sizeRank(y));
+        const perSizeStock = sortedSizes.length > 0 ? Math.floor(totalStok / sortedSizes.length) : 0;
+        let rem = totalStok - (perSizeStock * sortedSizes.length);
+
+        sizeRows = sortedSizes.map((sz, idx) => {
+          const curStock = perSizeStock + (idx === 0 ? rem : 0);
+          const sold = (terjualSize[sz] || 0) + (onlineSoldBySize[sz] || 0);
+          const awal = curStock + sold;
+          return {
+            size: sz,
+            sku: b.kode ? skuCode(b.kode, sz) : null,
+            jumlah: curStock,
+            sisa: curStock,
+            terjual: sold,
+            awal,
+            laku: awal > 0 ? Math.round((sold / awal) * 100) : 0,
+          };
+        });
+      }
+
+      const lakuPct = (totalStok + totalTerjual) > 0 ? Math.round((totalTerjual / (totalStok + totalTerjual)) * 100) : 0;
+
       return {
         ...b,
         kategori_nama: kategori.get(String(b.kategori_id)) || null,
-        sumber: link.linked ? "produksi" : b.sumber || "manual",
+        sumber: link.linked ? "produksi" : b.sumber || "produksi",
         stok_dari_gudang: !!led || link.linked,
-        stok,
-        sizes: led ? led.sizes.map((s) => ({ ...s, terjual: terjualSize[s.size] || 0 })) : [],
+        stok: totalStok,
+        sizes: sizeRows,
         lots: led?.lots || [],
         lastMasuk: led?.lastMasuk || null,
         lastKeluar: led?.lastKeluar || null,
@@ -53,11 +179,13 @@ export async function GET() {
           retur_banding: pcs.filter((x: any) => x.status === "retur_banding").length,
           stok_reject: pcs.filter((x: any) => x.status === "stok_reject").length,
         },
+        terjual_total: totalTerjual,
+        laku_pct: lakuPct,
         terjual_kanal: perKanal,
         omzet,
         retur: returs.filter((r: any) => String(r.barang_id) === String(b.id)).length,
-        nilai_modal: stok * Number(b.harga_beli || 0),
-        nilai_jual: stok * Number(b.harga_jual || 0),
+        nilai_modal: totalStok * Number(b.harga_beli || 0),
+        nilai_jual: totalStok * Number(b.harga_jual || 0),
         bisa_dihapus: !link.linked,
       };
     });
@@ -136,8 +264,8 @@ export async function PUT(req: Request) {
       kategori_id: Number(kategori_id) || 0,
       harga_beli: Number(harga_beli) || 0,
       harga_jual: Number(harga_jual) || 0,
-      // Barang produksi: stok TIDAK bisa diubah manual (mengikuti ledger Gudang & Stok + scan penjualan)
-      ...(link.linked ? {} : { stok: Number(stok) || 0 }),
+      // Barang produksi: stok TIDAK bisa diubah manual jika sudah ada riwayat stock_movements
+      ...(link.movements > 0 ? {} : { stok: Number(stok) || 0 }),
     };
 
     // Update SKU pada barcode_item yang terhubung jika kode berubah
