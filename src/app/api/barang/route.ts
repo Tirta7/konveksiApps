@@ -106,7 +106,17 @@ export async function GET() {
       perKanal["Penjualan Online"] = (perKanal["Penjualan Online"] || 0) + onlineSoldQty;
       const omzet = barcodeOmzet + onlineOmzet;
 
-      const totalStok = led ? led.stok_saat_ini : Number(b.stok || 0);
+      // Cek apakah ada stok per size kustom yang disimpan di b.sizes_stock
+      const customSizesStock = b.sizes_stock && typeof b.sizes_stock === "object" ? b.sizes_stock : null;
+      let effectiveStok = Number(b.stok || 0);
+      if (customSizesStock && Object.keys(customSizesStock).length > 0) {
+        const sumCustom = Object.values(customSizesStock).reduce((acc: number, v: any) => acc + (Number(v) || 0), 0);
+        if (sumCustom > 0 || effectiveStok === 0) {
+          effectiveStok = sumCustom;
+        }
+      }
+
+      const totalStok = led ? led.stok_saat_ini : effectiveStok;
 
       // Susun rincian per size yang selalu terisi
       let sizeRows: { size: string; jumlah: number; sku: string | null; terjual: number; sisa: number; awal: number; laku: number }[] = [];
@@ -141,11 +151,17 @@ export async function GET() {
         }
 
         const sortedSizes = Array.from(sizeSet).sort((x, y) => sizeRank(x) - sizeRank(y));
+        const hasCustomStock = customSizesStock && sortedSizes.some((sz) => customSizesStock[sz] !== undefined);
         const perSizeStock = sortedSizes.length > 0 ? Math.floor(totalStok / sortedSizes.length) : 0;
         let rem = totalStok - (perSizeStock * sortedSizes.length);
 
         sizeRows = sortedSizes.map((sz, idx) => {
-          const curStock = perSizeStock + (idx === 0 ? rem : 0);
+          let curStock = 0;
+          if (hasCustomStock && customSizesStock && customSizesStock[sz] !== undefined) {
+            curStock = Number(customSizesStock[sz]) || 0;
+          } else {
+            curStock = perSizeStock + (idx === 0 ? rem : 0);
+          }
           const sold = (terjualSize[sz] || 0) + (onlineSoldBySize[sz] || 0);
           const awal = curStock + sold;
           return {
@@ -164,6 +180,7 @@ export async function GET() {
 
       return {
         ...b,
+        sizes_stock: customSizesStock,
         kategori_nama: kategori.get(String(b.kategori_id)) || null,
         sumber: link.linked ? "produksi" : b.sumber || "produksi",
         stok_dari_gudang: !!led || link.linked,
@@ -240,7 +257,7 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const data = readData();
     if (!data.data_barang) data.data_barang = [];
-    const { id, nama_barang, kategori_id, harga_beli, harga_jual, stok, kode } = body;
+    const { id, nama_barang, kategori_id, harga_beli, harga_jual, stok, kode, sizes_stock } = body;
     if (!id) return NextResponse.json({ error: "ID dibutuhkan" }, { status: 400 });
     const idx = data.data_barang.findIndex((b: any) => String(b.id) === String(id));
     if (idx === -1) return NextResponse.json({ error: "Barang tidak ditemukan" }, { status: 404 });
@@ -256,6 +273,14 @@ export async function PUT(req: Request) {
       }
     }
 
+    let stokToSave = Number(stok) || 0;
+    if (sizes_stock && typeof sizes_stock === "object") {
+      const sumSizes = Object.values(sizes_stock).reduce((acc: number, val: any) => acc + (Number(val) || 0), 0);
+      if (sumSizes > 0 || stok === undefined || stok === "") {
+        stokToSave = sumSizes;
+      }
+    }
+
     data.data_barang[idx] = {
       ...data.data_barang[idx],
       nama_barang,
@@ -265,7 +290,10 @@ export async function PUT(req: Request) {
       harga_beli: Number(harga_beli) || 0,
       harga_jual: Number(harga_jual) || 0,
       // Barang produksi: stok TIDAK bisa diubah manual jika sudah ada riwayat stock_movements
-      ...(link.movements > 0 ? {} : { stok: Number(stok) || 0 }),
+      ...(link.movements > 0 ? {} : {
+        stok: stokToSave,
+        sizes_stock: sizes_stock && typeof sizes_stock === "object" ? sizes_stock : data.data_barang[idx].sizes_stock,
+      }),
     };
 
     // Update SKU pada barcode_item yang terhubung jika kode berubah

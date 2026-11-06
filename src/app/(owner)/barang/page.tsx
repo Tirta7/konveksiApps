@@ -26,7 +26,16 @@ export default function BarangPage() {
   const [fSumber, setFSumber] = useState("semua");
   const [open, setOpen] = useState<Set<number>>(new Set());
 
-  const [formData, setFormData] = useState({ kategori_id: "", nama_barang: "", warna: "", kode: "", harga_beli: "", harga_jual: "", stok: "" });
+  const [formData, setFormData] = useState({
+    kategori_id: "",
+    nama_barang: "",
+    warna: "",
+    kode: "",
+    harga_beli: "",
+    harga_jual: "",
+    stok: "",
+    sizes_stock: {} as Record<string, any>,
+  });
   const [pullingCatalog, setPullingCatalog] = useState(false);
   const [syncingStock, setSyncingStock] = useState(false);
 
@@ -136,12 +145,36 @@ export default function BarangPage() {
   const openAdd = () => {
     setEditingId(null);
     setEditingLinked(false);
-    setFormData({ kategori_id: "", nama_barang: "", warna: "", kode: "", harga_beli: "", harga_jual: "", stok: "" });
+    setFormData({
+      kategori_id: "",
+      nama_barang: "",
+      warna: "",
+      kode: "",
+      harga_beli: "",
+      harga_jual: "",
+      stok: "",
+      sizes_stock: { "XS": "", "S": "", "M": "", "L": "", "XL": "", "XXL": "", "XXXL": "" },
+    });
     setShowModal(true);
   };
   const openEdit = (item: any) => {
     setEditingId(item.id);
     setEditingLinked(!!item.stok_dari_gudang && (item.lots?.length > 0));
+
+    // Siapkan sizes_stock dari item.sizes atau item.sizes_stock
+    const szStock: Record<string, any> = {};
+    if (item.sizes && Array.isArray(item.sizes) && item.sizes.length > 0) {
+      for (const s of item.sizes) {
+        szStock[s.size] = item.sizes_stock?.[s.size] ?? (s.jumlah > 0 ? s.jumlah : "");
+      }
+    } else if (item.sizes_stock && typeof item.sizes_stock === "object") {
+      for (const [k, v] of Object.entries(item.sizes_stock)) {
+        szStock[k] = v;
+      }
+    } else {
+      ["XS", "S", "M", "L", "XL", "XXL", "XXXL"].forEach((s) => (szStock[s] = ""));
+    }
+
     setFormData({
       kategori_id: String(item.kategori_id || ""),
       nama_barang: item.nama_barang,
@@ -150,6 +183,7 @@ export default function BarangPage() {
       harga_beli: item.harga_beli ? String(item.harga_beli) : "",
       harga_jual: item.harga_jual ? String(item.harga_jual) : "",
       stok: item.stok ? String(item.stok) : "",
+      sizes_stock: szStock,
     });
     setShowModal(true);
   };
@@ -718,13 +752,100 @@ export default function BarangPage() {
                 <div style={{ fontSize: 12, fontWeight: 700, color: margin >= 0 ? "#059669" : "#DC2626" }}>Margin per pcs: {rp(margin)} ({Math.round((margin / Number(formData.harga_beli)) * 100)}%)</div>
               )}
               <div>
-                <label style={lbl}>Stok</label>
                 {editingLinked ? (
-                  <div style={{ fontSize: 12, color: "#0369A1", background: "#E0F2FE", borderRadius: 8, padding: "10px 12px", lineHeight: 1.5 }}>
-                    <Factory size={12} /> Barang produksi — stok mengikuti <b>Gudang &amp; Stok</b> dan scan penjualan, tidak bisa diubah di sini.
+                  <div>
+                    <label style={lbl}>Stok</label>
+                    <div style={{ fontSize: 12, color: "#0369A1", background: "#E0F2FE", borderRadius: 8, padding: "10px 12px", lineHeight: 1.5 }}>
+                      <Factory size={12} /> Barang produksi dengan mutasi aktif — stok mengikuti <b>Gudang &amp; Stok</b> dan scan penjualan.
+                    </div>
                   </div>
                 ) : (
-                  <input type="number" value={formData.stok} onFocus={(e) => e.target.select()} onChange={(e) => setFormData({ ...formData, stok: e.target.value })} placeholder="0" min="0" style={inp} />
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <label style={{ ...lbl, marginBottom: 0 }}>Total Stok Tersedia (pcs)</label>
+                      {formData.sizes_stock && Object.keys(formData.sizes_stock).length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const keys = Object.keys(formData.sizes_stock);
+                            const tot = Number(formData.stok) || 0;
+                            if (keys.length > 0 && tot > 0) {
+                              const each = Math.floor(tot / keys.length);
+                              const rem = tot - each * keys.length;
+                              const updated: Record<string, number> = {};
+                              keys.forEach((k, idx) => {
+                                updated[k] = each + (idx === 0 ? rem : 0);
+                              });
+                              setFormData({ ...formData, sizes_stock: updated });
+                            }
+                          }}
+                          style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}
+                        >
+                          ⚡ Bagi Rata ke Setiap Size
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      value={formData.stok}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setFormData({ ...formData, stok: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                      style={inp}
+                    />
+                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                      💡 Masukkan jumlah stok fisik gudang atau ketersediaan toko online (misal: 9.304 pcs).
+                    </div>
+
+                    {formData.sizes_stock && Object.keys(formData.sizes_stock).length > 0 && (
+                      <div style={{ marginTop: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B" }}>
+                            Rincian Stok per Size (Opsional / Fleksibel)
+                          </span>
+                          <span style={{ fontSize: 10.5, color: "#64748B" }}>
+                            Bisa diisi spesifik per size (misal S: 9304)
+                          </span>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))", gap: 8 }}>
+                          {Object.keys(formData.sizes_stock).map((sz) => (
+                            <div key={sz} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: "#475569", textAlign: "center" }}>{sz}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={formData.sizes_stock[sz] ?? ""}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const updated = { ...formData.sizes_stock, [sz]: val === "" ? "" : Number(val) };
+                                  const sum = Object.values(updated).reduce((acc: number, v: any) => acc + (Number(v) || 0), 0);
+                                  setFormData({
+                                    ...formData,
+                                    sizes_stock: updated,
+                                    stok: String(sum),
+                                  });
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "6px 4px",
+                                  textAlign: "center",
+                                  borderRadius: 6,
+                                  border: "1px solid #CBD5E1",
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "#0F172A",
+                                  boxSizing: "border-box",
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
               <div style={{ display: "flex", gap: 12, marginTop: 4 }}>

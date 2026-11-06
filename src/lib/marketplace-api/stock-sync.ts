@@ -250,7 +250,16 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             String(b.nama_barang).trim().toLowerCase() === String(p.item_name).trim().toLowerCase()
         );
 
-        const mappings = (p.models && p.models.length > 0 ? p.models : [{ model_id: undefined, model_sku: p.item_sku, stock: p.price }]).map(
+        const sizesStock: Record<string, number> = {};
+        let totalShopeeStock = 0;
+        for (const m of (p.models || [])) {
+          const sz = extractSize(m.model_sku) || extractSize(m.model_name) || "ALL";
+          const st = Number(m.stock || 0);
+          if (sz) sizesStock[sz] = (sizesStock[sz] || 0) + st;
+          totalShopeeStock += st;
+        }
+
+        const mappings = (p.models && p.models.length > 0 ? p.models : [{ model_id: undefined, model_sku: p.item_sku, stock: 0 }]).map(
           (m: any) => ({
             platform: "shopee",
             shop_key: shop.key,
@@ -259,6 +268,7 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             model_id: m.model_id,
             seller_sku: cleanSku(m.model_sku || p.item_sku),
             variation_name: m.model_name || "",
+            stock: Number(m.stock || 0),
           })
         );
 
@@ -272,6 +282,10 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             else exist.marketplace_mappings.push(mapItem);
           }
           if (!exist.kode && baseSku) exist.kode = baseSku;
+          if (totalShopeeStock > 0 && (!exist.stok || exist.stok === 0)) {
+            exist.stok = totalShopeeStock;
+            exist.sizes_stock = sizesStock;
+          }
           updatedCount++;
           logDetails.push({ action: "updated", nama: exist.nama_barang, kode: exist.kode });
         } else {
@@ -285,7 +299,8 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             kategori_id: defaultKatId,
             harga_beli: Math.round(Number(p.price || 100000) * 0.5),
             harga_jual: Number(p.price || 100000),
-            stok: 0,
+            stok: totalShopeeStock,
+            sizes_stock: totalShopeeStock > 0 ? sizesStock : undefined,
             sumber: "produksi",
             createdAt: new Date().toISOString(),
             marketplace_mappings: mappings,
@@ -313,6 +328,15 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             String(b.nama_barang).trim().toLowerCase() === String(p.title).trim().toLowerCase()
         );
 
+        const sizesStock: Record<string, number> = {};
+        let totalTiktokStock = 0;
+        for (const s of (p.skus || [])) {
+          const sz = extractSize(s.seller_sku) || "ALL";
+          const st = Number(s.stock || 0);
+          if (sz) sizesStock[sz] = (sizesStock[sz] || 0) + st;
+          totalTiktokStock += st;
+        }
+
         const mappings = (p.skus || []).map((s: any) => ({
           platform: "tiktok",
           shop_key: shop.key,
@@ -320,6 +344,7 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
           product_id: p.product_id,
           sku_id: s.id,
           seller_sku: cleanSku(s.seller_sku),
+          stock: Number(s.stock || 0),
         }));
 
         const price = p.skus?.[0]?.price ? Number(p.skus[0].price) : 100000;
@@ -334,6 +359,10 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             else exist.marketplace_mappings.push(mapItem);
           }
           if (!exist.kode && baseSku) exist.kode = baseSku;
+          if (totalTiktokStock > 0 && (!exist.stok || exist.stok === 0)) {
+            exist.stok = totalTiktokStock;
+            exist.sizes_stock = sizesStock;
+          }
           updatedCount++;
           logDetails.push({ action: "updated", nama: exist.nama_barang, kode: exist.kode });
         } else {
@@ -347,7 +376,8 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
             kategori_id: defaultKatId,
             harga_beli: Math.round(price * 0.5),
             harga_jual: price,
-            stok: 0,
+            stok: totalTiktokStock,
+            sizes_stock: totalTiktokStock > 0 ? sizesStock : undefined,
             sumber: "produksi",
             createdAt: new Date().toISOString(),
             marketplace_mappings: mappings,
