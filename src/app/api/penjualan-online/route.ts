@@ -97,14 +97,42 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE ?order_id=XXX → hapus pesanan dari ERP (jika ada barcode yang discan, stok otomatis dikembalikan ke gudang)
+// DELETE ?order_id=XXX → hapus 1 pesanan dari ERP
+// DELETE ?action=clear_sandbox → bersihkan seluruh pesanan uji coba (sandbox / local_main.id)
 export async function DELETE(req: NextRequest) {
   try {
     const sp = new URL(req.url).searchParams;
-    const oid = sp.get("order_id");
-    if (!oid) return NextResponse.json({ error: "order_id wajib diisi" }, { status: 400 });
+    const isClearSandbox = sp.get("action") === "clear_sandbox" || sp.get("clear_sandbox") === "1";
 
     const data: any = readData();
+
+    if (isClearSandbox) {
+      const testOrderIds = new Set<string>();
+      (data.penjualan_online || []).forEach((r: any) => {
+        const isTest = r.buyer_username === "local_main.id" ||
+                       String(r.buyer_username || "").includes("sandbox") ||
+                       String(r.marketplace || "").toLowerCase().includes("sandbox") ||
+                       /^261105[A-Z0-9]+$/i.test(String(r.order_id || ""));
+        if (isTest) testOrderIds.add(String(r.order_id || "").trim());
+      });
+
+      // Batalkan barcode jika ada yang discan untuk test order
+      const sales = (data.penjualan_barcode || []).filter((s: any) => testOrderIds.has(String(s.order_id || "").trim()));
+      for (const sale of sales) {
+        try { cancelBarcodeSale(data, sale.id); } catch {}
+      }
+
+      data.penjualan_online = (data.penjualan_online || []).filter((r: any) => !testOrderIds.has(String(r.order_id || "").trim()));
+      if (Array.isArray(data.settlement_online)) {
+        data.settlement_online = data.settlement_online.filter((s: any) => !testOrderIds.has(String(s.order_id || "").trim()));
+      }
+      writeData(data);
+      return NextResponse.json({ success: true, deleted: testOrderIds.size, cleared_orders: Array.from(testOrderIds) });
+    }
+
+    const oid = sp.get("order_id");
+    if (!oid) return NextResponse.json({ error: "order_id atau action=clear_sandbox wajib diisi" }, { status: 400 });
+
     // 1. Batalkan transaksi barcode yang tertaut ke order ini (stok kembali ke gudang)
     const sales = (data.penjualan_barcode || []).filter((s: any) => String(s.order_id || "").trim() === oid.trim());
     for (const sale of sales) {
