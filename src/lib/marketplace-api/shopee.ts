@@ -75,17 +75,111 @@ export async function shopeeRefresh(refreshToken: string, shopId: string) {
   return publicPost("/api/v2/auth/access_token/get", { refresh_token: refreshToken, shop_id: Number(shopId) });
 }
 
-/** Panggilan Shop API bertanda tangan (GET). */
-export async function shopeeApi(path: string, shop: { shop_id: string; access_token: string }, query: Record<string, string | number | undefined> = {}) {
+/** Panggilan Shop API bertanda tangan (GET / POST). */
+export async function shopeeApi(
+  path: string, 
+  shop: { shop_id: string; access_token: string }, 
+  query: Record<string, string | number | undefined> = {},
+  method: "GET" | "POST" = "GET",
+  body?: any
+) {
   const c = requireConfig();
   const ts = Math.floor(Date.now() / 1000);
   const s = sign(c.partner_key, `${c.partner_id}${path}${ts}${shop.access_token}${shop.shop_id}`);
   const q = new URLSearchParams({ partner_id: c.partner_id, timestamp: String(ts), access_token: shop.access_token, shop_id: String(shop.shop_id), sign: s });
   for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== "") q.set(k, String(v));
-  const r = await fetch(`${c.host}${path}?${q.toString()}`, { method: "GET", cache: "no-store" });
+  
+  const opts: RequestInit = {
+    method,
+    cache: "no-store",
+    headers: { "content-type": "application/json" },
+  };
+  if (method === "POST" && body) {
+    opts.body = JSON.stringify(body);
+  }
+
+  const r = await fetch(`${c.host}${path}?${q.toString()}`, opts);
   const j: any = await r.json().catch(() => ({}));
   if (j.error) throw new Error(`Shopee ${path}: ${j.message || j.error}`);
-  return j.response || {};
+  return j.response || j;
+}
+
+/** Ambil katalog produk & model SKU dari Shopee. */
+export async function shopeeGetProducts(shop: MarketplaceShop): Promise<any[]> {
+  try {
+    const listData = await shopeeApi("/api/v2/product/get_item_list", shop, { page_size: 50, item_status: "NORMAL" });
+    const items = listData?.item || [];
+    if (!items.length) return [];
+    const itemIds = items.map((it: any) => it.item_id);
+
+    const baseData = await shopeeApi("/api/v2/product/get_item_base_info", shop, { item_id_list: itemIds.slice(0, 50).join(",") });
+    const baseList = baseData?.item_list || [];
+
+    const results: any[] = [];
+    for (const b of baseList) {
+      let models: any[] = [];
+      if (b.has_model) {
+        try {
+          const modelData = await shopeeApi("/api/v2/product/get_model_list", shop, { item_id: b.item_id });
+          models = (modelData?.model || []).map((m: any) => ({
+            model_id: m.model_id,
+            model_name: m.model_name,
+            model_sku: m.model_sku,
+            stock: m.stock_info_v2?.summary_info?.total_available_stock ?? m.stock_info?.[0]?.current_stock ?? 0,
+            price: m.price_info?.[0]?.current_price ?? 0
+          }));
+        } catch {
+          models = [];
+        }
+      }
+      results.push({
+        item_id: b.item_id,
+        item_name: b.item_name,
+        item_sku: b.item_sku,
+        price: b.price_info?.[0]?.current_price ?? 0,
+        has_model: b.has_model,
+        models
+      });
+    }
+    return results;
+  } catch (err: any) {
+    console.error("shopeeGetProducts error:", err.message);
+    return [];
+  }
+}
+
+/** Update stok produk/variasi ke Shopee via /api/v2/product/update_stock. */
+export async function shopeeUpdateStock(
+  shop: MarketplaceShop,
+  updates: { item_id: number; model_id?: number; stock: number }[]
+) {
+  const grouped = new Map<number, typeof updates>();
+  for (const u of updates) {
+    const arr = grouped.get(u.item_id) || [];
+    arr.push(u);
+    grouped.set(u.item_id, arr);
+  }
+
+  const results: any[] = [];
+  for (const [itemId, list] of grouped.entries()) {
+    try {
+      const stock_list = list.map((u) => {
+        const itemObj: any = {
+          seller_stock: [{ stock: Math.max(0, Math.floor(Number(u.stock) || 0)) }]
+        };
+        if (u.model_id) itemObj.model_id = Number(u.model_id);
+        return itemObj;
+      });
+      const res = await shopeeApi("/api/v2/product/update_stock", shop, {}, "POST", {
+        item_id: Number(itemId),
+        stock_list
+      });
+      results.push({ item_id: itemId, success: true, res });
+    } catch (err: any) {
+      results.push({ item_id: itemId, success: false, error: err.message });
+    }
+  }
+  return results;
 }
 
 export async function shopeeShopInfo(shop: { shop_id: string; access_token: string }) {

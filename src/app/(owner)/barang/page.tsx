@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
-import { Plus, Edit2, Trash2, X, Barcode, Search, Package, Boxes, Wallet, TrendingUp, ShoppingBag, Info, ChevronDown, ChevronUp, ChevronRight, Factory, PenLine, Store, Globe, Truck, AlertTriangle } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Barcode, Search, Package, Boxes, Wallet, TrendingUp, ShoppingBag, Info, ChevronDown, ChevronUp, ChevronRight, Factory, PenLine, Store, Globe, Truck, AlertTriangle, RefreshCw, CloudUpload } from "lucide-react";
 import { toast } from "sonner";
 import BarangBarcodeModal from "@/components/BarangBarcodeModal";
 
@@ -27,6 +27,46 @@ export default function BarangPage() {
   const [open, setOpen] = useState<Set<number>>(new Set());
 
   const [formData, setFormData] = useState({ kategori_id: "", nama_barang: "", warna: "", kode: "", harga_beli: "", harga_jual: "", stok: "" });
+  const [pullingCatalog, setPullingCatalog] = useState(false);
+  const [syncingStock, setSyncingStock] = useState(false);
+
+  const handlePullCatalog = async () => {
+    setPullingCatalog(true);
+    try {
+      const res = await fetch("/api/marketplace/sync-stock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pull_products" }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || json.error || "Gagal menarik produk dari marketplace");
+      toast.success(json.message);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setPullingCatalog(false);
+    }
+  };
+
+  const handlePushStock = async (targetId?: number) => {
+    setSyncingStock(true);
+    try {
+      const res = await fetch("/api/marketplace/sync-stock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "push_stock", barang_id: targetId }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || json.error || "Gagal mengirim stok ke marketplace");
+      toast.success(json.message);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSyncingStock(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -230,9 +270,57 @@ export default function BarangPage() {
           <h1 style={{ fontSize: 22, fontWeight: 900, color: "#0F172A", marginBottom: 2 }}>Data Barang</h1>
           <p style={{ fontSize: 12.5, color: "#64748B" }}>Master barang jadi — stok per size dari Gudang &amp; Stok, barcode per pcs, dan penjualan per kanal</p>
         </div>
-        <button id="btn-tambah-barang" onClick={openAdd} style={{ background: "#2563EB", color: "white", padding: "9px 18px", borderRadius: 8, fontWeight: 600, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <Plus size={16} /> Tambah Barang
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            disabled={pullingCatalog || syncingStock}
+            onClick={handlePullCatalog}
+            title="Tarik produk & SKU dari Shopee / TikTok yang terhubung"
+            style={{
+              background: "#EEF2FF",
+              color: "#4F46E5",
+              border: "1px solid #C7D2FE",
+              padding: "9px 14px",
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: pullingCatalog || syncingStock ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12.5,
+              opacity: pullingCatalog || syncingStock ? 0.7 : 1,
+            }}
+          >
+            <RefreshCw size={14} className={pullingCatalog ? "animate-spin" : ""} />
+            {pullingCatalog ? "Menarik..." : "Tarik SKU Marketplace"}
+          </button>
+          <button
+            type="button"
+            disabled={pullingCatalog || syncingStock || !data.length}
+            onClick={() => handlePushStock()}
+            title="Kirim jumlah stok gudang saat ini ke Shopee & TikTok"
+            style={{
+              background: "#ECFDF5",
+              color: "#059669",
+              border: "1px solid #A7F3D0",
+              padding: "9px 14px",
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: pullingCatalog || syncingStock || !data.length ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12.5,
+              opacity: pullingCatalog || syncingStock || !data.length ? 0.7 : 1,
+            }}
+          >
+            <CloudUpload size={14} className={syncingStock ? "animate-spin" : ""} />
+            {syncingStock ? "Mengirim..." : "Kirim Stok ke Marketplace"}
+          </button>
+          <button id="btn-tambah-barang" onClick={openAdd} style={{ background: "#2563EB", color: "white", padding: "9px 16px", borderRadius: 8, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, boxShadow: "0 2px 6px rgba(37,99,235,0.25)" }}>
+            <Plus size={16} /> Tambah Barang
+          </button>
+        </div>
       </div>
 
       <div className="brg-scroll-area">
@@ -337,9 +425,67 @@ export default function BarangPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ padding: 24, textAlign: "center", color: "#64748B" }}>Memuat data...</td></tr>
+                <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#64748B" }}>Memuat data...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 24, textAlign: "center", color: "#64748B" }}>{data.length ? "Tidak ada barang yang cocok dengan filter" : "Belum ada data barang"}</td></tr>
+                <tr>
+                  <td colSpan={8} style={{ padding: 48, textAlign: "center" }}>
+                    {data.length ? (
+                      <div style={{ color: "#64748B", fontSize: 14 }}>Tidak ada barang yang cocok dengan filter pencarian</div>
+                    ) : (
+                      <div style={{ maxWidth: 520, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                        <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#EFF6FF", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <ShoppingBag size={30} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 17, fontWeight: 900, color: "#0F172A", marginBottom: 6 }}>Belum Ada Data Barang</div>
+                          <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6 }}>
+                            Toko online Anda sudah aktif menjual di marketplace? Anda bisa <b>menarik katalog produk &amp; SKU otomatis</b> dari toko Shopee / TikTok yang terhubung, atau menambahkan barang secara manual.
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                          <button
+                            type="button"
+                            onClick={handlePullCatalog}
+                            disabled={pullingCatalog}
+                            style={{
+                              background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
+                              color: "white",
+                              padding: "10px 18px",
+                              borderRadius: 8,
+                              fontWeight: 800,
+                              fontSize: 13,
+                              border: "none",
+                              cursor: pullingCatalog ? "not-allowed" : "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              boxShadow: "0 4px 12px rgba(37,99,235,0.25)"
+                            }}
+                          >
+                            <RefreshCw size={15} className={pullingCatalog ? "animate-spin" : ""} />
+                            {pullingCatalog ? "Sedang Menarik Produk..." : "📥 Tarik Produk & SKU dari Marketplace"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openAdd}
+                            style={{
+                              background: "#F8FAFC",
+                              color: "#334155",
+                              padding: "10px 16px",
+                              borderRadius: 8,
+                              fontWeight: 700,
+                              fontSize: 13,
+                              border: "1px solid #CBD5E1",
+                              cursor: "pointer"
+                            }}
+                          >
+                            + Tambah Barang Manual
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
               ) : rows.map((item) => {
                 const isOpen = open.has(item.id);
                 const mg = Number(item.harga_jual || 0) - Number(item.harga_beli || 0);
@@ -358,11 +504,16 @@ export default function BarangPage() {
                             </span>
                           )}
                         </div>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
-                          <span style={{ fontFamily: "monospace", fontSize: 12, color: "#64748B" }}>{item.kode || item.uid}</span>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
+                          <span style={{ fontFamily: "monospace", fontSize: 12, color: "#64748B", fontWeight: 700 }}>{item.kode || item.uid}</span>
                           {item.sumber === "produksi"
                             ? <span title="Stok dari Gudang & Stok (produksi)" style={{ display: "inline-flex", gap: 3, alignItems: "center", fontSize: 10, fontWeight: 800, color: "#0369A1", background: "#E0F2FE", padding: "2px 6px", borderRadius: 5 }}><Factory size={10} /> PRODUKSI</span>
                             : <span title="Stok diisi manual" style={{ display: "inline-flex", gap: 3, alignItems: "center", fontSize: 10, fontWeight: 800, color: "#6B21A8", background: "#F3E8FF", padding: "2px 6px", borderRadius: 5 }}><PenLine size={10} /> MANUAL</span>}
+                          {item.marketplace_mappings?.length > 0 && (
+                            <span title={`Terhubung dengan ${item.marketplace_mappings.length} variasi produk di toko online`} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 800, color: "#059669", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 6px", borderRadius: 5 }}>
+                              🛒 Marketplace ({item.marketplace_mappings.length} varian)
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td style={{ padding: "14px" }}>
@@ -413,6 +564,9 @@ export default function BarangPage() {
                       </td>
                       <td style={{ padding: "14px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          {item.marketplace_mappings?.length > 0 && (
+                            <button className="brg-act" onClick={() => handlePushStock(item.id)} title="Kirim / update stok barang ini ke Shopee & TikTok" style={{ padding: "6px 8px", background: "#ECFDF5", color: "#059669", borderRadius: 6, border: "1px solid #A7F3D0", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700 }}><CloudUpload size={13} /> Sync Stok</button>
+                          )}
                           {item.sumber === "produksi" && (
                             <button className="brg-act" onClick={() => setBarcodeItem(item)} title="Lihat & cetak barcode per pcs (hanya yang sudah masuk stok)" style={{ padding: "6px 10px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 6, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700 }}><Barcode size={15} /> Barcode</button>
                           )}

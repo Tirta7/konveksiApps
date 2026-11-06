@@ -129,6 +129,55 @@ export async function tiktokOrderDetails(shop: MarketplaceShop, ids: string[]): 
   return out;
 }
 
+/** Ambil katalog produk & SKU dari TikTok Shop. */
+export async function tiktokGetProducts(shop: MarketplaceShop): Promise<any[]> {
+  try {
+    const d = await tiktokApi("POST", "/product/202309/products/search", shop.access_token, { shop_cipher: shop.shop_cipher }, { page_size: 50 });
+    const products = d?.products || [];
+    return products.map((p: any) => ({
+      product_id: p.id,
+      title: p.title,
+      skus: (p.skus || []).map((s: any) => ({
+        id: s.id,
+        seller_sku: s.seller_sku,
+        price: s.price?.tax_exclusive_price || s.price?.sale_price || 0,
+        stock: s.inventory?.[0]?.quantity ?? 0
+      }))
+    }));
+  } catch (err: any) {
+    console.error("tiktokGetProducts error:", err.message);
+    return [];
+  }
+}
+
+/** Update stok produk/variasi ke TikTok Shop. */
+export async function tiktokUpdateStock(
+  shop: MarketplaceShop,
+  updates: { product_id: string; sku_id: string; stock: number }[]
+) {
+  const grouped = new Map<string, typeof updates>();
+  for (const u of updates) {
+    const arr = grouped.get(u.product_id) || [];
+    arr.push(u);
+    grouped.set(u.product_id, arr);
+  }
+
+  const results: any[] = [];
+  for (const [prodId, list] of grouped.entries()) {
+    try {
+      const skus = list.map((u) => ({
+        id: u.sku_id,
+        available_stock: Math.max(0, Math.floor(Number(u.stock) || 0))
+      }));
+      const res = await tiktokApi("POST", `/product/202309/products/${prodId}/stocks/update`, shop.access_token, { shop_cipher: shop.shop_cipher }, { skus });
+      results.push({ product_id: prodId, success: true, res });
+    } catch (err: any) {
+      results.push({ product_id: prodId, success: false, error: err.message });
+    }
+  }
+  return results;
+}
+
 /** Label kanal: Tokopedia bila payload menandai demikian, selain itu label toko. */
 function channelLabel(o: any, shop: MarketplaceShop): string {
   const hint = [o.order_source, o.channel, o.platform, o.source_platform, o.sales_channel].filter(Boolean).join(" ");
