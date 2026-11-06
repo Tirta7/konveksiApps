@@ -7,6 +7,7 @@ import {
   toSizeMap, stageName,
   type SizeQty,
 } from "@/lib/stock";
+import { pushWarehouseStockToMarketplace } from "@/lib/marketplace-api/stock-sync";
 
 const sumQty = (arr?: SizeQty[]) => (arr || []).reduce((s, x) => s + Number(x?.jumlah || 0), 0);
 const cleanItems = (items: any[]): SizeQty[] =>
@@ -187,8 +188,10 @@ export async function POST(req: NextRequest) {
 
       const sumber = `${inbound.tahap}${inbound.vendor_nama && inbound.vendor_nama !== "-" ? ` · ${inbound.vendor_nama}` : ""}`;
       const movementIds: number[] = [];
+      const updatedBarangIds = new Set<number>();
       for (const a of alokasi) {
         const barang = resolveBarang(data, a, inbound.kategori, inbound.warna || "");
+        if (barang?.id) updatedBarangIds.add(Number(barang.id));
         const kode = barang.kode as string;
         const items = a.items.map((it: SizeQty) => ({ ...it, sku: skuCode(kode, it.size) }));
         const jumlah = sumQty(items);
@@ -280,6 +283,18 @@ export async function POST(req: NextRequest) {
       }
 
       writeData(data);
+
+      // Otomatis sinkronkan penambahan stok fisik ini ke Shopee & TikTok
+      try {
+        for (const bId of updatedBarangIds) {
+          pushWarehouseStockToMarketplace(data, bId).catch((err) =>
+            console.error("Auto push stock error:", err.message)
+          );
+        }
+      } catch (err: any) {
+        console.error("Auto push error:", err.message);
+      }
+
       return NextResponse.json({ success: true, jumlah: totalMasuk, reject: totalReject, sisa: habis ? 0 : sisa, movement_ids: movementIds, nota_reject: rejectNota });
     }
 
