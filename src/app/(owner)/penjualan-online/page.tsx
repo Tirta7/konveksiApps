@@ -143,8 +143,8 @@ export default function PenjualanOnlinePage() {
   const [activeDatePreset, setActiveDatePreset] = useState<string>("semua");
   const [sortBy, setSortBy] = useState<"terbaru" | "terlama" | "sla_terdekat" | "nominal_terbesar">("terbaru");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [showGuide, setShowGuide] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
+  const [showGuide, setShowGuide] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "summary">("table");
   const [selectedPenjualan, setSelectedPenjualan] = useState<any | null>(null);
   const [deletingOrder, setDeletingOrder] = useState<string | null>(null);
@@ -637,27 +637,27 @@ export default function PenjualanOnlinePage() {
         .table-row-hover:hover { background: #F8FAFC; }
       `}</style>
       
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "#F1F5F9" }}>
         
-        <div style={{ padding: "24px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "16px 28px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", marginBottom: 4 }}>Penjualan Online</h1>
-            <p style={{ fontSize: 13, color: "#64748B" }}>Integrasi laporan CSV pesanan (TikTok, Shopee, dll) untuk memotong stok.</p>
+            <h1 style={{ fontSize: 22, fontWeight: 900, color: "#0F172A", margin: "0 0 2px 0" }}>Penjualan Online</h1>
+            <p style={{ fontSize: 12.5, color: "#64748B", margin: 0 }}>Integrasi pesanan marketplace (Shopee, TikTok, dll) untuk pemotongan stok otomatis.</p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button 
               onClick={handleSyncMarketplace} 
               disabled={syncingMp} 
-              style={{ background: "#3B82F6", color: "white", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: syncingMp ? "not-allowed" : "pointer", boxShadow: "0 4px 10px rgba(59,130,246,0.25)", opacity: syncingMp ? 0.7 : 1 }}
+              style={{ background: "#3B82F6", color: "white", padding: "8px 14px", borderRadius: 9, fontSize: 12.5, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: syncingMp ? "not-allowed" : "pointer", boxShadow: "0 2px 8px rgba(59,130,246,0.2)", opacity: syncingMp ? 0.7 : 1 }}
             >
-              <RefreshCw size={17} className={syncingMp ? "animate-spin" : ""} />
+              <RefreshCw size={15} className={syncingMp ? "animate-spin" : ""} />
               {syncingMp ? "Sinkron..." : "Sinkron Marketplace"}
             </button>
-            <button id="btn-online-scan" onClick={() => { setScanOrderId(undefined); setShowScan(true); }} style={{ background: "linear-gradient(135deg,#F97316,#EC4899)", color: "white", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", boxShadow: "0 4px 10px rgba(236,72,153,0.25)" }}>
-              <ScanLine size={18} /> Scan Barcode Kirim
+            <button id="btn-online-scan" onClick={() => { setScanOrderId(undefined); setShowScan(true); }} style={{ background: "linear-gradient(135deg,#F97316,#EC4899)", color: "white", padding: "8px 14px", borderRadius: 9, fontSize: 12.5, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", boxShadow: "0 2px 8px rgba(236,72,153,0.2)" }}>
+              <ScanLine size={16} /> Scan Barcode Kirim
             </button>
-            <label style={{ background: "#10B981", color: "white", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1, boxShadow: "0 4px 10px rgba(16, 185, 129, 0.2)", transition: "all 0.2s" }}>
-              <UploadCloud size={18} />
+            <label style={{ background: "#10B981", color: "white", padding: "8px 14px", borderRadius: 9, fontSize: 12.5, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 6, cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1, boxShadow: "0 2px 8px rgba(16, 185, 129, 0.2)", transition: "all 0.2s" }}>
+              <UploadCloud size={16} />
               {uploading ? "Memproses..." : "Upload Pesanan CSV"}
               <input type="file" accept=".csv" onChange={handleFileUpload} disabled={uploading} style={{ display: "none" }} />
             </label>
@@ -680,25 +680,25 @@ export default function PenjualanOnlinePage() {
         )}
 
         {/* 1. Ringkasan Cepat & KPI Cards */}
-        <div style={{ padding: "20px 32px 0 32px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+        <div style={{ padding: "12px 28px 0 28px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
           {/* Card 1: Total Pesanan */}
           <div 
             onClick={() => { setFilterStatusScan("semua"); setFilterStatusPesanan("semua"); }}
             style={{ 
-              background: "white", padding: "16px 20px", borderRadius: 14, border: (filterStatusScan === "semua" && filterStatusPesanan === "semua") ? "2px solid #3B82F6" : "1px solid #E2E8F0", 
-              boxShadow: "0 2px 8px rgba(0,0,0,0.03)", cursor: "pointer", transition: "all 0.2s" 
+              background: "white", padding: "12px 18px", borderRadius: 12, border: (filterStatusScan === "semua" && filterStatusPesanan === "semua") ? "2px solid #3B82F6" : "1px solid #E2E8F0", 
+              boxShadow: "0 2px 6px rgba(0,0,0,0.02)", cursor: "pointer", transition: "all 0.15s" 
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Pesanan Masuk</span>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <ShoppingCart size={16} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Pesanan Masuk</span>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ShoppingCart size={15} />
               </div>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#0F172A" }}>
-              {totalPesanan} <span style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>Order</span>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#0F172A" }}>
+              {totalPesanan} <span style={{ fontSize: 12, fontWeight: 700, color: "#94A3B8" }}>Order</span>
             </div>
-            <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+            <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 2 }}>
               Total {totalProduk.toLocaleString("id-ID")} pcs barang diimpor
             </div>
           </div>
@@ -708,23 +708,23 @@ export default function PenjualanOnlinePage() {
             onClick={() => setFilterStatusScan("belum_discan")}
             style={{ 
               background: countBelumDiscan > 0 ? "#FFFDF5" : "white", 
-              padding: "16px 20px", borderRadius: 14, 
+              padding: "12px 18px", borderRadius: 12, 
               border: filterStatusScan === "belum_discan" ? "2px solid #F97316" : countBelumDiscan > 0 ? "1px solid #FDE68A" : "1px solid #E2E8F0", 
-              boxShadow: "0 2px 8px rgba(0,0,0,0.03)", cursor: "pointer", transition: "all 0.2s" 
+              boxShadow: "0 2px 6px rgba(0,0,0,0.02)", cursor: "pointer", transition: "all 0.15s" 
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: countBelumDiscan > 0 ? "#D97706" : "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: countBelumDiscan > 0 ? "#D97706" : "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Perlu Dikemas (Belum Scan)
               </span>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Clock size={16} />
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Clock size={15} />
               </div>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: countBelumDiscan > 0 ? "#D97706" : "#0F172A" }}>
-              {countBelumDiscan} <span style={{ fontSize: 13, fontWeight: 700, color: countBelumDiscan > 0 ? "#B45309" : "#94A3B8" }}>Order</span>
+            <div style={{ fontSize: 20, fontWeight: 900, color: countBelumDiscan > 0 ? "#D97706" : "#0F172A" }}>
+              {countBelumDiscan} <span style={{ fontSize: 12, fontWeight: 700, color: countBelumDiscan > 0 ? "#B45309" : "#94A3B8" }}>Order</span>
             </div>
-            <div style={{ fontSize: 11, color: countBelumDiscan > 0 ? "#B45309" : "#64748B", marginTop: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 10.5, color: countBelumDiscan > 0 ? "#B45309" : "#64748B", marginTop: 2, fontWeight: 600 }}>
               {pcsBelumDiscan.toLocaleString("id-ID")} pcs stok belum terpotong
             </div>
           </div>
@@ -734,53 +734,54 @@ export default function PenjualanOnlinePage() {
             onClick={() => setFilterStatusScan("sudah_discan")}
             style={{ 
               background: countSudahDiscan > 0 ? "#F0FDF4" : "white", 
-              padding: "16px 20px", borderRadius: 14, 
+              padding: "12px 18px", borderRadius: 12, 
               border: filterStatusScan === "sudah_discan" ? "2px solid #10B981" : countSudahDiscan > 0 ? "1px solid #BBF7D0" : "1px solid #E2E8F0", 
-              boxShadow: "0 2px 8px rgba(0,0,0,0.03)", cursor: "pointer", transition: "all 0.2s" 
+              boxShadow: "0 2px 6px rgba(0,0,0,0.02)", cursor: "pointer", transition: "all 0.15s" 
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: countSudahDiscan > 0 ? "#059669" : "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: countSudahDiscan > 0 ? "#059669" : "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Sudah Discan (Selesai Kirim)
               </span>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "#ECFDF5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <CheckCircle2 size={16} />
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#ECFDF5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CheckCircle2 size={15} />
               </div>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: countSudahDiscan > 0 ? "#047857" : "#0F172A" }}>
-              {countSudahDiscan} <span style={{ fontSize: 13, fontWeight: 700, color: countSudahDiscan > 0 ? "#059669" : "#94A3B8" }}>Order</span>
+            <div style={{ fontSize: 20, fontWeight: 900, color: countSudahDiscan > 0 ? "#047857" : "#0F172A" }}>
+              {countSudahDiscan} <span style={{ fontSize: 12, fontWeight: 700, color: countSudahDiscan > 0 ? "#059669" : "#94A3B8" }}>Order</span>
             </div>
-            <div style={{ fontSize: 11, color: countSudahDiscan > 0 ? "#047857" : "#64748B", marginTop: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 10.5, color: countSudahDiscan > 0 ? "#047857" : "#64748B", marginTop: 2, fontWeight: 600 }}>
               ✓ {pcsSudahDiscan.toLocaleString("id-ID")} pcs stok resmi terpotong
             </div>
           </div>
 
           {/* Card 4: Total Omzet */}
-          <div style={{ background: "white", padding: "16px 20px", borderRadius: 14, border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Omzet Terimpor</span>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "#F5F3FF", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <CreditCard size={16} />
+          <div style={{ background: "white", padding: "12px 18px", borderRadius: 12, border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Omzet Terimpor</span>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "#F5F3FF", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CreditCard size={15} />
               </div>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#0F172A" }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#0F172A" }}>
               Rp {totalPendapatan.toLocaleString("id-ID")}
             </div>
-            <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+            <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 2 }}>
               Nilai kotor transaksi marketplace
             </div>
           </div>
         </div>
 
         {/* 2. Panduan Alur Impor & Keamanan Data (Collapsible) */}
-        <div style={{ padding: "14px 32px 0 32px" }}>
+        <div style={{ padding: "10px 28px 0 28px" }}>
           <div 
             style={{ 
               background: "linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)", 
               border: "1px solid #BFDBFE", 
-              borderRadius: 14, 
-              padding: "12px 18px",
-              boxShadow: "0 2px 6px rgba(59,130,246,0.05)"
+              borderRadius: 12, 
+              padding: showGuide ? "12px 18px" : "8px 16px",
+              boxShadow: "0 1px 4px rgba(59,130,246,0.05)",
+              transition: "padding 0.2s"
             }}
           >
             <div 
@@ -788,13 +789,13 @@ export default function PenjualanOnlinePage() {
               style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: "#DBEAFE", color: "#1D4ED8", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <ShieldCheck size={15} />
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#DBEAFE", color: "#1D4ED8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ShieldCheck size={14} />
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#1E3A8A" }}>
-                  Panduan Impor CSV & Pemotongan Stok Marketplace
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#1E3A8A" }}>
+                  Panduan Impor CSV &amp; Pemotongan Stok Marketplace
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 700, background: "#DBEAFE", color: "#1D4ED8", padding: "1px 8px", borderRadius: 99 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, background: "#DBEAFE", color: "#1D4ED8", padding: "1px 7px", borderRadius: 99 }}>
                   Aman dari Duplikasi
                 </span>
               </div>
@@ -838,7 +839,7 @@ export default function PenjualanOnlinePage() {
         </div>
 
         {/* 3. Toolbar: Search, Status Filter Chips & View Mode */}
-        <div style={{ padding: "14px 32px", background: "white", borderBottom: "1px solid #E2E8F0", marginTop: 14, flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        <div style={{ padding: "10px 28px", background: "white", borderBottom: "1px solid #E2E8F0", marginTop: 10, flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
           {/* Search Box */}
           <div style={{ flex: 1, minWidth: 260, display: "flex", alignItems: "center", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: 10, padding: "0 14px", maxWidth: 360 }}>
             <Search size={16} color="#94A3B8" />
@@ -962,14 +963,14 @@ export default function PenjualanOnlinePage() {
         </div>
 
         {/* 4. Toolbar Baris 2: Filter Tanggal & Pilihan Baris Per Halaman */}
-        <div style={{ padding: "10px 32px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ padding: "8px 28px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#334155" }}>
               <CalendarDays size={15} color="#3B82F6" />
               <span>Filter Tanggal:</span>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", background: "white", border: "1px solid #CBD5E1", borderRadius: 8, padding: "4px 8px" }}>
+            <div style={{ display: "flex", alignItems: "center", background: "white", border: "1px solid #CBD5E1", borderRadius: 8, padding: "3px 8px" }}>
               <span style={{ fontSize: 11, color: "#94A3B8", marginRight: 6, fontWeight: 700 }}>Dari</span>
               <input 
                 type="date" 
@@ -979,7 +980,7 @@ export default function PenjualanOnlinePage() {
               />
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", background: "white", border: "1px solid #CBD5E1", borderRadius: 8, padding: "4px 8px" }}>
+            <div style={{ display: "flex", alignItems: "center", background: "white", border: "1px solid #CBD5E1", borderRadius: 8, padding: "3px 8px" }}>
               <span style={{ fontSize: 11, color: "#94A3B8", marginRight: 6, fontWeight: 700 }}>Sampai</span>
               <input 
                 type="date" 
@@ -1002,7 +1003,7 @@ export default function PenjualanOnlinePage() {
                   type="button"
                   onClick={preset.action}
                   style={{
-                    padding: "4px 10px",
+                    padding: "4px 9px",
                     borderRadius: 6,
                     fontSize: 11,
                     fontWeight: 700,
@@ -1023,7 +1024,7 @@ export default function PenjualanOnlinePage() {
                   onClick={resetDateFilter}
                   title="Reset rentang tanggal"
                   style={{
-                    padding: "4px 10px",
+                    padding: "4px 9px",
                     borderRadius: 6,
                     fontSize: 11,
                     fontWeight: 700,
@@ -1044,7 +1045,7 @@ export default function PenjualanOnlinePage() {
 
           {/* Rows Per Page */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Tampilkan:</span>
+            <span style={{ fontSize: 12, color: "#64748B", fontWeight: 700 }}>Tampilkan:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
@@ -1054,24 +1055,25 @@ export default function PenjualanOnlinePage() {
                 border: "1px solid #CBD5E1",
                 borderRadius: 6,
                 fontSize: 12,
-                fontWeight: 700,
-                color: "#334155",
+                fontWeight: 800,
+                color: "#1E293B",
                 cursor: "pointer",
                 outline: "none"
               }}
             >
               <option value={10}>10 per halaman</option>
-              <option value={25}>25 per halaman</option>
+              <option value={25}>25 per halaman (Default)</option>
               <option value={50}>50 per halaman</option>
               <option value={100}>100 per halaman</option>
+              <option value={250}>250 per halaman</option>
+              <option value={9999}>Semua Data</option>
             </select>
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
-          {/* Main List Area */}
-          <div style={{ flex: 1, padding: "20px 32px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ flex: 1, background: "white", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "12px 28px 24px 28px" }}>
+          {/* Main List Area Card */}
+          <div style={{ flex: 1, minHeight: 650, background: "white", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
             
             {loading ? (
               <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}> Memuat data...</div>
@@ -1209,16 +1211,16 @@ export default function PenjualanOnlinePage() {
               </div>
             ) : (
               <>
-                <div style={{ flex: 1, overflow: "auto" }}>
+                <div style={{ flex: 1, minHeight: 520, overflow: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                  <thead style={{ position: "sticky", top: 0, zIndex: 10, background: "white" }}>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 10, background: "#F8FAFC", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
                     <tr style={{ borderBottom: "2px solid #E2E8F0" }}>
-                      <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Order ID & Waktu</th>
-                      <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Pembeli & Ekspedisi</th>
-                      <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Produk (Seller SKU)</th>
-                      <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Nominal</th>
-                      <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Status Pengemasan & Stok</th>
-                      <th style={{ padding: "14px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "right" }}>Aksi</th>
+                      <th style={{ padding: "11px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>Order ID &amp; Waktu</th>
+                      <th style={{ padding: "11px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>Pembeli &amp; Ekspedisi</th>
+                      <th style={{ padding: "11px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>Produk (Seller SKU)</th>
+                      <th style={{ padding: "11px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>Nominal</th>
+                      <th style={{ padding: "11px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>Status Pengemasan &amp; Stok</th>
+                      <th style={{ padding: "11px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "right" }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1241,7 +1243,7 @@ export default function PenjualanOnlinePage() {
                         }}
                       >
                         {/* 1. Order ID & Waktu */}
-                        <td style={{ padding: "14px 18px" }}>
+                        <td style={{ padding: "11px 14px", verticalAlign: "top" }}>
                           <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 10, fontWeight: 900, background: "#F1F5F9", color: "#64748B", padding: "1px 6px", borderRadius: 4 }}>
                               #{queueNum}
@@ -1263,7 +1265,7 @@ export default function PenjualanOnlinePage() {
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: 11, color: isToday ? "#059669" : "#64748B", marginTop: 5, display: "flex", alignItems: "center", gap: 4, fontWeight: isToday ? 700 : 500 }}>
+                          <div style={{ fontSize: 11, color: isToday ? "#059669" : "#64748B", marginTop: 4, display: "flex", alignItems: "center", gap: 4, fontWeight: isToday ? 700 : 500 }}>
                             <Calendar size={11}/> Psn: {d.tanggal_pesanan || "-"}
                           </div>
                           <div style={{ fontSize: 11, color: d.tipe_pesanan === "Pre-order" ? "#D97706" : "#64748B", marginTop: 2, display: "flex", alignItems: "center", gap: 4, fontWeight: d.tipe_pesanan === "Pre-order" ? 700 : 400 }}>
@@ -1272,46 +1274,60 @@ export default function PenjualanOnlinePage() {
                         </td>
 
                         {/* 2. Pembeli & Ekspedisi */}
-                        <td style={{ padding: "14px 18px", maxWidth: 200 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#334155", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {d.recipient}
+                        <td style={{ padding: "11px 14px", verticalAlign: "top", minWidth: 170 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1E293B" }}>
+                            {d.recipient || "-"}
                           </div>
-                          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>@{d.buyer_username}</div>
-                          {d.tracking_id && (
-                            <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
-                              <Truck size={11} color="#3B82F6" /> {d.shipping_provider || "Kurir"}: <b style={{ fontFamily: "monospace", color: "#0F172A" }}>{d.tracking_id}</b>
+                          {d.buyer_username && (
+                            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>@{d.buyer_username}</div>
+                          )}
+                          {d.tracking_id ? (
+                            <div style={{ fontSize: 11, color: "#475569", marginTop: 4, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                              <Truck size={12} color="#3B82F6" />
+                              <span>{d.shipping_provider || "Kurir"}:</span>
+                              <b style={{ fontFamily: "monospace", color: "#0F172A", background: "#F1F5F9", padding: "1px 6px", borderRadius: 4, border: "1px solid #E2E8F0" }}>{d.tracking_id}</b>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                              <Truck size={11} color="#CBD5E1" />
+                              <span>{d.shipping_provider || "Kurir"} · <span style={{ color: "#D97706", fontWeight: 600 }}>Menunggu Resi</span></span>
                             </div>
                           )}
                         </td>
 
                         {/* 3. Produk & SKU */}
-                        <td style={{ padding: "14px 18px", maxWidth: 280 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontWeight: 800, fontSize: 13, color: "#1D4ED8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                              {d.seller_sku}
+                        <td style={{ padding: "11px 14px", verticalAlign: "top", minWidth: 260 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 3 }}>
+                            <span style={{ fontWeight: 800, fontSize: 12.5, color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", padding: "2px 8px", borderRadius: 6 }}>
+                              {d.seller_sku || "NO SKU"}
                             </span>
-                            <span style={{ background: "#EFF6FF", color: "#1D4ED8", fontWeight: 800, fontSize: 11, padding: "1px 6px", borderRadius: 4 }}>
+                            <span style={{ background: "#2563EB", color: "white", fontWeight: 800, fontSize: 11, padding: "2px 7px", borderRadius: 6 }}>
                               x{d.quantity}
                             </span>
                           </div>
-                          <div style={{ fontSize: 12, color: "#64748B", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <div style={{ fontSize: 12.5, color: "#0F172A", fontWeight: 700, lineHeight: 1.4 }}>
                             {d.variation || d.product_name}
                           </div>
+                          {d.variation && d.product_name && d.variation !== d.product_name && (
+                            <div style={{ fontSize: 11, color: "#64748B", marginTop: 2, lineHeight: 1.3 }}>
+                              {d.product_name}
+                            </div>
+                          )}
                         </td>
 
                         {/* 4. Nominal */}
-                        <td style={{ padding: "14px 18px" }}>
-                          <div style={{ fontWeight: 800, fontSize: 13, color: "#10B981" }}>
+                        <td style={{ padding: "11px 14px", verticalAlign: "top", minWidth: 120 }}>
+                          <div style={{ fontWeight: 900, fontSize: 13.5, color: "#059669" }}>
                             Rp {parseInt(d.order_amount || "0").toLocaleString("id-ID")}
                           </div>
-                          <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>
-                            {d.payment_method || "Transfer"}
+                          <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 3, display: "inline-flex", alignItems: "center", gap: 3, background: "#F8FAFC", border: "1px solid #E2E8F0", padding: "1px 6px", borderRadius: 4 }}>
+                            <CreditCard size={10} color="#94A3B8" /> {d.payment_method || "Online"}
                           </div>
                         </td>
 
                         {/* 5. Status Pengemasan & Stok */}
-                        <td style={{ padding: "14px 18px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 5, alignItems: "flex-start" }}>
+                        <td style={{ padding: "11px 14px", verticalAlign: "top", minWidth: 190 }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
                             {/* Status Marketplace */}
                             <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                               <span style={{ 
@@ -1319,10 +1335,10 @@ export default function PenjualanOnlinePage() {
                                 background: (d.dibatalkan || d.status === "Dibatalkan") ? "#FEE2E2" : d.status === "Selesai" ? "#DCFCE7" : d.status === "Dikirim" ? "#DBEAFE" : "#F1F5F9",
                                 color: (d.dibatalkan || d.status === "Dibatalkan") ? "#DC2626" : d.status === "Selesai" ? "#047857" : d.status === "Dikirim" ? "#1D4ED8" : "#475569"
                               }}>
-                                {d.dibatalkan ? "Dibatalkan" : d.status}
+                                {d.dibatalkan ? "Dibatalkan" : d.status || "Perlu Dikirim"}
                               </span>
                               {(d.tipe_pesanan === "Pre-order") && (
-                                <span style={{ background: "#FEF3C7", color: "#D97706", padding: "1px 6px", borderRadius: 4, fontSize: 9.5, fontWeight: 800, border: "1px solid #FDE68A" }}>
+                                <span style={{ background: "#FEF3C7", color: "#D97706", padding: "2px 6px", borderRadius: 5, fontSize: 9.5, fontWeight: 800, border: "1px solid #FDE68A" }}>
                                   PRE-ORDER
                                 </span>
                               )}
@@ -1350,8 +1366,8 @@ export default function PenjualanOnlinePage() {
                         </td>
 
                         {/* 6. Aksi */}
-                        <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", gap: 6, justifyContent: "flex-end" }}>
+                        <td style={{ padding: "11px 14px", verticalAlign: "middle", textAlign: "right", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "inline-flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                             {!isSudahDiscan ? (
                               <button
                                 type="button"
@@ -1564,22 +1580,42 @@ export default function PenjualanOnlinePage() {
           </div>
         </div>
 
-        {/* Detail Drawer */}
-        <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 400, background: "white", borderLeft: "1px solid #E2E8F0", boxShadow: "-4px 0 24px rgba(0,0,0,0.05)", transform: selectedPenjualan ? "translateX(0)" : "translateX(100%)", transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1)", display: "flex", flexDirection: "column", zIndex: 20 }}>
+        {/* Detail Drawer Modal */}
+        {selectedPenjualan && (
+          <div 
+            onClick={() => setSelectedPenjualan(null)} 
+            style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", backdropFilter: "blur(2px)", zIndex: 9998 }} 
+          />
+        )}
+        <div style={{ 
+          position: "fixed", 
+          top: 0, 
+          right: 0, 
+          bottom: 0, 
+          width: 440, 
+          maxWidth: "92vw",
+          background: "white", 
+          boxShadow: "-8px 0 30px rgba(0,0,0,0.15)", 
+          transform: selectedPenjualan ? "translateX(0)" : "translateX(100%)", 
+          transition: "transform 0.25s cubic-bezier(0.16,1,0.3,1)", 
+          display: "flex", 
+          flexDirection: "column", 
+          zIndex: 9999 
+        }}>
           {selectedPenjualan && (
             <>
-              <div style={{ padding: "24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#10B981", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Detail Pesanan</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", fontFamily: "monospace" }}>{selectedPenjualan.order_id}</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#10B981", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Detail Pesanan</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: "#0F172A", fontFamily: "monospace" }}>{selectedPenjualan.order_id}</div>
                 </div>
                 <button onClick={() => setSelectedPenjualan(null)} style={{ background: "white", border: "1px solid #E2E8F0", width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748B" }}>
                   <ChevronRight size={16} />
                 </button>
               </div>
               
-              <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-                <div style={{ marginBottom: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+                <div style={{ marginBottom: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div style={{ background: "white", padding: 12, borderRadius: 12, border: "1px solid #E2E8F0" }}>
                     <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Calendar size={12}/> Waktu Pesanan</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginTop: 4 }}>{selectedPenjualan.tanggal_pesanan || "-"}</div>
@@ -1592,86 +1628,86 @@ export default function PenjualanOnlinePage() {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <FileText size={16}/> Informasi Produk
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                    <FileText size={15}/> Informasi Produk
                   </div>
-                  <div style={{ background: "#F8FAFC", padding: 16, borderRadius: 12, border: "1px solid #E2E8F0" }}>
-                    <div style={{ fontWeight: 800, color: "#0F172A", fontSize: 14, marginBottom: 4 }}>{selectedPenjualan.product_name}</div>
-                    <div style={{ color: "#3B82F6", fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{selectedPenjualan.variation}</div>
-                    <div style={{ display: "flex", gap: 16, borderTop: "1px dashed #CBD5E1", paddingTop: 12 }}>
+                  <div style={{ background: "#F8FAFC", padding: 14, borderRadius: 12, border: "1px solid #E2E8F0" }}>
+                    <div style={{ fontWeight: 800, color: "#0F172A", fontSize: 13.5, marginBottom: 4 }}>{selectedPenjualan.product_name}</div>
+                    <div style={{ color: "#3B82F6", fontWeight: 700, fontSize: 12.5, marginBottom: 8 }}>{selectedPenjualan.variation}</div>
+                    <div style={{ display: "flex", gap: 16, borderTop: "1px dashed #CBD5E1", paddingTop: 10 }}>
                       <div>
                         <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Quantity</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>{selectedPenjualan.quantity} pcs</div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0F172A" }}>{selectedPenjualan.quantity} pcs</div>
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Seller SKU</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#1D4ED8" }}>{selectedPenjualan.seller_sku}</div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: "#1D4ED8" }}>{selectedPenjualan.seller_sku}</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <User size={16}/> Info Pembeli
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                    <User size={15}/> Info Pembeli
                   </div>
-                  <div style={{ background: "white", padding: 16, borderRadius: 12, border: "1px solid #E2E8F0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ background: "white", padding: 14, borderRadius: 12, border: "1px solid #E2E8F0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Penerima</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{selectedPenjualan.recipient}</div>
-                      <div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{selectedPenjualan.phone || "-"}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A" }}>{selectedPenjualan.recipient}</div>
+                      <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 2 }}>{selectedPenjualan.phone || "-"}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Username</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>@{selectedPenjualan.buyer_username}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A" }}>@{selectedPenjualan.buyer_username}</div>
                     </div>
-                    <div style={{ gridColumn: "span 2", borderTop: "1px dashed #E2E8F0", paddingTop: 16 }}>
+                    <div style={{ gridColumn: "span 2", borderTop: "1px dashed #E2E8F0", paddingTop: 12 }}>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Alamat Pengiriman</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", marginTop: 4 }}>{selectedPenjualan.city}, {selectedPenjualan.province}</div>
-                      <div style={{ fontSize: 12, color: "#64748B", marginTop: 2, lineHeight: 1.5 }}>{selectedPenjualan.address}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#0F172A", marginTop: 2 }}>{selectedPenjualan.city}, {selectedPenjualan.province}</div>
+                      <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 2, lineHeight: 1.5 }}>{selectedPenjualan.address}</div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <Truck size={16}/> Ekspedisi & Resi
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Truck size={15}/> Ekspedisi &amp; Resi
                   </div>
-                  <div style={{ background: "white", padding: 16, borderRadius: 12, border: "1px solid #E2E8F0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ background: "white", padding: 14, borderRadius: 12, border: "1px solid #E2E8F0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Kurir</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{selectedPenjualan.shipping_provider || "-"}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A" }}>{selectedPenjualan.shipping_provider || "-"}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>No. Resi</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{selectedPenjualan.tracking_id || "-"}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A", fontFamily: "monospace" }}>{selectedPenjualan.tracking_id || "-"}</div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <CreditCard size={16}/> Pembayaran & Status
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                    <CreditCard size={15}/> Pembayaran &amp; Status
                   </div>
-                  <div style={{ background: "white", padding: 16, borderRadius: 12, border: "1px solid #E2E8F0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ background: "white", padding: 14, borderRadius: 12, border: "1px solid #E2E8F0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Metode</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: "#1D4ED8" }}>{selectedPenjualan.payment_method || "-"}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: "#1D4ED8" }}>{selectedPenjualan.payment_method || "-"}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Total Dibayar</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#10B981" }}>Rp {parseInt(selectedPenjualan.order_amount || "0").toLocaleString("id-ID")}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 900, color: "#10B981" }}>Rp {parseInt(selectedPenjualan.order_amount || "0").toLocaleString("id-ID")}</div>
                     </div>
                   </div>
                 </div>
                 
-                <div style={{ background: selectedPenjualan.barcodes?.length ? "#ECFDF5" : "#FEF2F2", border: `1px solid ${selectedPenjualan.barcodes?.length ? "#A7F3D0" : "#FECACA"}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                <div style={{ background: selectedPenjualan.barcodes?.length ? "#ECFDF5" : "#FEF2F2", border: `1px solid ${selectedPenjualan.barcodes?.length ? "#A7F3D0" : "#FECACA"}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 800, color: selectedPenjualan.barcodes?.length ? "#065F46" : "#991B1B", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
                     <Box size={14}/> Barang Keluar dari Gudang ({selectedPenjualan.scanned_qty || 0}/{selectedPenjualan.order_qty || selectedPenjualan.quantity} pcs)
                   </div>
                   {(selectedPenjualan.dibatalkan || selectedPenjualan.status === "Dibatalkan") && (selectedPenjualan.scanned_qty || 0) > 0 && (
-                    <div style={{ fontSize: 12, color: "#991B1B", background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.5, fontWeight: 600 }}>
+                    <div style={{ fontSize: 11.5, color: "#991B1B", background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 8, padding: "8px 10px", marginBottom: 10, lineHeight: 1.5, fontWeight: 600 }}>
                       🚨 <b>PERINGATAN: Pesanan ini dibatalkan di marketplace!</b><br />
                       Ada {selectedPenjualan.scanned_qty} pcs barcode yang sudah ter-scan keluar. Klik tombol <b>Batalkan</b> pada tiap barcode di bawah agar barang kembali ke stok gudang.
                     </div>
@@ -1713,7 +1749,7 @@ export default function PenjualanOnlinePage() {
                   )}
                 </div>
                 {selectedPenjualan.returs?.length > 0 && (
-                  <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                  <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#92400E", marginBottom: 6 }}>Riwayat Retur</div>
                     {selectedPenjualan.returs.map((r: any) => (
                       <div key={r.id} style={{ fontSize: 12, color: "#78350F", padding: "4px 0", borderTop: "1px dashed #FDE68A" }}>
@@ -1723,14 +1759,14 @@ export default function PenjualanOnlinePage() {
                   </div>
                 )}
 
-                <div style={{ paddingTop: 16, borderTop: "1px solid #E2E8F0" }}>
+                <div style={{ paddingTop: 14, borderTop: "1px solid #E2E8F0" }}>
                   <button
                     type="button"
                     disabled={deletingOrder === selectedPenjualan.order_id}
                     onClick={() => handleHapusPesanan(selectedPenjualan.order_id)}
                     style={{
                       width: "100%",
-                      padding: "10px 14px",
+                      padding: "9px 14px",
                       borderRadius: 10,
                       border: "1px solid #FECACA",
                       background: "#FEF2F2",
@@ -1747,7 +1783,7 @@ export default function PenjualanOnlinePage() {
                   >
                     <Trash2 size={14} /> {deletingOrder === selectedPenjualan.order_id ? "Menghapus..." : "Hapus Pesanan dari Sistem"}
                   </button>
-                  <div style={{ fontSize: 10, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>
+                  <div style={{ fontSize: 10, color: "#94A3B8", textAlign: "center", marginTop: 5 }}>
                     Gunakan untuk membersihkan pesanan uji coba / pesanan yang dibatalkan.
                   </div>
                 </div>
@@ -1755,7 +1791,6 @@ export default function PenjualanOnlinePage() {
             </>
           )}
         </div>
-      </div>
       </div>
     </>
   );
