@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
-import { Plus, Edit2, Trash2, X, Barcode, Search, Package, Boxes, Wallet, TrendingUp, ShoppingBag, Info, ChevronDown, ChevronUp, ChevronRight, Factory, PenLine, Store, Globe, Truck, AlertTriangle, RefreshCw, CloudUpload } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Barcode, Search, Package, Boxes, Wallet, TrendingUp, ShoppingBag, Info, ChevronDown, ChevronUp, ChevronRight, Factory, PenLine, Store, Globe, Truck, AlertTriangle, RefreshCw, CloudUpload, ExternalLink, Layers } from "lucide-react";
 import { toast } from "sonner";
 import BarangBarcodeModal from "@/components/BarangBarcodeModal";
 
@@ -25,6 +25,7 @@ export default function BarangPage() {
   const [fKategori, setFKategori] = useState("semua");
   const [fSumber, setFSumber] = useState("semua");
   const [open, setOpen] = useState<Set<number>>(new Set());
+  const [variantModalItem, setVariantModalItem] = useState<any | null>(null);
 
   const [formData, setFormData] = useState({
     kategori_id: "",
@@ -544,11 +545,63 @@ export default function BarangPage() {
                             ? <span title="Stok dari Gudang & Stok (produksi)" style={{ display: "inline-flex", gap: 3, alignItems: "center", fontSize: 10, fontWeight: 800, color: "#0369A1", background: "#E0F2FE", padding: "2px 6px", borderRadius: 5 }}><Factory size={10} /> PRODUKSI</span>
                             : <span title="Stok diisi manual" style={{ display: "inline-flex", gap: 3, alignItems: "center", fontSize: 10, fontWeight: 800, color: "#6B21A8", background: "#F3E8FF", padding: "2px 6px", borderRadius: 5 }}><PenLine size={10} /> MANUAL</span>}
                           {item.marketplace_mappings?.length > 0 && (
-                            <span title={`Terhubung dengan ${item.marketplace_mappings.length} variasi produk di toko online`} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 800, color: "#059669", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 6px", borderRadius: 5 }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVariantModalItem(item);
+                              }}
+                              title="Klik untuk membuka popup rincian varian, ukuran & SKU marketplace"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                color: "#047857",
+                                background: "#ECFDF5",
+                                border: "1px solid #A7F3D0",
+                                padding: "2px 7px",
+                                borderRadius: 5,
+                                cursor: "pointer",
+                              }}
+                            >
                               🛒 Marketplace ({item.marketplace_mappings.length} varian)
-                            </span>
+                              <ExternalLink size={10} style={{ opacity: 0.7 }} />
+                            </button>
                           )}
                         </div>
+                        {item.marketplace_mappings?.length > 0 && (
+                          <div style={{ display: "flex", gap: 3.5, alignItems: "center", marginTop: 5, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 9.5, color: "#94A3B8", fontWeight: 700 }}>Varian:</span>
+                            {item.marketplace_mappings.map((m: any, idx: number) => {
+                              const vName = m.variation_name || (m.seller_sku ? m.seller_sku.split("-").pop() : `${idx + 1}`);
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setVariantModalItem(item);
+                                  }}
+                                  title={`Varian: ${vName}\nSKU Toko: ${m.seller_sku || m.raw_sku || "-"}\nKlik untuk lihat detail`}
+                                  style={{
+                                    fontSize: 9.5,
+                                    fontWeight: 700,
+                                    padding: "1px 5px",
+                                    borderRadius: 4,
+                                    background: "#F8FAFC",
+                                    border: "1px solid #CBD5E1",
+                                    color: "#334155",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {vName}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: "14px" }}>
                         {item.kategori_nama
@@ -674,6 +727,75 @@ export default function BarangPage() {
                           ) : (
                             <div style={{ fontSize: 12, color: "#64748B", background: "white", border: "1px dashed #CBD5E1", borderRadius: 10, padding: 12 }}>
                               Barang manual — stok <b>{item.stok} pcs</b> diisi lewat tombol Edit. Barang ini tidak memiliki barcode per pcs, sehingga belum bisa dijual lewat scan. Untuk barang hasil produksi, gunakan alur PO → Gudang &amp; Stok.
+                            </div>
+                          )}
+
+                          {/* Detail Varian Marketplace Terhubung */}
+                          {item.marketplace_mappings?.length > 0 && (
+                            <div style={{ marginTop: 12, background: "white", border: "1px solid #BBF7D0", borderRadius: 12, padding: "12px 16px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 800, color: "#065F46", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                    🛒 Pemetaan Varian Marketplace Terhubung ({item.marketplace_mappings.length} Varian)
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "#047857", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 8px", borderRadius: 6, fontWeight: 700 }}>
+                                    {item.marketplace_mappings[0]?.shop_name || "Shopee (lavaira.id)"}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePushStock(item.id)}
+                                  style={{
+                                    fontSize: 11.5,
+                                    fontWeight: 700,
+                                    color: "#059669",
+                                    background: "#ECFDF5",
+                                    border: "1px solid #A7F3D0",
+                                    borderRadius: 6,
+                                    padding: "4px 10px",
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4
+                                  }}
+                                >
+                                  <CloudUpload size={13} /> Kirim Stok Varian ke Marketplace
+                                </button>
+                              </div>
+
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(185px, 1fr))", gap: 8 }}>
+                                {item.marketplace_mappings.map((m: any, idx: number) => {
+                                  const vName = m.variation_name || (m.seller_sku ? m.seller_sku.split("-").pop() : `Varian ${idx + 1}`);
+                                  const matchSize = item.sizes?.find((s: any) =>
+                                    s.size.toLowerCase() === vName.toLowerCase() ||
+                                    (m.seller_sku && m.seller_sku.toLowerCase().endsWith("-" + s.size.toLowerCase()))
+                                  );
+                                  const curStock = matchSize ? matchSize.jumlah : item.stok;
+                                  return (
+                                    <div key={idx} style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 10px" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <span style={{ fontWeight: 800, fontSize: 13, color: "#0F172A" }}>
+                                          {vName}
+                                        </span>
+                                        <span style={{ fontSize: 9.5, fontWeight: 800, color: "#059669", background: "#D1FAE5", padding: "1px 6px", borderRadius: 4 }}>
+                                          {m.platform ? m.platform.toUpperCase() : "SHOPEE"}
+                                        </span>
+                                      </div>
+                                      <div style={{ fontSize: 10.5, fontFamily: "monospace", color: "#64748B", marginTop: 4, wordBreak: "break-all" }}>
+                                        {m.seller_sku || m.raw_sku || "-"}
+                                      </div>
+                                      <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 11, borderTop: "1px dashed #E2E8F0", paddingTop: 4 }}>
+                                        <span style={{ color: "#64748B" }}>
+                                          Stok ERP: <b style={{ color: curStock > 0 ? "#059669" : "#EF4444" }}>{curStock} pcs</b>
+                                        </span>
+                                        {matchSize?.terjual != null && (
+                                          <span style={{ color: "#8B5CF6", fontWeight: 700 }}>Laku: {matchSize.terjual}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                         </td>
@@ -853,6 +975,119 @@ export default function BarangPage() {
                 <button type="submit" style={{ flex: 1, padding: "12px", background: "#2563EB", color: "white", borderRadius: 8, border: "none", fontWeight: 600, cursor: "pointer" }}>Simpan</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Varian Marketplace */}
+      {variantModalItem && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 660, margin: "16px", borderRadius: 16, overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", background: "#F8FAFC" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>
+                    🛒 Detail Varian Terhubung di Marketplace
+                  </h3>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "#059669", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 8px", borderRadius: 6 }}>
+                    {variantModalItem.marketplace_mappings?.length || 0} Varian Aktif
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, color: "#64748B", marginTop: 4, fontWeight: 600 }}>
+                  {variantModalItem.nama_barang} &bull; <span style={{ fontFamily: "monospace", color: "#3B82F6" }}>{variantModalItem.kode || variantModalItem.uid}</span>
+                </div>
+              </div>
+              <button onClick={() => setVariantModalItem(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 4 }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: "20px 24px", maxHeight: "65vh", overflowY: "auto" }}>
+              <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#1E40AF", lineHeight: 1.5 }}>
+                ℹ️ Varian ini terhubung secara langsung dengan katalog toko <b>Shopee & TikTok (lavaira.id)</b>. Saat customer checkout pesanan di marketplace, sistem ERP akan memotong stok varian ukuran dan kode SKU yang cocok di bawah ini:
+              </div>
+
+              <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                  <thead>
+                    <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", color: "#475569", fontSize: 11, textTransform: "uppercase" }}>
+                      <th style={{ padding: "10px 12px", textAlign: "left" }}>Varian / Ukuran</th>
+                      <th style={{ padding: "10px 12px", textAlign: "left" }}>Seller SKU (Marketplace)</th>
+                      <th style={{ padding: "10px 12px", textAlign: "center" }}>Toko</th>
+                      <th style={{ padding: "10px 12px", textAlign: "right" }}>Stok ERP</th>
+                      <th style={{ padding: "10px 12px", textAlign: "right" }}>Terjual</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(variantModalItem.marketplace_mappings || []).map((m: any, idx: number) => {
+                      const vName = m.variation_name || (m.seller_sku ? m.seller_sku.split("-").pop() : `Varian ${idx + 1}`);
+                      const matchSize = variantModalItem.sizes?.find((s: any) =>
+                        s.size.toLowerCase() === vName.toLowerCase() ||
+                        (m.seller_sku && m.seller_sku.toLowerCase().endsWith("-" + s.size.toLowerCase()))
+                      );
+                      const curStock = matchSize ? matchSize.jumlah : variantModalItem.stok;
+                      const sold = matchSize ? matchSize.terjual : 0;
+                      return (
+                        <tr key={idx} style={{ borderBottom: idx < variantModalItem.marketplace_mappings.length - 1 ? "1px solid #F1F5F9" : "none" }}>
+                          <td style={{ padding: "10px 12px", fontWeight: 800, color: "#0F172A" }}>
+                            <span style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", padding: "2px 8px", borderRadius: 6 }}>
+                              {vName}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 12px", fontFamily: "monospace", color: "#475569", fontSize: 11.5 }}>
+                            {m.seller_sku || m.raw_sku || "-"}
+                          </td>
+                          <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: "#047857", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 6px", borderRadius: 4 }}>
+                              {m.platform ? m.platform.toUpperCase() : "SHOPEE"}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 800, color: curStock > 0 ? "#059669" : "#EF4444" }}>
+                            {curStock} pcs
+                          </td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: sold > 0 ? "#8B5CF6" : "#94A3B8" }}>
+                            {sold} pcs
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = variantModalItem.id;
+                  setVariantModalItem(null);
+                  handlePushStock(id);
+                }}
+                style={{
+                  padding: "8px 14px",
+                  background: "#ECFDF5",
+                  color: "#059669",
+                  border: "1px solid #A7F3D0",
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                <CloudUpload size={14} /> Sinkronkan Stok ke Marketplace
+              </button>
+              <button
+                type="button"
+                onClick={() => setVariantModalItem(null)}
+                style={{ padding: "8px 20px", background: "#2563EB", color: "white", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
