@@ -635,14 +635,22 @@ export default function PenjualanOnlinePage() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
         .table-row-hover:hover { background: #F8FAFC; }
+        html, body { overflow: hidden; height: 100%; }
+        .app-content { overflow: hidden !important; height: 100vh !important; padding-bottom: 0 !important; }
+        .penjualan-online-root {
+          height: 100vh !important;
+          max-height: 100vh !important;
+          padding-bottom: 0 !important;
+          overflow: hidden !important;
+        }
       `}</style>
       
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "#F1F5F9" }}>
+      <div className="penjualan-online-root" style={{ display: "flex", flexDirection: "column", height: "100vh", maxHeight: "100vh", background: "#F1F5F9", overflow: "hidden", boxSizing: "border-box" }}>
         
-        <div style={{ padding: "16px 28px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ padding: "14px 28px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, color: "#0F172A", margin: "0 0 2px 0" }}>Penjualan Online</h1>
-            <p style={{ fontSize: 12.5, color: "#64748B", margin: 0 }}>Integrasi pesanan marketplace (Shopee, TikTok, dll) untuk pemotongan stok otomatis.</p>
+            <h1 style={{ fontSize: 21, fontWeight: 900, color: "#0F172A", margin: "0 0 2px 0" }}>Penjualan Online</h1>
+            <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>Integrasi pesanan marketplace (Shopee, TikTok, dll) untuk pemotongan stok otomatis.</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button 
@@ -680,7 +688,7 @@ export default function PenjualanOnlinePage() {
         )}
 
         {/* 1. Ringkasan Cepat & KPI Cards */}
-        <div style={{ padding: "12px 28px 0 28px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
+        <div style={{ padding: "10px 28px 0 28px", flexShrink: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
           {/* Card 1: Total Pesanan */}
           <div 
             onClick={() => { setFilterStatusScan("semua"); setFilterStatusPesanan("semua"); }}
@@ -773,13 +781,13 @@ export default function PenjualanOnlinePage() {
         </div>
 
         {/* 2. Panduan Alur Impor & Keamanan Data (Collapsible) */}
-        <div style={{ padding: "10px 28px 0 28px" }}>
+        <div style={{ padding: "8px 28px 0 28px", flexShrink: 0 }}>
           <div 
             style={{ 
               background: "linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)", 
               border: "1px solid #BFDBFE", 
               borderRadius: 12, 
-              padding: showGuide ? "12px 18px" : "8px 16px",
+              padding: showGuide ? "10px 16px" : "6px 14px",
               boxShadow: "0 1px 4px rgba(59,130,246,0.05)",
               transition: "padding 0.2s"
             }}
@@ -839,7 +847,7 @@ export default function PenjualanOnlinePage() {
         </div>
 
         {/* 3. Toolbar: Search, Status Filter Chips & View Mode */}
-        <div style={{ padding: "10px 28px", background: "white", borderBottom: "1px solid #E2E8F0", marginTop: 10, flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+        <div style={{ padding: "8px 28px", background: "white", borderBottom: "1px solid #E2E8F0", marginTop: 8, flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
           {/* Search Box */}
           <div style={{ flex: 1, minWidth: 260, display: "flex", alignItems: "center", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: 10, padding: "0 14px", maxWidth: 360 }}>
             <Search size={16} color="#94A3B8" />
@@ -963,7 +971,7 @@ export default function PenjualanOnlinePage() {
         </div>
 
         {/* 4. Toolbar Baris 2: Filter Tanggal & Pilihan Baris Per Halaman */}
-        <div style={{ padding: "8px 28px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ padding: "6px 28px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#334155" }}>
               <CalendarDays size={15} color="#3B82F6" />
@@ -1071,9 +1079,9 @@ export default function PenjualanOnlinePage() {
           </div>
         </div>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "12px 28px 24px 28px" }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 28px 12px 28px", overflow: "hidden" }}>
           {/* Main List Area Card */}
-          <div style={{ flex: 1, minHeight: 650, background: "white", borderRadius: 16, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, minHeight: 0, background: "white", borderRadius: 14, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
             
             {loading ? (
               <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}> Memuat data...</div>
@@ -1211,7 +1219,7 @@ export default function PenjualanOnlinePage() {
               </div>
             ) : (
               <>
-                <div style={{ flex: 1, minHeight: 520, overflow: "auto" }}>
+                <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                   <thead style={{ position: "sticky", top: 0, zIndex: 10, background: "#F8FAFC", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
                     <tr style={{ borderBottom: "2px solid #E2E8F0" }}>
@@ -1427,14 +1435,14 @@ export default function PenjualanOnlinePage() {
 
               {/* Pagination Footer Bar */}
               <div style={{ 
-                padding: "12px 24px", 
+                padding: "8px 20px", 
                 background: "white", 
                 borderTop: "1px solid #E2E8F0", 
                 display: "flex", 
                 justifyContent: "space-between", 
                 alignItems: "center", 
                 flexWrap: "wrap", 
-                gap: 12,
+                gap: 8,
                 flexShrink: 0
               }}>
                 <div style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>
