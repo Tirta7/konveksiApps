@@ -132,7 +132,6 @@ export default function PenjualanOnlinePage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [syncingMp, setSyncingMp] = useState(false);
-  const [clearingSandbox, setClearingSandbox] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [scanOrderId, setScanOrderId] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
@@ -164,23 +163,6 @@ export default function PenjualanOnlinePage() {
       toast.error(e.message);
     } finally {
       setDeletingOrder(null);
-    }
-  };
-
-  const handleClearSandbox = async () => {
-    if (!window.confirm("Bersihkan seluruh pesanan uji coba (Sandbox) ini dari sistem? Seluruh pesanan test Shopee dan laporan settlement testing akan dihapus agar tabel bersih kembali 100%.")) return;
-    setClearingSandbox(true);
-    try {
-      const res = await fetch("/api/penjualan-online?action=clear_sandbox", { method: "DELETE" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Gagal membersihkan data testing");
-      toast.success(`Berhasil membersihkan ${json.deleted || 0} pesanan uji coba Sandbox!`);
-      setSelectedPenjualan(null);
-      await fetchData();
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setClearingSandbox(false);
     }
   };
 
@@ -656,30 +638,6 @@ export default function PenjualanOnlinePage() {
             <p style={{ fontSize: 13, color: "#64748B" }}>Integrasi laporan CSV pesanan (TikTok, Shopee, dll) untuk memotong stok.</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {data.some((o: any) => o.buyer_username === "local_main.id" || String(o.buyer_username || "").includes("sandbox") || String(o.marketplace || "").toLowerCase().includes("sandbox") || /^261105[A-Z0-9]+$/i.test(String(o.order_id || ""))) && (
-              <button
-                type="button"
-                onClick={handleClearSandbox}
-                disabled={clearingSandbox}
-                title="Hapus seluruh pesanan uji coba sandbox agar tabel bersih kembali"
-                style={{
-                  background: "#FEF2F2",
-                  color: "#DC2626",
-                  border: "1px solid #FECACA",
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 800,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  cursor: clearingSandbox ? "not-allowed" : "pointer"
-                }}
-              >
-                <Trash2 size={16} />
-                {clearingSandbox ? "Membersihkan..." : "Bersihkan Pesanan Sandbox"}
-              </button>
-            )}
             <button 
               onClick={handleSyncMarketplace} 
               disabled={syncingMp} 
