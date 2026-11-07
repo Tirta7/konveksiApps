@@ -154,14 +154,20 @@ export async function syncMarketplaceSettlements() {
         )
       );
 
-      for (const orderId of shopeeOrders.slice(0, 50)) {
+      const existingSet = new Set((data.settlement_online || []).map((s: any) => s.order_id));
+      const unSettled = shopeeOrders.filter((id) => !existingSet.has(id));
+      const toSync = [...unSettled, ...shopeeOrders].slice(0, 250);
+
+      for (const orderId of toSync) {
         try {
           const income = await shopeeEscrowDetail(shop, orderId);
           if (income) {
             const buyer_total = Number(income.buyer_total_amount || 0);
-            const comm_fee = Number(income.commission_fee || 0) + Number(income.service_fee || 0) + Number(income.transaction_fee || 0);
+            const comm_fee = Number(income.commission_fee || 0);
+            const service_fee = Number(income.service_fee || 0);
+            const trx_fee = Number(income.transaction_fee || 0);
             const aff_fee = Number(income.ams_commission_fee || 0);
-            const ship_fee = Number(income.final_shipping_fee || 0);
+            const ship_fee = Number(income.final_shipping_fee || income.actual_shipping_fee || 0);
             const voucher_fee = Number(income.voucher_from_seller || 0);
             const other_fee = Number(income.drc_adjustable_refund || 0) + voucher_fee;
             const net_payout = Number(income.escrow_amount || 0);
@@ -172,8 +178,11 @@ export async function syncMarketplaceSettlements() {
               jenis_transaksi: "Pesanan",
               pendapatan_kotor: buyer_total,
               biaya_komisi: comm_fee,
+              biaya_layanan: service_fee,
+              biaya_transaksi: trx_fee,
               biaya_afiliasi: aff_fee,
               biaya_ongkir: ship_fee,
+              voucher_penjual: voucher_fee,
               biaya_lainnya: other_fee,
               penyelesaian_pembayaran: net_payout,
               tanggal_pembayaran: new Date().toISOString()

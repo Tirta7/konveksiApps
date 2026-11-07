@@ -3,8 +3,8 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { 
   BarChart2, TrendingUp, Store, ShoppingBag, UploadCloud, DollarSign, Wallet, FileX, CreditCard, 
-  ChevronRight, Calculator, PieChart, Download, RefreshCw, Calendar, CalendarDays, X, CheckCircle2, Clock, Users, ArrowUpRight, Search,
-  Star, ThumbsUp, MessageSquare, AlertTriangle, Sparkles, Plus
+  ChevronRight, ChevronLeft, Calculator, PieChart, Download, RefreshCw, Calendar, CalendarDays, X, CheckCircle2, Clock, Users, ArrowUpRight, Search,
+  Star, ThumbsUp, MessageSquare, AlertTriangle, Sparkles, Plus, Copy, ExternalLink, Receipt, FileText, Check
 } from "lucide-react";
 import Papa from "papaparse";
 import { toast } from "sonner";
@@ -73,6 +73,19 @@ export default function LaporanPage() {
   const [filterEndDate, setFilterEndDate] = useState("");
   const [activeDatePreset, setActiveDatePreset] = useState<string>("semua");
   const [search, setSearch] = useState("");
+
+  // Detail Modal ala BigSeller
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
+  const [copiedOrderId, setCopiedOrderId] = useState(false);
+
+  // Pagination Laporan Keuangan
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderPageSize, setOrderPageSize] = useState<number>(50);
+
+  // Pagination & Search Review
+  const [reviewSearchQuery, setReviewSearchQuery] = useState("");
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewPageSize, setReviewPageSize] = useState<number>(20);
 
   const fetchData = useCallback(async (silent = false) => {
     // Hindari pemanggilan ganda secara bersamaan
@@ -426,13 +439,31 @@ export default function LaporanPage() {
           : "MENUNGGU CAIR (ESCROW)";
 
         const items = sale.items || [];
+        const totalQty = items.length ? items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0) : Number(sale.quantity || 1);
+
+        // Rincian potongan spesifik BigSeller / Shopee Seller Center
+        const adminShopee = displayKomisi;
+        const affiliateShopee = biayaAfiliasi;
+        const ongkirToko = biayaOngkir;
+        // Selisih antara totalPotongan dan (admin + afiliasi + ongkir) adalah Biaya Layanan Gratis Ongkir Xtra / Layanan Transaksi
+        const layananGratisOngkir = settleData?.biaya_layanan != null
+          ? Number(settleData.biaya_layanan)
+          : Math.max(0, totalPotongan - (adminShopee + affiliateShopee + ongkirToko));
+        const biayaTransaksi = settleData?.biaya_transaksi != null ? Number(settleData.biaya_transaksi) : 0;
+        const voucherPenjual = settleData?.voucher_penjual != null ? Number(settleData.voucher_penjual) : 0;
+
+        // Estimasi HPP Konveksi: ~Rp 64.750 per pcs celana jeans
+        const hppPerPcs = 64750;
+        const estimasiHPP = totalQty * hppPerPcs;
+        const profitKonveksi = isSudahCair ? Math.max(0, labaBersih - estimasiHPP) : 0;
+        const marginKonveksiPct = labaBersih > 0 ? Math.round((profitKonveksi / labaBersih) * 100) : 0;
 
         return {
           order_id: sale.order_id,
           marketplace: sale.marketplace || (/^\d{6}[A-Z0-9]{6,}$/i.test(sale.order_id) ? "Shopee" : "TikTok Shop"),
           product: items.length ? items.map((i: any) => i.product_name).join(", ") : sale.product_name,
           variation: items.length ? items.map((i: any) => i.variation).filter(Boolean).join(", ") : sale.variation,
-          total_qty: items.length ? items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0) : Number(sale.quantity || 1),
+          total_qty: totalQty,
           tanggal: sale.tanggal_pesanan,
           isRetur,
           isSudahCair,
@@ -452,7 +483,23 @@ export default function LaporanPage() {
           biayaLainnya,
           totalPotongan,
           labaBersih,
-          settleData
+          settleData,
+          rawSale: sale,
+          items: items.length ? items : [{ product_name: sale.product_name, variation: sale.variation, quantity: totalQty, unit_price: omzetKotor }],
+          breakdown: {
+            hargaProduk: omzetKotor,
+            adminShopee,
+            layananGratisOngkir,
+            biayaTransaksi,
+            affiliateShopee,
+            ongkirToko,
+            voucherPenjual,
+            totalPotongan,
+            pencairanBersih: isSudahCair ? labaBersih : 0,
+            estimasiHPP,
+            profitKonveksi,
+            marginKonveksiPct,
+          }
         };
       })
       .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
@@ -514,6 +561,15 @@ export default function LaporanPage() {
     totalPotongan,
     totalReturLoss
   } = totals;
+
+  // Pagination & Display Laporan Keuangan
+  const paginatedOrders = useMemo(() => {
+    if (orderPageSize === -1) return filteredOrders;
+    const start = (orderPage - 1) * orderPageSize;
+    return filteredOrders.slice(start, start + orderPageSize);
+  }, [filteredOrders, orderPage, orderPageSize]);
+
+  const totalOrderPages = orderPageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredOrders.length / orderPageSize));
 
   // Export 1-Klik ke Excel / CSV
   const handleExportCSV = () => {
@@ -613,9 +669,25 @@ export default function LaporanPage() {
     return cleanOrganicReviews.filter((r: any) => {
       if (filterReviewRating !== "semua" && Number(r.rating) !== Number(filterReviewRating)) return false;
       if (filterReviewProduct !== "semua" && r.product_name !== filterReviewProduct) return false;
+      if (reviewSearchQuery.trim()) {
+        const q = reviewSearchQuery.toLowerCase();
+        const m = (r.comment || "").toLowerCase().includes(q) ||
+                  (r.buyer_name || "").toLowerCase().includes(q) ||
+                  (r.product_name || "").toLowerCase().includes(q) ||
+                  (r.variation || "").toLowerCase().includes(q);
+        if (!m) return false;
+      }
       return true;
     });
-  }, [cleanOrganicReviews, filterReviewRating, filterReviewProduct]);
+  }, [cleanOrganicReviews, filterReviewRating, filterReviewProduct, reviewSearchQuery]);
+
+  const paginatedReviews = useMemo(() => {
+    if (reviewPageSize === -1) return displayedReviews;
+    const start = (reviewPage - 1) * reviewPageSize;
+    return displayedReviews.slice(start, start + reviewPageSize);
+  }, [displayedReviews, reviewPage, reviewPageSize]);
+
+  const totalReviewPages = reviewPageSize === -1 ? 1 : Math.max(1, Math.ceil(displayedReviews.length / reviewPageSize));
 
   const avgOverallRating = useMemo(() => {
     if (!cleanOrganicReviews.length) return 5;
@@ -986,8 +1058,19 @@ export default function LaporanPage() {
                           </td>
                         </tr>
                       ) : (
-                        filteredOrders.map((o, i) => (
-                          <tr key={o.order_id || i} className="table-row-hover" style={{ borderBottom: "1px solid #F1F5F9", background: o.isRetur ? "#FEF2F2" : "transparent" }}>
+                        paginatedOrders.map((o, i) => (
+                          <tr
+                            key={o.order_id || i}
+                            onClick={() => setSelectedOrderDetail(o)}
+                            className="table-row-hover"
+                            style={{
+                              borderBottom: "1px solid #F1F5F9",
+                              background: o.isRetur ? "#FEF2F2" : "transparent",
+                              cursor: "pointer",
+                              transition: "background 0.15s ease",
+                            }}
+                            title="Klik baris ini untuk melihat rincian potongan marketplace & pencairan bersih ala BigSeller"
+                          >
                             {/* 1. Order ID & Waktu */}
                             <td style={{ padding: "14px 18px", maxWidth: 220 }}>
                               <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6 }}>
@@ -1011,8 +1094,9 @@ export default function LaporanPage() {
                               <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {o.product || "-"}
                               </div>
-                              <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-                                {o.variation ? `${o.variation} · ` : ""}<b>x{o.total_qty || 1} pcs</b>
+                              <div style={{ fontSize: 11, color: "#64748B", marginTop: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span>{o.variation ? `${o.variation} · ` : ""}<b>x{o.total_qty || 1} pcs</b></span>
+                                <span style={{ fontSize: 10, color: "#2563EB", fontWeight: 700 }}>Detail ↗</span>
                               </div>
                             </td>
 
@@ -1073,6 +1157,82 @@ export default function LaporanPage() {
                           </tr>
                         ))
                       )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls Laporan Keuangan */}
+                <div style={{ padding: "12px 24px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#64748B" }}>
+                    <span>Tampilkan:</span>
+                    <select
+                      value={orderPageSize}
+                      onChange={(e) => {
+                        setOrderPageSize(Number(e.target.value));
+                        setOrderPage(1);
+                      }}
+                      style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 12, fontWeight: 700, color: "#1E293B", background: "white" }}
+                    >
+                      <option value={25}>25 pesanan / hal</option>
+                      <option value={50}>50 pesanan / hal</option>
+                      <option value={100}>100 pesanan / hal</option>
+                      <option value={-1}>Semua ({filteredOrders.length})</option>
+                    </select>
+                    <span>
+                      Menampilkan <b>{filteredOrders.length > 0 ? (orderPageSize === -1 ? 1 : (orderPage - 1) * orderPageSize + 1) : 0}</b> - <b>{orderPageSize === -1 ? filteredOrders.length : Math.min(filteredOrders.length, orderPage * orderPageSize)}</b> dari <b>{filteredOrders.length}</b> total pesanan
+                    </span>
+                  </div>
+
+                  {orderPageSize !== -1 && totalOrderPages > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <button
+                        type="button"
+                        disabled={orderPage <= 1}
+                        onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #CBD5E1",
+                          background: orderPage <= 1 ? "#F1F5F9" : "white",
+                          color: orderPage <= 1 ? "#94A3B8" : "#1E293B",
+                          cursor: orderPage <= 1 ? "not-allowed" : "pointer",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                      >
+                        <ChevronLeft size={14} /> Sebelumnya
+                      </button>
+
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B", padding: "0 8px" }}>
+                        Hal {orderPage} dari {totalOrderPages}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={orderPage >= totalOrderPages}
+                        onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #CBD5E1",
+                          background: orderPage >= totalOrderPages ? "#F1F5F9" : "white",
+                          color: orderPage >= totalOrderPages ? "#94A3B8" : "#1E293B",
+                          cursor: orderPage >= totalOrderPages ? "not-allowed" : "pointer",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}
+                      >
+                        Berikutnya <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
                     </tbody>
                   </table>
                 </div>
@@ -1425,16 +1585,36 @@ export default function LaporanPage() {
                       </p>
                     </div>
 
-                    {/* Filter Bintang & Produk */}
+                    {/* Filter Bintang, Produk & Search */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", background: "#F1F5F9", borderRadius: 8, padding: "2px 8px", border: "1px solid #CBD5E1" }}>
+                        <Search size={14} color="#64748B" />
+                        <input
+                          type="text"
+                          placeholder="Cari ulasan / nama pembeli..."
+                          value={reviewSearchQuery}
+                          onChange={(e) => {
+                            setReviewSearchQuery(e.target.value);
+                            setReviewPage(1);
+                          }}
+                          style={{ padding: "4px 8px", border: "none", outline: "none", fontSize: 12, background: "transparent", width: 170 }}
+                        />
+                        {reviewSearchQuery && (
+                          <button onClick={() => setReviewSearchQuery("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: 0 }}><X size={13} /></button>
+                        )}
+                      </div>
+
                       <select
                         value={filterReviewProduct}
-                        onChange={(e) => setFilterReviewProduct(e.target.value)}
+                        onChange={(e) => {
+                          setFilterReviewProduct(e.target.value);
+                          setReviewPage(1);
+                        }}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "white" }}
                       >
-                        <option value="semua">Semua Model Produk</option>
+                        <option value="semua">Semua Model Produk ({cleanOrganicReviews.length})</option>
                         {cleanOrganicSummary.map((s: any) => (
-                          <option key={s.product_name} value={s.product_name}>{s.product_name}</option>
+                          <option key={s.product_name} value={s.product_name}>{s.product_name} ({s.total_reviews})</option>
                         ))}
                       </select>
 
@@ -1443,7 +1623,10 @@ export default function LaporanPage() {
                           <button
                             key={r}
                             type="button"
-                            onClick={() => setFilterReviewRating(r as any)}
+                            onClick={() => {
+                              setFilterReviewRating(r as any);
+                              setReviewPage(1);
+                            }}
                             style={{
                               padding: "5px 10px",
                               borderRadius: 8,
@@ -1469,7 +1652,7 @@ export default function LaporanPage() {
                         Belum ada ulasan yang sesuai dengan filter ini.
                       </div>
                     ) : (
-                      displayedReviews.map((rev: any) => (
+                      paginatedReviews.map((rev: any) => (
                         <div key={rev.id} style={{ padding: 18, borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1528,6 +1711,60 @@ export default function LaporanPage() {
                         </div>
                       ))
                     )}
+
+                    {/* Pagination Controls Review Feed */}
+                    {reviewPageSize !== -1 && totalReviewPages > 1 && (
+                      <div style={{ marginTop: 8, paddingTop: 14, borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                        <div style={{ fontSize: 12, color: "#64748B" }}>
+                          Menampilkan <b>{(reviewPage - 1) * reviewPageSize + 1}</b> - <b>{Math.min(displayedReviews.length, reviewPage * reviewPageSize)}</b> dari <b>{displayedReviews.length}</b> ulasan
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <button
+                            type="button"
+                            disabled={reviewPage <= 1}
+                            onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 6,
+                              border: "1px solid #CBD5E1",
+                              background: reviewPage <= 1 ? "#F1F5F9" : "white",
+                              color: reviewPage <= 1 ? "#94A3B8" : "#1E293B",
+                              cursor: reviewPage <= 1 ? "not-allowed" : "pointer",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4
+                            }}
+                          >
+                            <ChevronLeft size={13} /> Sebelumnya
+                          </button>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B", padding: "0 6px" }}>
+                            Hal {reviewPage} dari {totalReviewPages}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={reviewPage >= totalReviewPages}
+                            onClick={() => setReviewPage((p) => Math.min(totalReviewPages, p + 1))}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 6,
+                              border: "1px solid #CBD5E1",
+                              background: reviewPage >= totalReviewPages ? "#F1F5F9" : "white",
+                              color: reviewPage >= totalReviewPages ? "#94A3B8" : "#1E293B",
+                              cursor: reviewPage >= totalReviewPages ? "not-allowed" : "pointer",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4
+                            }}
+                          >
+                            Berikutnya <ChevronRight size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1538,6 +1775,248 @@ export default function LaporanPage() {
         </div>
 
       </div>
+
+      {/* Modal Detail Rekonsiliasi Pesanan & Potongan Marketplace (ala BigSeller) */}
+      {selectedOrderDetail && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 680, margin: "16px", borderRadius: 18, overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+            
+            {/* Modal Header */}
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Receipt size={18} color="#2563EB" /> Rincian Finansial Pesanan & Potongan
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 5,
+                    background: selectedOrderDetail.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
+                    color: selectedOrderDetail.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
+                    border: selectedOrderDetail.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
+                  }}>
+                    {selectedOrderDetail.marketplace} (lavaira.id)
+                  </span>
+                </div>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, fontFamily: "monospace", fontWeight: 800, color: "#1E293B" }}>
+                    #{selectedOrderDetail.order_id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedOrderDetail.order_id);
+                      setCopiedOrderId(true);
+                      setTimeout(() => setCopiedOrderId(false), 2000);
+                      toast.success("Order ID berhasil disalin");
+                    }}
+                    style={{ fontSize: 11, color: copiedOrderId ? "#059669" : "#64748B", background: "white", border: "1px solid #CBD5E1", borderRadius: 4, padding: "1px 6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3 }}
+                  >
+                    {copiedOrderId ? <Check size={11} /> : <Copy size={11} />} {copiedOrderId ? "Disalin" : "Salin"}
+                  </button>
+                  <span style={{ fontSize: 11.5, color: "#64748B" }}>
+                    &bull; {selectedOrderDetail.tanggal || "-"}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrderDetail(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 4 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body Scrollable */}
+            <div style={{ padding: "20px 24px", maxHeight: "70vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+              
+              {/* Status Banner */}
+              <div style={{
+                padding: "10px 14px", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: selectedOrderDetail.isRetur ? "#FEF2F2" : selectedOrderDetail.isSudahCair ? "#ECFDF5" : "#FFFBEB",
+                border: selectedOrderDetail.isRetur ? "1px solid #FECACA" : selectedOrderDetail.isSudahCair ? "1px solid #A7F3D0" : "1px solid #FDE68A"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {selectedOrderDetail.isRetur ? <AlertTriangle size={15} color="#DC2626" /> : selectedOrderDetail.isSudahCair ? <CheckCircle2 size={15} color="#059669" /> : <Clock size={15} color="#D97706" />}
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: selectedOrderDetail.isRetur ? "#991B1B" : selectedOrderDetail.isSudahCair ? "#065F46" : "#92400E" }}>
+                    Status: {selectedOrderDetail.statusPencairan}
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: selectedOrderDetail.isSudahCair ? "#047857" : "#B45309" }}>
+                  {selectedOrderDetail.isSudahCair ? "Dana Sudah Masuk ke Saldo Penjual" : "Menunggu Konfirmasi Terima Pembeli"}
+                </span>
+              </div>
+
+              {/* Card 1: Produk yang Dipesan */}
+              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", marginBottom: 6 }}>
+                  Item Produk Dipesan
+                </div>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0F172A", lineHeight: 1.4 }}>
+                  {selectedOrderDetail.product}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 12 }}>
+                  <span style={{ color: "#475569" }}>
+                    Variasi: <b style={{ color: "#2563EB" }}>{selectedOrderDetail.variation || "-"}</b>
+                  </span>
+                  <span style={{ fontWeight: 800, color: "#0F172A" }}>
+                    Qty: {selectedOrderDetail.total_qty} pcs &times; Rp {(selectedOrderDetail.omzetKotor / (selectedOrderDetail.total_qty || 1)).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 2: Rincian Finansial Lengkap Ala BigSeller */}
+              <div style={{ border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden" }}>
+                
+                {/* 1. Pendapatan Kotor Pembeli */}
+                <div style={{ background: "#F8FAFC", padding: "10px 16px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: "#0F172A" }}>
+                    1. Total Pembayaran Pembeli (Omzet Kotor)
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
+                    Rp {selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div style={{ padding: "8px 16px", fontSize: 12, display: "flex", flexDirection: "column", gap: 5, background: "white", borderBottom: "1px solid #E2E8F0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#475569" }}>
+                    <span>Harga Produk (Subtotal Produk)</span>
+                    <span style={{ fontWeight: 600 }}>+Rp {selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B" }}>
+                    <span>Ongkos Kirim Dibayar Pembeli</span>
+                    <span style={{ fontWeight: 600 }}>+Rp 0</span>
+                  </div>
+                </div>
+
+                {/* 2. Rincian Seluruh Beban Potongan Marketplace */}
+                <div style={{ background: "#FEF2F2", padding: "10px 16px", borderBottom: "1px solid #FECACA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: "#991B1B" }}>
+                    2. Rincian Seluruh Potongan & Beban Marketplace
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "#DC2626" }}>
+                    -Rp {selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                
+                <div style={{ padding: "10px 16px", fontSize: 12, display: "flex", flexDirection: "column", gap: 7, background: "white", borderBottom: "1px solid #E2E8F0" }}>
+                  {/* Biaya Administrasi */}
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                    <span>🏢 Biaya Administrasi Shopee (Komisi Platform)</span>
+                    <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.adminShopee > 0 ? "#DC2626" : "#64748B" }}>
+                      {selectedOrderDetail.breakdown?.adminShopee > 0 ? `-Rp ${selectedOrderDetail.breakdown.adminShopee.toLocaleString("id-ID")}` : "Rp 0"}
+                    </span>
+                  </div>
+
+                  {/* Beban Gratis Ongkir XTRA */}
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                    <span>🚚 Biaya Layanan Program Gratis Ongkir XTRA &amp; Layanan</span>
+                    <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.layananGratisOngkir > 0 ? "#DC2626" : "#64748B" }}>
+                      {selectedOrderDetail.breakdown?.layananGratisOngkir > 0 ? `-Rp ${selectedOrderDetail.breakdown.layananGratisOngkir.toLocaleString("id-ID")}` : "Rp 0"}
+                    </span>
+                  </div>
+
+                  {/* Komisi Afiliasi AMS */}
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                    <span>🤝 Komisi Afiliasi Shopee (AMS Creator Fee)</span>
+                    <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.affiliateShopee > 0 ? "#8B5CF6" : "#64748B" }}>
+                      {selectedOrderDetail.breakdown?.affiliateShopee > 0 ? `-Rp ${selectedOrderDetail.breakdown.affiliateShopee.toLocaleString("id-ID")}` : "Rp 0"}
+                    </span>
+                  </div>
+
+                  {/* Ongkir Ditanggung Penjual */}
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                    <span>📦 Beban Ongkir Toko Ditanggung Penjual</span>
+                    <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.ongkirToko > 0 ? "#EA580C" : "#64748B" }}>
+                      {selectedOrderDetail.breakdown?.ongkirToko > 0 ? `-Rp ${selectedOrderDetail.breakdown.ongkirToko.toLocaleString("id-ID")}` : "Rp 0"}
+                    </span>
+                  </div>
+
+                  {/* Voucher Diskon Toko */}
+                  {selectedOrderDetail.breakdown?.voucherPenjual > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                      <span>🎟️ Voucher Diskon Ditanggung Toko</span>
+                      <span style={{ fontWeight: 700, color: "#DC2626" }}>
+                        -Rp {selectedOrderDetail.breakdown.voucherPenjual.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Ringkasan Subtotal Potongan */}
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #CBD5E1", paddingTop: 6, fontWeight: 800, color: "#991B1B" }}>
+                    <span>Total Potongan Marketplace</span>
+                    <span>-Rp {selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
+
+                {/* 3. Pencairan Bersih Masuk Saldo Penjual */}
+                <div style={{ background: "#ECFDF5", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#065F46" }}>
+                      3. Pencairan Bersih Masuk Saldo (Net Settlement)
+                    </div>
+                    <div style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
+                      Dana bersih riil yang diterima penjual setelah seluruh potongan
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#059669" }}>
+                    Rp {(selectedOrderDetail.isSudahCair ? selectedOrderDetail.labaBersih : selectedOrderDetail.omzetKotor).toLocaleString("id-ID")}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Card 3: Analisis Laba Konveksi (HPP Produksi vs Penjualan Online) */}
+              <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: "12px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", textTransform: "uppercase" }}>
+                    🏭 Analisis Profit Konveksi (Setelah HPP Modal)
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "#15803D", background: "white", padding: "2px 8px", borderRadius: 6, border: "1px solid #86EFAC" }}>
+                    Margin Bersih: {selectedOrderDetail.breakdown?.marginKonveksiPct || 0}%
+                  </span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12 }}>
+                  <div>
+                    <span style={{ color: "#475569" }}>Modal Produksi (HPP):</span>
+                    <div style={{ fontWeight: 800, color: "#0F172A" }}>Rp {(selectedOrderDetail.breakdown?.estimasiHPP || 0).toLocaleString("id-ID")}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: "#475569" }}>Laba Bersih Riil Konveksi:</span>
+                    <div style={{ fontWeight: 900, color: "#15803D" }}>Rp {(selectedOrderDetail.breakdown?.profitKonveksi || 0).toLocaleString("id-ID")}</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const summary = `Order ID: ${selectedOrderDetail.order_id}\nProduk: ${selectedOrderDetail.product} (${selectedOrderDetail.variation || "-"})\nOmzet Kotor: Rp ${selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}\nTotal Potongan: -Rp ${selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}\nPencairan Bersih: Rp ${(selectedOrderDetail.isSudahCair ? selectedOrderDetail.labaBersih : selectedOrderDetail.omzetKotor).toLocaleString("id-ID")}\nStatus: ${selectedOrderDetail.statusPencairan}`;
+                  navigator.clipboard.writeText(summary);
+                  toast.success("Ringkasan pesanan berhasil disalin");
+                }}
+                style={{ padding: "8px 14px", background: "white", color: "#334155", border: "1px solid #CBD5E1", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <Copy size={13} /> Salin Ringkasan
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrderDetail(null)}
+                style={{ padding: "8px 22px", background: "#2563EB", color: "white", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                Tutup
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </>
   );
 }
