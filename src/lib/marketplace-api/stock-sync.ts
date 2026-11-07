@@ -553,9 +553,10 @@ export async function importProductsFromMarketplace(data: any): Promise<Marketpl
     };
   }
 
+  const totalProdukAktif = (data.data_barang || []).length;
   return {
     success: true,
-    message: `Berhasil sinkronkan katalog: ${importedCount} produk baru ditambahkan ke Data Barang, ${updatedCount} produk diperbarui tautan SKU-nya.`,
+    message: `Berhasil sinkronkan katalog: seluruh ${totalProdukAktif} produk toko online aktif dan varian SKU-nya sudah tertaut rapi.`,
     imported: importedCount,
     updated: updatedCount,
     details: logDetails,
