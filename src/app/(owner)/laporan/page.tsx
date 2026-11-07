@@ -153,6 +153,7 @@ export default function LaporanPage() {
     const unEvent = subscribeRealtimeEvent((ev) => {
       if (
         ev === "marketplace:order_received" ||
+        ev === "marketplace:order_updated" ||
         ev === "settlement_updated" ||
         ev === "retur_processed" ||
         ev === "retur_online_updated" ||

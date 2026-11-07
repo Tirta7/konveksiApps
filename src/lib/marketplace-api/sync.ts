@@ -100,9 +100,13 @@ export async function syncShop(key: string, opts: { days?: number } = {}) {
     fresh.last_result = result;
     fresh.last_error = null;
     writeData(data);
-    // HANYA bunyikan / beri notifikasi jika benar-benar ada pesanan BARU yang masuk (bukan pesanan lama yang diupdate)
+    // Notifikasi pesanan baru masuk
     if (result.added > 0) {
       emitEvent("marketplace:order_received", { platform: fresh.platform, shop: fresh.shop_name, added: result.added });
+    }
+    // Realtime update ke UI (misal: nomor resi terbit, status berubah ke Diproses / Dibatalkan)
+    if (result.updated > 0) {
+      emitEvent("marketplace:order_updated", { platform: fresh.platform, shop: fresh.shop_name, updated: result.updated });
     }
     return { success: true, shop: fresh.shop_name, ...result };
   } catch (e: any) {
@@ -124,9 +128,13 @@ export async function syncOrderIds(platform: "tiktok" | "shopee", shopId: string
   const fresh = findShop(data, key)!;
   const result = upsertMarketplaceOrders(data, fresh, mapped);
   writeData(data);
-  // HANYA bunyikan / beri notifikasi jika pesanan benar-benar BARU masuk
+  // Notifikasi pesanan baru masuk
   if (result.added > 0) {
     emitEvent("marketplace:order_received", { platform: fresh.platform, shop: fresh.shop_name, added: result.added });
+  }
+  // Realtime update ke UI (nomor resi / status terupdate)
+  if (result.updated > 0) {
+    emitEvent("marketplace:order_updated", { platform: fresh.platform, shop: fresh.shop_name, updated: result.updated });
   }
   return result;
 }

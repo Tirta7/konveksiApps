@@ -200,10 +200,15 @@ export default function PenjualanOnlinePage() {
     // Auto-sync cepat di background saat halaman dibuka
     fetch("/api/marketplace/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }).catch(() => {});
 
-    // Polling background tiap 30 detik untuk menjamin pesanan baru selalu masuk tanpa intervensi
-    const autoSyncTimer = setInterval(() => {
-      fetch("/api/marketplace/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }).catch(() => {});
-    }, 30_000);
+    // Polling background tiap 20 detik untuk menjamin pesanan & resi baru selalu update otomatis tanpa intervensi manual
+    const autoSyncTimer = setInterval(async () => {
+      try {
+        const res = await fetch("/api/marketplace/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+        const json = await res.json();
+        const hasUpdates = (json.results || []).some((r: any) => (r.added > 0 || r.updated > 0));
+        if (hasUpdates) fetchData();
+      } catch {}
+    }, 20_000);
 
     const unSync = subscribeRealtime(() => fetchData());
     const unEvent = subscribeRealtimeEvent((ev, evData) => {
@@ -211,6 +216,8 @@ export default function PenjualanOnlinePage() {
         if (evData?.added > 0) {
           playOrderSound();
         }
+        fetchData();
+      } else if (ev === "marketplace:order_updated") {
         fetchData();
       } else if (
         ev === "retur_processed" ||

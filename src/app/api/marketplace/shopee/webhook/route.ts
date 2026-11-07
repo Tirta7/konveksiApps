@@ -9,11 +9,16 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
 
-    const base = appUrl() || "https://vr.vocpos.id";
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const proto = req.headers.get("x-forwarded-proto") || "https";
+    const base = appUrl() || (host ? `${proto}://${host}` : "https://vrsurft.vocpos.id");
     const pushUrl = `${base}/api/marketplace/shopee/webhook`;
 
-    // Verifikasi tanda tangan push Shopee
-    const isValid = verifyShopeePush(pushUrl, rawBody, authHeader);
+    // Verifikasi tanda tangan push Shopee (coba dengan pushUrl dinamis atau domain vrsurft)
+    let isValid = verifyShopeePush(pushUrl, rawBody, authHeader);
+    if (!isValid && !pushUrl.includes("vrsurft.vocpos.id")) {
+      isValid = verifyShopeePush("https://vrsurft.vocpos.id/api/marketplace/shopee/webhook", rawBody, authHeader);
+    }
     if (!isValid) {
       return NextResponse.json({ error: "invalid_signature", message: "Tanda tangan push tidak valid" }, { status: 401 });
     }
