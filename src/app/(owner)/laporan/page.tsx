@@ -1236,782 +1236,784 @@ export default function LaporanPage() {
               </div>
             </>
           ) : activeTab === "produk" ? (
-    <>
-      {/* Product Analytics Tab (Kategori & PO) */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
-        <div style={{ display: "flex", background: "white", border: "1px solid #E2E8F0", padding: 4, borderRadius: 12 }}>
-          <button style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer", transition: "all 0.2s", background: periode === "minggu" ? "#F1F5F9" : "transparent", color: periode === "minggu" ? "#0F172A" : "#64748B" }} onClick={() => setPeriode("minggu")}>Minggu Ini</button>
-          <button style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer", transition: "all 0.2s", background: periode === "bulan" ? "#F1F5F9" : "transparent", color: periode === "bulan" ? "#0F172A" : "#64748B" }} onClick={() => setPeriode("bulan")}>Bulan Ini</button>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 24, marginBottom: 24, flexWrap: "wrap" }}>
-        {/* Stat Cards */}
-        <div style={{ flex: 1, minWidth: 200, background: "white", borderRadius: 24, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#F3F4F6", color: "#4B5563", display: "flex", alignItems: "center", justifyContent: "center" }}><TrendingUp size={28} /></div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Total Penjualan</div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: "#1F2937", lineHeight: 1 }}>{totalAll} <span style={{ fontSize: 14, color: "#94A3B8" }}>pcs</span></div>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, minWidth: 200, background: "white", borderRadius: 24, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EFF6FF", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center" }}><ShoppingBag size={28} /></div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>PO Online</div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: "#2563EB", lineHeight: 1 }}>{totalPO} <span style={{ fontSize: 14, color: "#94A3B8" }}>pcs</span></div>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, minWidth: 200, background: "white", borderRadius: 24, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#ECFDF5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center" }}><Store size={28} /></div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Retail Offline</div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: "#059669", lineHeight: 1 }}>{totalRetail} <span style={{ fontSize: 14, color: "#94A3B8" }}>pcs</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
-
-        {/* Grafik */}
-        <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", alignItems: "center", gap: 10 }}>
-            <BarChart2 size={20} color="#3B82F6" />
-            <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>Grafik Perbandingan Penjualan</h2>
-          </div>
-          <div style={{ padding: 24 }}>
-            {loading && data.length === 0 ? (
-              <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat grafik...</div>
-            ) : data.length === 0 ? (
-              <div style={{ height: 320, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#94A3B8" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}></div>
-                <div style={{ fontWeight: 800, color: "#0F172A" }}>Belum ada data penjualan</div>
-                <div style={{ fontSize: 13, marginTop: 4 }}>Data akan muncul di sini setelah ada PO / retail</div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="kategori" tick={{ fontSize: 12, fill: "#64748B", fontWeight: 600 }} angle={-25} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: "#64748B", fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <RechartsTooltip
-                    formatter={(v: any, name: any) => [`${v} pcs`, name === "total_po" ? "PO Online" : name === "total_retail" ? "Retail Offline" : "Total"]}
-                    labelStyle={{ fontWeight: 800, color: "#0F172A", marginBottom: 4 }}
-                    contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 10px 30px rgba(0,0,0,0.1)", padding: "12px 16px" }}
-                  />
-                  <Bar dataKey="total_po" name="PO Online" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} barSize={32} />
-                  <Bar dataKey="total_retail" name="Retail" stackId="a" fill="#10B981" radius={[8, 8, 0, 0]} barSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Tabel Peringkat */}
-        <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", height: 418 }}>
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC" }}>
-            <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0, marginBottom: 4 }}>Peringkat Kategori Terlaris</h2>
-            <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>Rekomendasi untuk penentuan batch produksi berikutnya</p>
-          </div>
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {loading && data.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat peringkat...</div>
-            ) : data.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>Belum ada data.</div>
-            ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
-                  <tr style={{ background: "#F1F5F9" }}>
-                    <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Rank</th>
-                    <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Kategori</th>
-                    <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>PO</th>
-                    <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Retail</th>
-                    <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((d, i) => (
-                    <tr key={d.kategori} className="table-row-hover" style={{ background: i === 0 ? "#FFFBEB" : "transparent", borderBottom: "1px solid #F1F5F9" }}>
-                      <td style={{ padding: "16px 20px", fontWeight: 900, fontSize: 18, color: i === 0 ? "#D97706" : i === 1 ? "#94A3B8" : i === 2 ? "#B45309" : "#CBD5E1" }}>
-                        {i === 0 ? "" : i === 1 ? "" : i === 2 ? "" : `#${i + 1}`}
-                      </td>
-                      <td style={{ padding: "16px 20px", fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{d.kategori}</td>
-                      <td style={{ padding: "16px 20px", fontWeight: 700, color: "#3B82F6", fontSize: 13 }}>{d.total_po ?? 0}</td>
-                      <td style={{ padding: "16px 20px", fontWeight: 700, color: "#10B981", fontSize: 13 }}>{d.total_retail ?? 0}</td>
-                      <td style={{ padding: "16px 20px", fontWeight: 900, color: "#0F172A", fontSize: 16 }}>{d.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  ) : (
-    <>
-      {/* Review & Rating Pelanggan (Acuan Repeat PO) */}
-      {cleanOrganicReviews.length === 0 ? (
-        <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", padding: "64px 24px", textAlign: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", border: "1px solid #BFDBFE" }}>
-            <Star size={36} color="#3B82F6" />
-          </div>
-          <h3 style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", marginBottom: 8 }}>
-            Belum Ada Ulasan Organik Tersinkron
-          </h3>
-          <p style={{ fontSize: 13, color: "#64748B", maxWidth: 540, margin: "0 auto 28px", lineHeight: 1.6 }}>
-            Sistem ini disetel <b>100% murni organik & asli</b> langsung dari pembeli di marketplace. Klik tombol <b>Sinkron Ulasan API</b> untuk menarik data review nyata dari Shopee & TikTok Shop berdasarkan pesanan yang terjual, atau unggah file CSV ulasan yang Anda ekspor dari Seller Center.
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={handleSyncReviewsAPI}
-              disabled={syncingReviews}
-              style={{
-                background: "#3B82F6",
-                color: "white",
-                padding: "11px 20px",
-                borderRadius: 12,
-                fontSize: 13,
-                fontWeight: 800,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                border: "none",
-                cursor: syncingReviews ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 12px rgba(59,130,246,0.3)"
-              }}
-            >
-              <RefreshCw size={16} className={syncingReviews ? "animate-spin" : ""} />
-              {syncingReviews ? "Menyinkronkan API..." : "Sinkron Ulasan API Sekarang"}
-            </button>
-
-            <label style={{
-              background: "white",
-              color: "#334155",
-              border: "1px solid #CBD5E1",
-              padding: "11px 20px",
-              borderRadius: 12,
-              fontSize: 13,
-              fontWeight: 700,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              cursor: uploadingReviewsCSV ? "not-allowed" : "pointer",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.04)"
-            }}>
-              <UploadCloud size={16} color="#059669" />
-              {uploadingReviewsCSV ? "Mengimpor CSV..." : "Upload CSV Ulasan Seller Center"}
-              <input type="file" accept=".csv" onChange={handleUploadReviewsCSV} disabled={uploadingReviewsCSV} style={{ display: "none" }} />
-            </label>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-          {/* 3 KPI Cards Review & Kepuasan */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-            {/* KPI 1: Rata-rata Rating */}
-            <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: 54, height: 54, borderRadius: 16, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #FDE68A" }}>
-                <Star size={28} fill="#F59E0B" />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Rata-rata Rating Toko</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "baseline", gap: 6 }}>
-                  {avgOverallRating.toFixed(1)} <span style={{ fontSize: 14, color: "#F59E0B", fontWeight: 700 }}>⭐⭐⭐⭐⭐</span>
+            <>
+              {/* Product Analytics Tab (Kategori & PO) */}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
+                <div style={{ display: "flex", background: "white", border: "1px solid #E2E8F0", padding: 4, borderRadius: 12 }}>
+                  <button style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer", transition: "all 0.2s", background: periode === "minggu" ? "#F1F5F9" : "transparent", color: periode === "minggu" ? "#0F172A" : "#64748B" }} onClick={() => setPeriode("minggu")}>Minggu Ini</button>
+                  <button style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer", transition: "all 0.2s", background: periode === "bulan" ? "#F1F5F9" : "transparent", color: periode === "bulan" ? "#0F172A" : "#64748B" }} onClick={() => setPeriode("bulan")}>Bulan Ini</button>
                 </div>
-                <div style={{ fontSize: 11, color: "#059669", fontWeight: 700, marginTop: 2 }}>🟢 Kepuasan Pembeli Sangat Tinggi</div>
               </div>
-            </div>
 
-            {/* KPI 2: Model Layak Repeat Produksi */}
-            <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: 54, height: 54, borderRadius: 16, background: "#ECFDF5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #A7F3D0" }}>
-                <ThumbsUp size={26} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Rekomendasi Repeat PO</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#059669" }}>
-                  {recommendedCount} Model
-                </div>
-                <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Rating di atas 4.5 & minim komplain</div>
-              </div>
-            </div>
-
-            {/* KPI 3: Total Ulasan Terkumpul */}
-            <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: 54, height: 54, borderRadius: 16, background: "#EFF6FF", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #BFDBFE" }}>
-                <MessageSquare size={26} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Ulasan Pembeli</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#1E293B" }}>
-                  {cleanOrganicReviews.length} Ulasan
-                </div>
-                <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Terverifikasi Shopee & TikTok Shop</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 1: Panduan Acuan Produksi SPK */}
-          <div style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%)", borderRadius: 18, border: "1px solid #BFDBFE", padding: "18px 22px", display: "flex", alignItems: "flex-start", gap: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "#3B82F6", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 800, color: "#1E3A8A", margin: 0, marginBottom: 4 }}>
-                Kecerdasan Produksi: Jadikan Ulasan Pembeli Sebagai Acuan Repeat Order
-              </h3>
-              <p style={{ fontSize: 12, color: "#3B82F6", margin: 0, lineHeight: 1.5 }}>
-                Produk dengan rating <b>≥ 4.5 bintang</b> membuktikan pola cutting, bahan kain, dan jahitan vendor CMT telah diterima sangat baik oleh pasar. Prioritaskan model ini untuk dibuatkan SPK potong & jahit batch baru guna memaksimalkan perputaran modal konveksi Anda.
-              </p>
-            </div>
-          </div>
-
-          {/* Section 2: Rekomendasi Per Model Celana (Decision Matrix) */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <Star size={18} fill="#F59E0B" color="#F59E0B" /> Matriks Pertimbangan Produksi Ulang (Per Model)
-              </h2>
-              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Dianalisis dari ulasan nyata marketplace</span>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
-              {cleanOrganicSummary.map((stat: any, idx: number) => {
-                const isRecommended = stat.average_rating >= 4.5;
-                const isWarning = stat.average_rating >= 3.8 && stat.average_rating < 4.5;
-                return (
-                  <div key={idx} style={{ background: "white", borderRadius: 20, border: isRecommended ? "1.5px solid #10B981" : isWarning ? "1.5px solid #F59E0B" : "1.5px solid #EF4444", padding: 22, boxShadow: "0 4px 16px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
-                        <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", margin: 0 }}>{stat.product_name}</h3>
-                        <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", padding: "4px 8px", borderRadius: 8, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                          <Star size={14} fill="#F59E0B" color="#F59E0B" />
-                          <span style={{ fontSize: 13, fontWeight: 900, color: "#B45309" }}>{stat.average_rating}</span>
-                          <span style={{ fontSize: 10, color: "#92400E" }}>({stat.total_reviews} review)</span>
-                        </div>
-                      </div>
-
-                      {/* Tags Sorotan Ulasan Pembeli */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-                        {stat.positive_tags?.map((tag: string, tIdx: number) => (
-                          <span key={tIdx} style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "#F1F5F9", color: "#475569" }}>
-                            ✓ {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Rekomendasi Box */}
-                      <div style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        background: isRecommended ? "#ECFDF5" : isWarning ? "#FFFBEB" : "#FEF2F2",
-                        border: isRecommended ? "1px solid #A7F3D0" : isWarning ? "1px solid #FDE68A" : "1px solid #FECACA",
-                        marginBottom: 16
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 900, color: isRecommended ? "#047857" : isWarning ? "#B45309" : "#B91C1C", marginBottom: 3 }}>
-                          {isRecommended ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
-                          {stat.recommendation}
-                        </div>
-                        <p style={{ fontSize: 11.5, color: isRecommended ? "#065F46" : isWarning ? "#92400E" : "#991B1B", margin: 0, lineHeight: 1.45 }}>
-                          {stat.notes}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Action Button */}
-                    <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
-                      {isRecommended && (
-                        <a
-                          href="/buat-spk"
-                          style={{
-                            flex: 1,
-                            background: "#10B981",
-                            color: "white",
-                            padding: "9px 12px",
-                            borderRadius: 10,
-                            fontSize: 12,
-                            fontWeight: 800,
-                            textAlign: "center",
-                            textDecoration: "none",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 6,
-                            boxShadow: "0 2px 6px rgba(16,185,129,0.3)"
-                          }}
-                        >
-                          Buat SPK / Produksi Ulang
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setFilterReviewProduct(stat.product_name)}
-                        style={{
-                          padding: "9px 12px",
-                          borderRadius: 10,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          background: "#F8FAFC",
-                          border: "1px solid #CBD5E1",
-                          color: "#334155",
-                          cursor: "pointer"
-                        }}
-                      >
-                        Lihat Semua Ulasan
-                      </button>
-                    </div>
+              <div style={{ display: "flex", gap: 24, marginBottom: 24, flexWrap: "wrap" }}>
+                {/* Stat Cards */}
+                <div style={{ flex: 1, minWidth: 200, background: "white", borderRadius: 24, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 20 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#F3F4F6", color: "#4B5563", display: "flex", alignItems: "center", justifyContent: "center" }}><TrendingUp size={28} /></div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Total Penjualan</div>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: "#1F2937", lineHeight: 1 }}>{totalAll} <span style={{ fontSize: 14, color: "#94A3B8" }}>pcs</span></div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section 3: Daftar Ulasan Customer (Feed) */}
-          <div style={{ background: "white", borderRadius: 20, border: "1px solid #E2E8F0", padding: "20px 24px", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20, borderBottom: "1px solid #F1F5F9", paddingBottom: 16 }}>
-              <div>
-                <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>
-                  Feed Ulasan Nyata Pembeli
-                </h2>
-                <p style={{ fontSize: 12, color: "#64748B", margin: 0, marginTop: 2 }}>
-                  Membantu evaluasi kualitas jahitan, kenyamanan bahan jeans, dan akurasi ukuran.
-                </p>
-              </div>
-
-              {/* Filter Bintang, Produk & Search */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", background: "#F1F5F9", borderRadius: 8, padding: "2px 8px", border: "1px solid #CBD5E1" }}>
-                  <Search size={14} color="#64748B" />
-                  <input
-                    type="text"
-                    placeholder="Cari ulasan / nama pembeli..."
-                    value={reviewSearchQuery}
-                    onChange={(e) => {
-                      setReviewSearchQuery(e.target.value);
-                      setReviewPage(1);
-                    }}
-                    style={{ padding: "4px 8px", border: "none", outline: "none", fontSize: 12, background: "transparent", width: 170 }}
-                  />
-                  {reviewSearchQuery && (
-                    <button onClick={() => setReviewSearchQuery("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: 0 }}><X size={13} /></button>
-                  )}
                 </div>
 
-                <select
-                  value={filterReviewProduct}
-                  onChange={(e) => {
-                    setFilterReviewProduct(e.target.value);
-                    setReviewPage(1);
-                  }}
-                  style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "white" }}
-                >
-                  <option value="semua">Semua Model Produk ({cleanOrganicReviews.length})</option>
-                  {cleanOrganicSummary.map((s: any) => (
-                    <option key={s.product_name} value={s.product_name}>{s.product_name} ({s.total_reviews})</option>
-                  ))}
-                </select>
+                <div style={{ flex: 1, minWidth: 200, background: "white", borderRadius: 24, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 20 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EFF6FF", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center" }}><ShoppingBag size={28} /></div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>PO Online</div>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: "#2563EB", lineHeight: 1 }}>{totalPO} <span style={{ fontSize: 14, color: "#94A3B8" }}>pcs</span></div>
+                  </div>
+                </div>
 
-                <div style={{ display: "flex", gap: 4 }}>
-                  {["semua", 5, 4, 3].map((r: any) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => {
-                        setFilterReviewRating(r as any);
-                        setReviewPage(1);
-                      }}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 8,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        border: filterReviewRating === r ? "1px solid #F59E0B" : "1px solid #E2E8F0",
-                        background: filterReviewRating === r ? "#FFFBEB" : "white",
-                        color: filterReviewRating === r ? "#B45309" : "#64748B"
-                      }}
-                    >
-                      {r === "semua" ? "Semua Bintang" : `⭐ ${r}`}
-                    </button>
-                  ))}
+                <div style={{ flex: 1, minWidth: 200, background: "white", borderRadius: 24, padding: 24, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 20 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#ECFDF5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center" }}><Store size={28} /></div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Retail Offline</div>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: "#059669", lineHeight: 1 }}>{totalRetail} <span style={{ fontSize: 14, color: "#94A3B8" }}>pcs</span></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Feed Items */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {displayedReviews.length === 0 ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>
-                  Belum ada ulasan yang sesuai dengan filter ini.
-                </div>
-              ) : (
-                paginatedReviews.map((rev: any) => (
-                  <div key={rev.id} style={{ padding: 18, borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#CBD5E1", color: "#334155", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {rev.buyer_name?.charAt(0).toUpperCase() || "U"}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
-                            {rev.buyer_name}
-                            <span style={{
-                              fontSize: 9.5,
-                              fontWeight: 800,
-                              padding: "1px 6px",
-                              borderRadius: 4,
-                              background: rev.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
-                              color: rev.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
-                              border: rev.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
-                            }}>
-                              {rev.marketplace}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 11, color: "#64748B" }}>
-                            {rev.product_name} {rev.variation ? `· ${rev.variation}` : ""}
-                          </div>
-                        </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+
+                {/* Grafik */}
+                <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
+                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", alignItems: "center", gap: 10 }}>
+                    <BarChart2 size={20} color="#3B82F6" />
+                    <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>Grafik Perbandingan Penjualan</h2>
+                  </div>
+                  <div style={{ padding: 24 }}>
+                    {loading && data.length === 0 ? (
+                      <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat grafik...</div>
+                    ) : data.length === 0 ? (
+                      <div style={{ height: 320, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#94A3B8" }}>
+                        <div style={{ fontSize: 48, marginBottom: 16 }}></div>
+                        <div style={{ fontWeight: 800, color: "#0F172A" }}>Belum ada data penjualan</div>
+                        <div style={{ fontSize: 13, marginTop: 4 }}>Data akan muncul di sini setelah ada PO / retail</div>
                       </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            size={14}
-                            fill={i < rev.rating ? "#F59E0B" : "none"}
-                            color={i < rev.rating ? "#F59E0B" : "#CBD5E1"}
+                    ) : (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                          <XAxis dataKey="kategori" tick={{ fontSize: 12, fill: "#64748B", fontWeight: 600 }} angle={-25} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 12, fill: "#64748B", fontWeight: 600 }} axisLine={false} tickLine={false} />
+                          <RechartsTooltip
+                            formatter={(v: any, name: any) => [`${v} pcs`, name === "total_po" ? "PO Online" : name === "total_retail" ? "Retail Offline" : "Total"]}
+                            labelStyle={{ fontWeight: 800, color: "#0F172A", marginBottom: 4 }}
+                            contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 10px 30px rgba(0,0,0,0.1)", padding: "12px 16px" }}
                           />
-                        ))}
-                        <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 6 }}>
-                          {new Date(rev.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.5, margin: 0, marginBottom: 10, background: "white", padding: "10px 14px", borderRadius: 10, border: "1px solid #F1F5F9" }}>
-                      "{rev.comment}"
-                    </p>
-
-                    {Array.isArray(rev.tags) && rev.tags.length > 0 && (
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {rev.tags.map((t: string, tid: number) => (
-                          <span key={tid} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#E2E8F0", color: "#334155" }}>
-                            #{t}
-                          </span>
-                        ))}
-                      </div>
+                          <Bar dataKey="total_po" name="PO Online" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} barSize={32} />
+                          <Bar dataKey="total_retail" name="Retail" stackId="a" fill="#10B981" radius={[8, 8, 0, 0]} barSize={32} />
+                        </BarChart>
+                      </ResponsiveContainer>
                     )}
                   </div>
-                ))
-              )}
+                </div>
 
-              {/* Pagination Controls Review Feed */}
-              {reviewPageSize !== -1 && totalReviewPages > 1 && (
-                <div style={{ marginTop: 8, paddingTop: 14, borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                  <div style={{ fontSize: 12, color: "#64748B" }}>
-                    Menampilkan <b>{(reviewPage - 1) * reviewPageSize + 1}</b> - <b>{Math.min(displayedReviews.length, reviewPage * reviewPageSize)}</b> dari <b>{displayedReviews.length}</b> ulasan
+                {/* Tabel Peringkat */}
+                <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", height: 418 }}>
+                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0, marginBottom: 4 }}>Peringkat Kategori Terlaris</h2>
+                    <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>Rekomendasi untuk penentuan batch produksi berikutnya</p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    {loading && data.length === 0 ? (
+                      <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}> Memuat peringkat...</div>
+                    ) : data.length === 0 ? (
+                      <div style={{ padding: 40, textAlign: "center", color: "#94A3B8" }}>Belum ada data.</div>
+                    ) : (
+                      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                        <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
+                          <tr style={{ background: "#F1F5F9" }}>
+                            <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Rank</th>
+                            <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Kategori</th>
+                            <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>PO</th>
+                            <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Retail</th>
+                            <th style={{ padding: "12px 20px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.map((d, i) => (
+                            <tr key={d.kategori} className="table-row-hover" style={{ background: i === 0 ? "#FFFBEB" : "transparent", borderBottom: "1px solid #F1F5F9" }}>
+                              <td style={{ padding: "16px 20px", fontWeight: 900, fontSize: 18, color: i === 0 ? "#D97706" : i === 1 ? "#94A3B8" : i === 2 ? "#B45309" : "#CBD5E1" }}>
+                                {i === 0 ? "" : i === 1 ? "" : i === 2 ? "" : `#${i + 1}`}
+                              </td>
+                              <td style={{ padding: "16px 20px", fontWeight: 800, fontSize: 14, color: "#0F172A" }}>{d.kategori}</td>
+                              <td style={{ padding: "16px 20px", fontWeight: 700, color: "#3B82F6", fontSize: 13 }}>{d.total_po ?? 0}</td>
+                              <td style={{ padding: "16px 20px", fontWeight: 700, color: "#10B981", fontSize: 13 }}>{d.total_retail ?? 0}</td>
+                              <td style={{ padding: "16px 20px", fontWeight: 900, color: "#0F172A", fontSize: 16 }}>{d.total}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Review & Rating Pelanggan (Acuan Repeat PO) */}
+              {cleanOrganicReviews.length === 0 ? (
+                <div style={{ background: "white", borderRadius: 24, border: "1px solid #E2E8F0", padding: "64px 24px", textAlign: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
+                  <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", border: "1px solid #BFDBFE" }}>
+                    <Star size={36} color="#3B82F6" />
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", marginBottom: 8 }}>
+                    Belum Ada Ulasan Organik Tersinkron
+                  </h3>
+                  <p style={{ fontSize: 13, color: "#64748B", maxWidth: 540, margin: "0 auto 28px", lineHeight: 1.6 }}>
+                    Sistem ini disetel <b>100% murni organik & asli</b> langsung dari pembeli di marketplace. Klik tombol <b>Sinkron Ulasan API</b> untuk menarik data review nyata dari Shopee & TikTok Shop berdasarkan pesanan yang terjual, atau unggah file CSV ulasan yang Anda ekspor dari Seller Center.
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
                     <button
                       type="button"
-                      disabled={reviewPage <= 1}
-                      onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                      onClick={handleSyncReviewsAPI}
+                      disabled={syncingReviews}
                       style={{
-                        padding: "5px 10px",
-                        borderRadius: 6,
-                        border: "1px solid #CBD5E1",
-                        background: reviewPage <= 1 ? "#F1F5F9" : "white",
-                        color: reviewPage <= 1 ? "#94A3B8" : "#1E293B",
-                        cursor: reviewPage <= 1 ? "not-allowed" : "pointer",
-                        fontSize: 12,
-                        fontWeight: 700,
+                        background: "#3B82F6",
+                        color: "white",
+                        padding: "11px 20px",
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 800,
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 4
+                        gap: 8,
+                        border: "none",
+                        cursor: syncingReviews ? "not-allowed" : "pointer",
+                        boxShadow: "0 4px 12px rgba(59,130,246,0.3)"
                       }}
                     >
-                      <ChevronLeft size={13} /> Sebelumnya
+                      <RefreshCw size={16} className={syncingReviews ? "animate-spin" : ""} />
+                      {syncingReviews ? "Menyinkronkan API..." : "Sinkron Ulasan API Sekarang"}
                     </button>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B", padding: "0 6px" }}>
-                      Hal {reviewPage} dari {totalReviewPages}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={reviewPage >= totalReviewPages}
-                      onClick={() => setReviewPage((p) => Math.min(totalReviewPages, p + 1))}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 6,
-                        border: "1px solid #CBD5E1",
-                        background: reviewPage >= totalReviewPages ? "#F1F5F9" : "white",
-                        color: reviewPage >= totalReviewPages ? "#94A3B8" : "#1E293B",
-                        cursor: reviewPage >= totalReviewPages ? "not-allowed" : "pointer",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4
-                      }}
-                    >
-                      Berikutnya <ChevronRight size={13} />
-                    </button>
+
+                    <label style={{
+                      background: "white",
+                      color: "#334155",
+                      border: "1px solid #CBD5E1",
+                      padding: "11px 20px",
+                      borderRadius: 12,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      cursor: uploadingReviewsCSV ? "not-allowed" : "pointer",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.04)"
+                    }}>
+                      <UploadCloud size={16} color="#059669" />
+                      {uploadingReviewsCSV ? "Mengimpor CSV..." : "Upload CSV Ulasan Seller Center"}
+                      <input type="file" accept=".csv" onChange={handleUploadReviewsCSV} disabled={uploadingReviewsCSV} style={{ display: "none" }} />
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+                  {/* 3 KPI Cards Review & Kepuasan */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+                    {/* KPI 1: Rata-rata Rating */}
+                    <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
+                      <div style={{ width: 54, height: 54, borderRadius: 16, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #FDE68A" }}>
+                        <Star size={28} fill="#F59E0B" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Rata-rata Rating Toko</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "baseline", gap: 6 }}>
+                          {avgOverallRating.toFixed(1)} <span style={{ fontSize: 14, color: "#F59E0B", fontWeight: 700 }}>⭐⭐⭐⭐⭐</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#059669", fontWeight: 700, marginTop: 2 }}>🟢 Kepuasan Pembeli Sangat Tinggi</div>
+                      </div>
+                    </div>
+
+                    {/* KPI 2: Model Layak Repeat Produksi */}
+                    <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
+                      <div style={{ width: 54, height: 54, borderRadius: 16, background: "#ECFDF5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #A7F3D0" }}>
+                        <ThumbsUp size={26} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Rekomendasi Repeat PO</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: "#059669" }}>
+                          {recommendedCount} Model
+                        </div>
+                        <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Rating di atas 4.5 & minim komplain</div>
+                      </div>
+                    </div>
+
+                    {/* KPI 3: Total Ulasan Terkumpul */}
+                    <div style={{ background: "white", borderRadius: 20, padding: 22, border: "1px solid #E2E8F0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)", display: "flex", alignItems: "center", gap: 16 }}>
+                      <div style={{ width: 54, height: 54, borderRadius: 16, background: "#EFF6FF", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #BFDBFE" }}>
+                        <MessageSquare size={26} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Total Ulasan Pembeli</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: "#1E293B" }}>
+                          {cleanOrganicReviews.length} Ulasan
+                        </div>
+                        <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Terverifikasi Shopee & TikTok Shop</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 1: Panduan Acuan Produksi SPK */}
+                  <div style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%)", borderRadius: 18, border: "1px solid #BFDBFE", padding: "18px 22px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "#3B82F6", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: 14, fontWeight: 800, color: "#1E3A8A", margin: 0, marginBottom: 4 }}>
+                        Kecerdasan Produksi: Jadikan Ulasan Pembeli Sebagai Acuan Repeat Order
+                      </h3>
+                      <p style={{ fontSize: 12, color: "#3B82F6", margin: 0, lineHeight: 1.5 }}>
+                        Produk dengan rating <b>≥ 4.5 bintang</b> membuktikan pola cutting, bahan kain, dan jahitan vendor CMT telah diterima sangat baik oleh pasar. Prioritaskan model ini untuk dibuatkan SPK potong & jahit batch baru guna memaksimalkan perputaran modal konveksi Anda.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Rekomendasi Per Model Celana (Decision Matrix) */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                      <h2 style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                        <Star size={18} fill="#F59E0B" color="#F59E0B" /> Matriks Pertimbangan Produksi Ulang (Per Model)
+                      </h2>
+                      <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Dianalisis dari ulasan nyata marketplace</span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
+                      {cleanOrganicSummary.map((stat: any, idx: number) => {
+                        const isRecommended = stat.average_rating >= 4.5;
+                        const isWarning = stat.average_rating >= 3.8 && stat.average_rating < 4.5;
+                        return (
+                          <div key={idx} style={{ background: "white", borderRadius: 20, border: isRecommended ? "1.5px solid #10B981" : isWarning ? "1.5px solid #F59E0B" : "1.5px solid #EF4444", padding: 22, boxShadow: "0 4px 16px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+                                <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", margin: 0 }}>{stat.product_name}</h3>
+                                <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", padding: "4px 8px", borderRadius: 8, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                  <Star size={14} fill="#F59E0B" color="#F59E0B" />
+                                  <span style={{ fontSize: 13, fontWeight: 900, color: "#B45309" }}>{stat.average_rating}</span>
+                                  <span style={{ fontSize: 10, color: "#92400E" }}>({stat.total_reviews} review)</span>
+                                </div>
+                              </div>
+
+                              {/* Tags Sorotan Ulasan Pembeli */}
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                                {stat.positive_tags?.map((tag: string, tIdx: number) => (
+                                  <span key={tIdx} style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "#F1F5F9", color: "#475569" }}>
+                                    ✓ {tag}
+                                  </span>
+                                ))}
+                              </div>
+
+                              {/* Rekomendasi Box */}
+                              <div style={{
+                                padding: "12px 14px",
+                                borderRadius: 12,
+                                background: isRecommended ? "#ECFDF5" : isWarning ? "#FFFBEB" : "#FEF2F2",
+                                border: isRecommended ? "1px solid #A7F3D0" : isWarning ? "1px solid #FDE68A" : "1px solid #FECACA",
+                                marginBottom: 16
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 900, color: isRecommended ? "#047857" : isWarning ? "#B45309" : "#B91C1C", marginBottom: 3 }}>
+                                  {isRecommended ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                                  {stat.recommendation}
+                                </div>
+                                <p style={{ fontSize: 11.5, color: isRecommended ? "#065F46" : isWarning ? "#92400E" : "#991B1B", margin: 0, lineHeight: 1.45 }}>
+                                  {stat.notes}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+                              {isRecommended && (
+                                <a
+                                  href="/buat-spk"
+                                  style={{
+                                    flex: 1,
+                                    background: "#10B981",
+                                    color: "white",
+                                    padding: "9px 12px",
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 800,
+                                    textAlign: "center",
+                                    textDecoration: "none",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 6,
+                                    boxShadow: "0 2px 6px rgba(16,185,129,0.3)"
+                                  }}
+                                >
+                                  Buat SPK / Produksi Ulang
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setFilterReviewProduct(stat.product_name)}
+                                style={{
+                                  padding: "9px 12px",
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  background: "#F8FAFC",
+                                  border: "1px solid #CBD5E1",
+                                  color: "#334155",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Lihat Semua Ulasan
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Section 3: Daftar Ulasan Customer (Feed) */}
+                  <div style={{ background: "white", borderRadius: 20, border: "1px solid #E2E8F0", padding: "20px 24px", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20, borderBottom: "1px solid #F1F5F9", paddingBottom: 16 }}>
+                      <div>
+                        <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", margin: 0 }}>
+                          Feed Ulasan Nyata Pembeli
+                        </h2>
+                        <p style={{ fontSize: 12, color: "#64748B", margin: 0, marginTop: 2 }}>
+                          Membantu evaluasi kualitas jahitan, kenyamanan bahan jeans, dan akurasi ukuran.
+                        </p>
+                      </div>
+
+                      {/* Filter Bintang, Produk & Search */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", background: "#F1F5F9", borderRadius: 8, padding: "2px 8px", border: "1px solid #CBD5E1" }}>
+                          <Search size={14} color="#64748B" />
+                          <input
+                            type="text"
+                            placeholder="Cari ulasan / nama pembeli..."
+                            value={reviewSearchQuery}
+                            onChange={(e) => {
+                              setReviewSearchQuery(e.target.value);
+                              setReviewPage(1);
+                            }}
+                            style={{ padding: "4px 8px", border: "none", outline: "none", fontSize: 12, background: "transparent", width: 170 }}
+                          />
+                          {reviewSearchQuery && (
+                            <button onClick={() => setReviewSearchQuery("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: 0 }}><X size={13} /></button>
+                          )}
+                        </div>
+
+                        <select
+                          value={filterReviewProduct}
+                          onChange={(e) => {
+                            setFilterReviewProduct(e.target.value);
+                            setReviewPage(1);
+                          }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12, fontWeight: 600, color: "#0F172A", background: "white" }}
+                        >
+                          <option value="semua">Semua Model Produk ({cleanOrganicReviews.length})</option>
+                          {cleanOrganicSummary.map((s: any) => (
+                            <option key={s.product_name} value={s.product_name}>{s.product_name} ({s.total_reviews})</option>
+                          ))}
+                        </select>
+
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {["semua", 5, 4, 3].map((r: any) => (
+                            <button
+                              key={r}
+                              type="button"
+                              onClick={() => {
+                                setFilterReviewRating(r as any);
+                                setReviewPage(1);
+                              }}
+                              style={{
+                                padding: "5px 10px",
+                                borderRadius: 8,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                border: filterReviewRating === r ? "1px solid #F59E0B" : "1px solid #E2E8F0",
+                                background: filterReviewRating === r ? "#FFFBEB" : "white",
+                                color: filterReviewRating === r ? "#B45309" : "#64748B"
+                              }}
+                            >
+                              {r === "semua" ? "Semua Bintang" : `⭐ ${r}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feed Items */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      {displayedReviews.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", fontWeight: 600 }}>
+                          Belum ada ulasan yang sesuai dengan filter ini.
+                        </div>
+                      ) : (
+                        paginatedReviews.map((rev: any) => (
+                          <div key={rev.id} style={{ padding: 18, borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#CBD5E1", color: "#334155", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  {rev.buyer_name?.charAt(0).toUpperCase() || "U"}
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
+                                    {rev.buyer_name}
+                                    <span style={{
+                                      fontSize: 9.5,
+                                      fontWeight: 800,
+                                      padding: "1px 6px",
+                                      borderRadius: 4,
+                                      background: rev.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
+                                      color: rev.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
+                                      border: rev.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
+                                    }}>
+                                      {rev.marketplace}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#64748B" }}>
+                                    {rev.product_name} {rev.variation ? `· ${rev.variation}` : ""}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    size={14}
+                                    fill={i < rev.rating ? "#F59E0B" : "none"}
+                                    color={i < rev.rating ? "#F59E0B" : "#CBD5E1"}
+                                  />
+                                ))}
+                                <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 6 }}>
+                                  {new Date(rev.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                                </span>
+                              </div>
+                            </div>
+
+                            <p style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.5, margin: 0, marginBottom: 10, background: "white", padding: "10px 14px", borderRadius: 10, border: "1px solid #F1F5F9" }}>
+                              "{rev.comment}"
+                            </p>
+
+                            {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                {rev.tags.map((t: string, tid: number) => (
+                                  <span key={tid} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#E2E8F0", color: "#334155" }}>
+                                    #{t}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+
+                      {/* Pagination Controls Review Feed */}
+                      {reviewPageSize !== -1 && totalReviewPages > 1 && (
+                        <div style={{ marginTop: 8, paddingTop: 14, borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                          <div style={{ fontSize: 12, color: "#64748B" }}>
+                            Menampilkan <b>{(reviewPage - 1) * reviewPageSize + 1}</b> - <b>{Math.min(displayedReviews.length, reviewPage * reviewPageSize)}</b> dari <b>{displayedReviews.length}</b> ulasan
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <button
+                              type="button"
+                              disabled={reviewPage <= 1}
+                              onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                              style={{
+                                padding: "5px 10px",
+                                borderRadius: 6,
+                                border: "1px solid #CBD5E1",
+                                background: reviewPage <= 1 ? "#F1F5F9" : "white",
+                                color: reviewPage <= 1 ? "#94A3B8" : "#1E293B",
+                                cursor: reviewPage <= 1 ? "not-allowed" : "pointer",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4
+                              }}
+                            >
+                              <ChevronLeft size={13} /> Sebelumnya
+                            </button>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B", padding: "0 6px" }}>
+                              Hal {reviewPage} dari {totalReviewPages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={reviewPage >= totalReviewPages}
+                              onClick={() => setReviewPage((p) => Math.min(totalReviewPages, p + 1))}
+                              style={{
+                                padding: "5px 10px",
+                                borderRadius: 6,
+                                border: "1px solid #CBD5E1",
+                                background: reviewPage >= totalReviewPages ? "#F1F5F9" : "white",
+                                color: reviewPage >= totalReviewPages ? "#94A3B8" : "#1E293B",
+                                cursor: reviewPage >= totalReviewPages ? "not-allowed" : "pointer",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4
+                              }}
+                            >
+                              Berikutnya <ChevronRight size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
-          </>
-        )}
-      </div>
-
-    </div>
-
-    {/* Modal Detail Rekonsiliasi Pesanan & Potongan Marketplace (ala BigSeller) */}
-      {selectedOrderDetail && (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}>
-      <div style={{ background: "white", width: "100%", maxWidth: 680, margin: "16px", borderRadius: 18, overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
-
-        {/* Modal Header */}
-        <div style={{ padding: "18px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
-                <Receipt size={18} color="#2563EB" /> Rincian Finansial Pesanan & Potongan
-              </span>
-              <span style={{
-                fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 5,
-                background: selectedOrderDetail.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
-                color: selectedOrderDetail.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
-                border: selectedOrderDetail.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
-              }}>
-                {selectedOrderDetail.marketplace} (lavaira.id)
-              </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, fontFamily: "monospace", fontWeight: 800, color: "#1E293B" }}>
-                #{selectedOrderDetail.order_id}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(selectedOrderDetail.order_id);
-                  setCopiedOrderId(true);
-                  setTimeout(() => setCopiedOrderId(false), 2000);
-                  toast.success("Order ID berhasil disalin");
-                }}
-                style={{ fontSize: 11, color: copiedOrderId ? "#059669" : "#64748B", background: "white", border: "1px solid #CBD5E1", borderRadius: 4, padding: "1px 6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3 }}
-              >
-                {copiedOrderId ? <Check size={11} /> : <Copy size={11} />} {copiedOrderId ? "Disalin" : "Salin"}
-              </button>
-              <span style={{ fontSize: 11.5, color: "#64748B" }}>
-                &bull; {selectedOrderDetail.tanggal || "-"}
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setSelectedOrderDetail(null)}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 4 }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Modal Body Scrollable */}
-        <div style={{ padding: "20px 24px", maxHeight: "70vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* Status Banner */}
-          <div style={{
-            padding: "10px 14px", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between",
-            background: selectedOrderDetail.isRetur ? "#FEF2F2" : selectedOrderDetail.isSudahCair ? "#ECFDF5" : "#FFFBEB",
-            border: selectedOrderDetail.isRetur ? "1px solid #FECACA" : selectedOrderDetail.isSudahCair ? "1px solid #A7F3D0" : "1px solid #FDE68A"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {selectedOrderDetail.isRetur ? <AlertTriangle size={15} color="#DC2626" /> : selectedOrderDetail.isSudahCair ? <CheckCircle2 size={15} color="#059669" /> : <Clock size={15} color="#D97706" />}
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: selectedOrderDetail.isRetur ? "#991B1B" : selectedOrderDetail.isSudahCair ? "#065F46" : "#92400E" }}>
-                Status: {selectedOrderDetail.statusPencairan}
-              </span>
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: selectedOrderDetail.isSudahCair ? "#047857" : "#B45309" }}>
-              {selectedOrderDetail.isSudahCair ? "Dana Sudah Masuk ke Saldo Penjual" : "Menunggu Konfirmasi Terima Pembeli"}
-            </span>
-          </div>
-
-          {/* Card 1: Produk yang Dipesan */}
-          <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "12px 16px" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", marginBottom: 6 }}>
-              Item Produk Dipesan
-            </div>
-            <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0F172A", lineHeight: 1.4 }}>
-              {selectedOrderDetail.product}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 12 }}>
-              <span style={{ color: "#475569" }}>
-                Variasi: <b style={{ color: "#2563EB" }}>{selectedOrderDetail.variation || "-"}</b>
-              </span>
-              <span style={{ fontWeight: 800, color: "#0F172A" }}>
-                Qty: {selectedOrderDetail.total_qty} pcs &times; Rp {(selectedOrderDetail.omzetKotor / (selectedOrderDetail.total_qty || 1)).toLocaleString("id-ID")}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Rincian Finansial Lengkap Ala BigSeller */}
-          <div style={{ border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden" }}>
-
-            {/* 1. Pendapatan Kotor Pembeli */}
-            <div style={{ background: "#F8FAFC", padding: "10px 16px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: "#0F172A" }}>
-                1. Total Pembayaran Pembeli (Omzet Kotor)
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
-                Rp {selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}
-              </span>
-            </div>
-            <div style={{ padding: "8px 16px", fontSize: 12, display: "flex", flexDirection: "column", gap: 5, background: "white", borderBottom: "1px solid #E2E8F0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#475569" }}>
-                <span>Harga Produk (Subtotal Produk)</span>
-                <span style={{ fontWeight: 600 }}>+Rp {selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B" }}>
-                <span>Ongkos Kirim Dibayar Pembeli</span>
-                <span style={{ fontWeight: 600 }}>+Rp 0</span>
-              </div>
-            </div>
-
-            {/* 2. Rincian Seluruh Beban Potongan Marketplace */}
-            <div style={{ background: "#FEF2F2", padding: "10px 16px", borderBottom: "1px solid #FECACA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: "#991B1B" }}>
-                2. Rincian Seluruh Potongan & Beban Marketplace
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: "#DC2626" }}>
-                -Rp {selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}
-              </span>
-            </div>
-
-            <div style={{ padding: "10px 16px", fontSize: 12, display: "flex", flexDirection: "column", gap: 7, background: "white", borderBottom: "1px solid #E2E8F0" }}>
-              {/* Biaya Administrasi */}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
-                <span>🏢 Biaya Administrasi Shopee (Komisi Platform)</span>
-                <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.adminShopee > 0 ? "#DC2626" : "#64748B" }}>
-                  {selectedOrderDetail.breakdown?.adminShopee > 0 ? `-Rp ${selectedOrderDetail.breakdown.adminShopee.toLocaleString("id-ID")}` : "Rp 0"}
-                </span>
-              </div>
-
-              {/* Beban Gratis Ongkir XTRA */}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
-                <span>🚚 Biaya Layanan Program Gratis Ongkir XTRA &amp; Layanan</span>
-                <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.layananGratisOngkir > 0 ? "#DC2626" : "#64748B" }}>
-                  {selectedOrderDetail.breakdown?.layananGratisOngkir > 0 ? `-Rp ${selectedOrderDetail.breakdown.layananGratisOngkir.toLocaleString("id-ID")}` : "Rp 0"}
-                </span>
-              </div>
-
-              {/* Komisi Afiliasi AMS */}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
-                <span>🤝 Komisi Afiliasi Shopee (AMS Creator Fee)</span>
-                <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.affiliateShopee > 0 ? "#8B5CF6" : "#64748B" }}>
-                  {selectedOrderDetail.breakdown?.affiliateShopee > 0 ? `-Rp ${selectedOrderDetail.breakdown.affiliateShopee.toLocaleString("id-ID")}` : "Rp 0"}
-                </span>
-              </div>
-
-              {/* Ongkir Ditanggung Penjual */}
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
-                <span>📦 Beban Ongkir Toko Ditanggung Penjual</span>
-                <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.ongkirToko > 0 ? "#EA580C" : "#64748B" }}>
-                  {selectedOrderDetail.breakdown?.ongkirToko > 0 ? `-Rp ${selectedOrderDetail.breakdown.ongkirToko.toLocaleString("id-ID")}` : "Rp 0"}
-                </span>
-              </div>
-
-              {/* Voucher Diskon Toko */}
-              {selectedOrderDetail.breakdown?.voucherPenjual > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
-                  <span>🎟️ Voucher Diskon Ditanggung Toko</span>
-                  <span style={{ fontWeight: 700, color: "#DC2626" }}>
-                    -Rp {selectedOrderDetail.breakdown.voucherPenjual.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              )}
-
-              {/* Ringkasan Subtotal Potongan */}
-              <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #CBD5E1", paddingTop: 6, fontWeight: 800, color: "#991B1B" }}>
-                <span>Total Potongan Marketplace</span>
-                <span>-Rp {selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}</span>
-              </div>
-            </div>
-
-            {/* 3. Pencairan Bersih Masuk Saldo Penjual */}
-            <div style={{ background: "#ECFDF5", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "#065F46" }}>
-                  3. Pencairan Bersih Masuk Saldo (Net Settlement)
-                </div>
-                <div style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
-                  Dana bersih riil yang diterima penjual setelah seluruh potongan
-                </div>
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "#059669" }}>
-                Rp {(selectedOrderDetail.isSudahCair ? selectedOrderDetail.labaBersih : selectedOrderDetail.omzetKotor).toLocaleString("id-ID")}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Card 3: Analisis Laba Konveksi (HPP Produksi vs Penjualan Online) */}
-          <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: "12px 16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", textTransform: "uppercase" }}>
-                🏭 Analisis Profit Konveksi (Setelah HPP Modal)
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#15803D", background: "white", padding: "2px 8px", borderRadius: 6, border: "1px solid #86EFAC" }}>
-                Margin Bersih: {selectedOrderDetail.breakdown?.marginKonveksiPct || 0}%
-              </span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12 }}>
-              <div>
-                <span style={{ color: "#475569" }}>Modal Produksi (HPP):</span>
-                <div style={{ fontWeight: 800, color: "#0F172A" }}>Rp {(selectedOrderDetail.breakdown?.estimasiHPP || 0).toLocaleString("id-ID")}</div>
-              </div>
-              <div>
-                <span style={{ color: "#475569" }}>Laba Bersih Riil Konveksi:</span>
-                <div style={{ fontWeight: 900, color: "#15803D" }}>Rp {(selectedOrderDetail.breakdown?.profitKonveksi || 0).toLocaleString("id-ID")}</div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Modal Footer */}
-        <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={() => {
-              const summary = `Order ID: ${selectedOrderDetail.order_id}\nProduk: ${selectedOrderDetail.product} (${selectedOrderDetail.variation || "-"})\nOmzet Kotor: Rp ${selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}\nTotal Potongan: -Rp ${selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}\nPencairan Bersih: Rp ${(selectedOrderDetail.isSudahCair ? selectedOrderDetail.labaBersih : selectedOrderDetail.omzetKotor).toLocaleString("id-ID")}\nStatus: ${selectedOrderDetail.statusPencairan}`;
-              navigator.clipboard.writeText(summary);
-              toast.success("Ringkasan pesanan berhasil disalin");
-            }}
-            style={{ padding: "8px 14px", background: "white", color: "#334155", border: "1px solid #CBD5E1", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
-          >
-            <Copy size={13} /> Salin Ringkasan
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedOrderDetail(null)}
-            style={{ padding: "8px 22px", background: "#2563EB", color: "white", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-          >
-            Tutup
-          </button>
         </div>
 
       </div>
-    </div>
-  )
-}
-    </>
-  );
+
+      {/* Modal Detail Rekonsiliasi Pesanan & Potongan Marketplace (ala BigSeller) */}
+          {selectedOrderDetail && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}>
+              <div style={{ background: "white", width: "100%", maxWidth: 680, margin: "16px", borderRadius: 18, overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+
+                {/* Modal Header */}
+                <div style={{ padding: "18px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Receipt size={18} color="#2563EB" /> Rincian Finansial Pesanan & Potongan
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 5,
+                        background: selectedOrderDetail.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
+                        color: selectedOrderDetail.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
+                        border: selectedOrderDetail.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
+                      }}>
+                        {selectedOrderDetail.marketplace} (lavaira.id)
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, fontFamily: "monospace", fontWeight: 800, color: "#1E293B" }}>
+                        #{selectedOrderDetail.order_id}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedOrderDetail.order_id);
+                          setCopiedOrderId(true);
+                          setTimeout(() => setCopiedOrderId(false), 2000);
+                          toast.success("Order ID berhasil disalin");
+                        }}
+                        style={{ fontSize: 11, color: copiedOrderId ? "#059669" : "#64748B", background: "white", border: "1px solid #CBD5E1", borderRadius: 4, padding: "1px 6px", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3 }}
+                      >
+                        {copiedOrderId ? <Check size={11} /> : <Copy size={11} />} {copiedOrderId ? "Disalin" : "Salin"}
+                      </button>
+                      <span style={{ fontSize: 11.5, color: "#64748B" }}>
+                        &bull; {selectedOrderDetail.tanggal || "-"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetail(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 4 }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Modal Body Scrollable */}
+                <div style={{ padding: "20px 24px", maxHeight: "70vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+
+                  {/* Status Banner */}
+                  <div style={{
+                    padding: "10px 14px", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between",
+                    background: selectedOrderDetail.isRetur ? "#FEF2F2" : selectedOrderDetail.isSudahCair ? "#ECFDF5" : "#FFFBEB",
+                    border: selectedOrderDetail.isRetur ? "1px solid #FECACA" : selectedOrderDetail.isSudahCair ? "1px solid #A7F3D0" : "1px solid #FDE68A"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {selectedOrderDetail.isRetur ? <AlertTriangle size={15} color="#DC2626" /> : selectedOrderDetail.isSudahCair ? <CheckCircle2 size={15} color="#059669" /> : <Clock size={15} color="#D97706" />}
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: selectedOrderDetail.isRetur ? "#991B1B" : selectedOrderDetail.isSudahCair ? "#065F46" : "#92400E" }}>
+                        Status: {selectedOrderDetail.statusPencairan}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: selectedOrderDetail.isSudahCair ? "#047857" : "#B45309" }}>
+                      {selectedOrderDetail.isSudahCair ? "Dana Sudah Masuk ke Saldo Penjual" : "Menunggu Konfirmasi Terima Pembeli"}
+                    </span>
+                  </div>
+
+                  {/* Card 1: Produk yang Dipesan */}
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "12px 16px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", marginBottom: 6 }}>
+                      Item Produk Dipesan
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0F172A", lineHeight: 1.4 }}>
+                      {selectedOrderDetail.product}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 12 }}>
+                      <span style={{ color: "#475569" }}>
+                        Variasi: <b style={{ color: "#2563EB" }}>{selectedOrderDetail.variation || "-"}</b>
+                      </span>
+                      <span style={{ fontWeight: 800, color: "#0F172A" }}>
+                        Qty: {selectedOrderDetail.total_qty} pcs &times; Rp {(selectedOrderDetail.omzetKotor / (selectedOrderDetail.total_qty || 1)).toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Rincian Finansial Lengkap Ala BigSeller */}
+                  <div style={{ border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden" }}>
+
+                    {/* 1. Pendapatan Kotor Pembeli */}
+                    <div style={{ background: "#F8FAFC", padding: "10px 16px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: "#0F172A" }}>
+                        1. Total Pembayaran Pembeli (Omzet Kotor)
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
+                        Rp {selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                    <div style={{ padding: "8px 16px", fontSize: 12, display: "flex", flexDirection: "column", gap: 5, background: "white", borderBottom: "1px solid #E2E8F0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#475569" }}>
+                        <span>Harga Produk (Subtotal Produk)</span>
+                        <span style={{ fontWeight: 600 }}>+Rp {selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#64748B" }}>
+                        <span>Ongkos Kirim Dibayar Pembeli</span>
+                        <span style={{ fontWeight: 600 }}>+Rp 0</span>
+                      </div>
+                    </div>
+
+                    {/* 2. Rincian Seluruh Beban Potongan Marketplace */}
+                    <div style={{ background: "#FEF2F2", padding: "10px 16px", borderBottom: "1px solid #FECACA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: "#991B1B" }}>
+                        2. Rincian Seluruh Potongan & Beban Marketplace
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#DC2626" }}>
+                        -Rp {selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+
+                    <div style={{ padding: "10px 16px", fontSize: 12, display: "flex", flexDirection: "column", gap: 7, background: "white", borderBottom: "1px solid #E2E8F0" }}>
+                      {/* Biaya Administrasi */}
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                        <span>🏢 Biaya Administrasi Shopee (Komisi Platform)</span>
+                        <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.adminShopee > 0 ? "#DC2626" : "#64748B" }}>
+                          {selectedOrderDetail.breakdown?.adminShopee > 0 ? `-Rp ${selectedOrderDetail.breakdown.adminShopee.toLocaleString("id-ID")}` : "Rp 0"}
+                        </span>
+                      </div>
+
+                      {/* Beban Gratis Ongkir XTRA */}
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                        <span>🚚 Biaya Layanan Program Gratis Ongkir XTRA &amp; Layanan</span>
+                        <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.layananGratisOngkir > 0 ? "#DC2626" : "#64748B" }}>
+                          {selectedOrderDetail.breakdown?.layananGratisOngkir > 0 ? `-Rp ${selectedOrderDetail.breakdown.layananGratisOngkir.toLocaleString("id-ID")}` : "Rp 0"}
+                        </span>
+                      </div>
+
+                      {/* Komisi Afiliasi AMS */}
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                        <span>🤝 Komisi Afiliasi Shopee (AMS Creator Fee)</span>
+                        <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.affiliateShopee > 0 ? "#8B5CF6" : "#64748B" }}>
+                          {selectedOrderDetail.breakdown?.affiliateShopee > 0 ? `-Rp ${selectedOrderDetail.breakdown.affiliateShopee.toLocaleString("id-ID")}` : "Rp 0"}
+                        </span>
+                      </div>
+
+                      {/* Ongkir Ditanggung Penjual */}
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                        <span>📦 Beban Ongkir Toko Ditanggung Penjual</span>
+                        <span style={{ fontWeight: 700, color: selectedOrderDetail.breakdown?.ongkirToko > 0 ? "#EA580C" : "#64748B" }}>
+                          {selectedOrderDetail.breakdown?.ongkirToko > 0 ? `-Rp ${selectedOrderDetail.breakdown.ongkirToko.toLocaleString("id-ID")}` : "Rp 0"}
+                        </span>
+                      </div>
+
+                      {/* Voucher Diskon Toko */}
+                      {selectedOrderDetail.breakdown?.voucherPenjual > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                          <span>🎟️ Voucher Diskon Ditanggung Toko</span>
+                          <span style={{ fontWeight: 700, color: "#DC2626" }}>
+                            -Rp {selectedOrderDetail.breakdown.voucherPenjual.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Ringkasan Subtotal Potongan */}
+                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #CBD5E1", paddingTop: 6, fontWeight: 800, color: "#991B1B" }}>
+                        <span>Total Potongan Marketplace</span>
+                        <span>-Rp {selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}</span>
+                      </div>
+                    </div>
+
+                    {/* 3. Pencairan Bersih Masuk Saldo Penjual */}
+                    <div style={{ background: "#ECFDF5", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: "#065F46" }}>
+                          3. Pencairan Bersih Masuk Saldo (Net Settlement)
+                        </div>
+                        <div style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
+                          Dana bersih riil yang diterima penjual setelah seluruh potongan
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: "#059669" }}>
+                        Rp {(selectedOrderDetail.isSudahCair ? selectedOrderDetail.labaBersih : selectedOrderDetail.omzetKotor).toLocaleString("id-ID")}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Card 3: Analisis Laba Konveksi (HPP Produksi vs Penjualan Online) */}
+                  <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: "12px 16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", textTransform: "uppercase" }}>
+                        🏭 Analisis Profit Konveksi (Setelah HPP Modal)
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#15803D", background: "white", padding: "2px 8px", borderRadius: 6, border: "1px solid #86EFAC" }}>
+                        Margin Bersih: {selectedOrderDetail.breakdown?.marginKonveksiPct || 0}%
+                      </span>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12 }}>
+                      <div>
+                        <span style={{ color: "#475569" }}>Modal Produksi (HPP):</span>
+                        <div style={{ fontWeight: 800, color: "#0F172A" }}>Rp {(selectedOrderDetail.breakdown?.estimasiHPP || 0).toLocaleString("id-ID")}</div>
+                      </div>
+                      <div>
+                        <span style={{ color: "#475569" }}>Laba Bersih Riil Konveksi:</span>
+                        <div style={{ fontWeight: 900, color: "#15803D" }}>Rp {(selectedOrderDetail.breakdown?.profitKonveksi || 0).toLocaleString("id-ID")}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Modal Footer */}
+                <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const summary = `Order ID: ${selectedOrderDetail.order_id}\nProduk: ${selectedOrderDetail.product} (${selectedOrderDetail.variation || "-"})\nOmzet Kotor: Rp ${selectedOrderDetail.omzetKotor.toLocaleString("id-ID")}\nTotal Potongan: -Rp ${selectedOrderDetail.totalPotongan.toLocaleString("id-ID")}\nPencairan Bersih: Rp ${(selectedOrderDetail.isSudahCair ? selectedOrderDetail.labaBersih : selectedOrderDetail.omzetKotor).toLocaleString("id-ID")}\nStatus: ${selectedOrderDetail.statusPencairan}`;
+                      navigator.clipboard.writeText(summary);
+                      toast.success("Ringkasan pesanan berhasil disalin");
+                    }}
+                    style={{ padding: "8px 14px", background: "white", color: "#334155", border: "1px solid #CBD5E1", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+                  >
+                    <Copy size={13} /> Salin Ringkasan
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderDetail(null)}
+                    style={{ padding: "8px 22px", background: "#2563EB", color: "white", borderRadius: 8, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    Tutup
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )
+          }
+        </>
+        );
 }
