@@ -77,6 +77,8 @@ export default function LaporanPage() {
   // Detail Modal ala BigSeller
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<any | null>(null);
   const [copiedOrderId, setCopiedOrderId] = useState(false);
+  const [selectedReviewDetail, setSelectedReviewDetail] = useState<any | null>(null);
+  const [selectedModelDetail, setSelectedModelDetail] = useState<any | null>(null);
 
   // Pagination Laporan Keuangan
   const [orderPage, setOrderPage] = useState(1);
@@ -146,6 +148,9 @@ export default function LaporanPage() {
       fetch("/api/settlement/sync", { method: "POST" })
         .then(() => fetchData(true))
         .catch(() => { });
+      fetch("/api/reviews/sync", { method: "POST" })
+        .then(() => fetchData(true))
+        .catch(() => { });
     }, 60_000);
 
     // Realtime listeners (semuanya silent in-place update)
@@ -155,6 +160,7 @@ export default function LaporanPage() {
         ev === "marketplace:order_received" ||
         ev === "marketplace:order_updated" ||
         ev === "settlement_updated" ||
+        ev === "reviews_updated" ||
         ev === "retur_processed" ||
         ev === "retur_online_updated" ||
         ev === "retur_banding_updated" ||
@@ -636,6 +642,11 @@ export default function LaporanPage() {
           total_reviews: 0,
           average_rating: 0,
           rating_sum: 0,
+          star_5: 0,
+          star_4: 0,
+          star_3: 0,
+          star_2: 0,
+          star_1: 0,
           positive_tags: [],
           recommendation: "SANGAT DIREKOMENDASIKAN REPEAT PO",
           notes: "Kepuasan pembeli sangat tinggi. Pola, jahitan, dan bahan terbukti disukai pasar. Prioritaskan buat SPK potong & jahit lagi."
@@ -643,7 +654,13 @@ export default function LaporanPage() {
       }
       const st = statsMap.get(pName);
       st.total_reviews += 1;
-      st.rating_sum += Number(r.rating || 5);
+      const rating = Math.min(5, Math.max(1, Math.round(Number(r.rating || 5))));
+      st.rating_sum += rating;
+      if (rating === 5) st.star_5 = (st.star_5 || 0) + 1;
+      else if (rating === 4) st.star_4 = (st.star_4 || 0) + 1;
+      else if (rating === 3) st.star_3 = (st.star_3 || 0) + 1;
+      else if (rating === 2) st.star_2 = (st.star_2 || 0) + 1;
+      else st.star_1 = (st.star_1 || 0) + 1;
       if (Array.isArray(r.tags)) {
         r.tags.forEach((t: string) => {
           if (!st.positive_tags.includes(t) && st.positive_tags.length < 5) st.positive_tags.push(t);
@@ -1524,12 +1541,12 @@ export default function LaporanPage() {
                             </div>
 
                             {/* Action Button */}
-                            <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+                            <div style={{ display: "flex", gap: 6, marginTop: "auto", flexWrap: "wrap" }}>
                               {isRecommended && (
                                 <a
                                   href="/buat-spk"
                                   style={{
-                                    flex: 1,
+                                    flex: "1 1 140px",
                                     background: "#10B981",
                                     color: "white",
                                     padding: "9px 12px",
@@ -1550,6 +1567,25 @@ export default function LaporanPage() {
                               )}
                               <button
                                 type="button"
+                                onClick={() => setSelectedModelDetail(stat)}
+                                style={{
+                                  padding: "9px 12px",
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  background: "#EFF6FF",
+                                  border: "1px solid #BFDBFE",
+                                  color: "#1D4ED8",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4
+                                }}
+                              >
+                                <PieChart size={13} /> Analisis Model
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => setFilterReviewProduct(stat.product_name)}
                                 style={{
                                   padding: "9px 12px",
@@ -1562,7 +1598,7 @@ export default function LaporanPage() {
                                   cursor: "pointer"
                                 }}
                               >
-                                Lihat Semua Ulasan
+                                Lihat Ulasan
                               </button>
                             </div>
                           </div>
@@ -1651,7 +1687,19 @@ export default function LaporanPage() {
                         </div>
                       ) : (
                         paginatedReviews.map((rev: any) => (
-                          <div key={rev.id} style={{ padding: 18, borderRadius: 14, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                          <div
+                            key={rev.id}
+                            onClick={() => setSelectedReviewDetail(rev)}
+                            style={{
+                              padding: 18,
+                              borderRadius: 14,
+                              background: "#F8FAFC",
+                              border: "1px solid #E2E8F0",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                            }}
+                            className="table-row-hover"
+                          >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                 <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#CBD5E1", color: "#334155", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1697,15 +1745,20 @@ export default function LaporanPage() {
                               "{rev.comment}"
                             </p>
 
-                            {Array.isArray(rev.tags) && rev.tags.length > 0 && (
-                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                {rev.tags.map((t: string, tid: number) => (
-                                  <span key={tid} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#E2E8F0", color: "#334155" }}>
-                                    #{t}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, paddingTop: 6, borderTop: "1px dashed #E2E8F0" }}>
+                              {Array.isArray(rev.tags) && rev.tags.length > 0 ? (
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                  {rev.tags.map((t: string, tid: number) => (
+                                    <span key={tid} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#E2E8F0", color: "#334155" }}>
+                                      #{t}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : <div />}
+                              <span style={{ fontSize: 11.5, fontWeight: 800, color: "#2563EB", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                Lihat Rincian & Evaluasi Produk <ChevronRight size={13} />
+                              </span>
+                            </div>
                           </div>
                         ))
                       )}
@@ -2013,8 +2066,511 @@ export default function LaporanPage() {
 
               </div>
             </div>
-          )
-          }
+          )}
+
+          {/* Modal Detail Ulasan Pembeli Spesifik */}
+          {selectedReviewDetail && (() => {
+            const rev = selectedReviewDetail;
+            const matchedSale = (keuanganData.sales || []).find((s: any) => String(s.order_id || "").trim() === String(rev.order_id || "").trim());
+            const formattedDate = new Date(rev.created_at).toLocaleString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            });
+
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(15, 23, 42, 0.65)",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 9999,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 20
+                }}
+                onClick={() => setSelectedReviewDetail(null)}
+              >
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: 24,
+                    width: "100%",
+                    maxWidth: 640,
+                    maxHeight: "92vh",
+                    overflowY: "auto",
+                    boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+                    display: "flex",
+                    flexDirection: "column"
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Modal Header */}
+                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", background: "#F8FAFC" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          background: rev.marketplace === "Shopee" ? "#FFEDD5" : "#EFF6FF",
+                          color: rev.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
+                          border: rev.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4
+                        }}>
+                          <Store size={12} /> {rev.marketplace} ({rev.marketplace === "Shopee" ? "lavaira.id" : "TikTok"})
+                        </span>
+                        <span style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>
+                          {formattedDate}
+                        </span>
+                      </div>
+                      <h2 style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                        Detail Ulasan & Evaluasi Produk
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReviewDetail(null)}
+                      style={{ background: "#F1F5F9", border: "none", borderRadius: 10, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748B" }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
+                    
+                    {/* Card Pembeli & Rating */}
+                    <div style={{ background: "#F8FAFC", borderRadius: 16, padding: 18, border: "1px solid #E2E8F0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#3B82F6", color: "white", fontWeight: 900, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(59,130,246,0.3)" }}>
+                            {rev.buyer_name?.charAt(0).toUpperCase() || "U"}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
+                              @{rev.buyer_name}
+                              <span style={{ fontSize: 10, fontWeight: 700, color: "#059669", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "1px 6px", borderRadius: 4 }}>
+                                ✓ Pembeli Terverifikasi
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                              {matchedSale?.city ? `Lokasi: ${matchedSale.city}, ${matchedSale.province || ""}` : "Pelanggan Online Terverifikasi"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bintang Rating */}
+                        <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", padding: "6px 12px", borderRadius: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ display: "flex", gap: 2 }}>
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={16}
+                                fill={i < rev.rating ? "#F59E0B" : "none"}
+                                color={i < rev.rating ? "#F59E0B" : "#CBD5E1"}
+                              />
+                            ))}
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 900, color: "#B45309" }}>{rev.rating}.0</span>
+                        </div>
+                      </div>
+
+                      {/* Order & SKU Info */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, paddingTop: 12, borderTop: "1px solid #E2E8F0", fontSize: 12 }}>
+                        <div>
+                          <span style={{ color: "#64748B", fontSize: 11 }}>Order ID:</span>
+                          <div style={{ fontWeight: 700, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontFamily: "monospace" }}>{rev.order_id || "-"}</span>
+                            {rev.order_id && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(rev.order_id);
+                                  toast.success("Order ID disalin");
+                                }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 0 }}
+                                title="Salin Order ID"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span style={{ color: "#64748B", fontSize: 11 }}>Variasi Produk Dibeli:</span>
+                          <div style={{ fontWeight: 800, color: "#2563EB" }}>
+                            {rev.variation || "-"}
+                          </div>
+                        </div>
+
+                        {matchedSale?.tracking_id && (
+                          <div>
+                            <span style={{ color: "#64748B", fontSize: 11 }}>Ekspedisi & Resi:</span>
+                            <div style={{ fontWeight: 700, color: "#0F172A" }}>
+                              {matchedSale.shipping_provider || "Kurir"}: <span style={{ fontFamily: "monospace" }}>{matchedSale.tracking_id}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {matchedSale?.order_amount && (
+                          <div>
+                            <span style={{ color: "#64748B", fontSize: 11 }}>Total Nilai Belanja:</span>
+                            <div style={{ fontWeight: 800, color: "#059669" }}>
+                              Rp {Number(matchedSale.order_amount).toLocaleString("id-ID")}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Nama Produk */}
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Produk Yang Dinilai</span>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", marginTop: 4, lineHeight: 1.4 }}>
+                        {rev.product_name}
+                      </div>
+                    </div>
+
+                    {/* Teks Ulasan Asli */}
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Ulasan Nyata Pembeli</span>
+                      <div style={{
+                        background: "#FFFBEB",
+                        border: "1px solid #FDE68A",
+                        borderRadius: 14,
+                        padding: "16px 18px",
+                        fontSize: 14,
+                        color: "#1E293B",
+                        fontStyle: "italic",
+                        lineHeight: 1.6,
+                        marginTop: 6
+                      }}>
+                        "{rev.comment}"
+                      </div>
+                    </div>
+
+                    {/* Tag Sentimen */}
+                    {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "block" }}>Sorotan Kualitas Terdeteksi</span>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {rev.tags.map((t: string, tid: number) => (
+                            <span key={tid} style={{ fontSize: 11.5, fontWeight: 800, padding: "4px 10px", borderRadius: 8, background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                              <CheckCircle2 size={13} color="#2563EB" /> #{t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Evaluasi Aspek Produksi & Repeat Order */}
+                    <div style={{
+                      background: rev.rating >= 4 ? "#ECFDF5" : rev.rating === 3 ? "#FFFBEB" : "#FEF2F2",
+                      border: rev.rating >= 4 ? "1px solid #A7F3D0" : rev.rating === 3 ? "1px solid #FDE68A" : "1px solid #FECACA",
+                      borderRadius: 16,
+                      padding: 18
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 900, color: rev.rating >= 4 ? "#047857" : rev.rating === 3 ? "#B45309" : "#B91C1C", marginBottom: 8 }}>
+                        {rev.rating >= 4 ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
+                        Rekomendasi Produksi Konveksi: {rev.rating >= 4.5 ? "SANGAT DIREKOMENDASIKAN REPEAT PO" : rev.rating >= 3.8 ? "PERLU EVALUASI POLA & UKURAN" : "EVALUASI TOTAL / STOP SEMENTARA"}
+                      </div>
+                      
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 8, fontSize: 11.5, marginTop: 10 }}>
+                        <div style={{ background: "white", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+                          <span style={{ color: "#64748B" }}>Kualitas Jahitan CMT:</span>
+                          <div style={{ fontWeight: 800, color: rev.rating >= 4 ? "#059669" : "#D97706" }}>
+                            {rev.rating >= 4 ? "🟢 Sangat Rapi & Kuat" : "🟡 Perlu Cek Obras"}
+                          </div>
+                        </div>
+                        <div style={{ background: "white", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+                          <span style={{ color: "#64748B" }}>Kenyamanan Pola Cutting:</span>
+                          <div style={{ fontWeight: 800, color: rev.rating >= 4 ? "#059669" : "#D97706" }}>
+                            {rev.rating >= 4 ? "🟢 Proporsional & Pas" : "🟡 Review Masukan Ukuran"}
+                          </div>
+                        </div>
+                        <div style={{ background: "white", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
+                          <span style={{ color: "#64748B" }}>Karakter Bahan Kain:</span>
+                          <div style={{ fontWeight: 800, color: rev.rating >= 4 ? "#059669" : "#D97706" }}>
+                            {rev.rating >= 4 ? "🟢 Denim Berkualitas" : "🟡 Evaluasi Washing"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterReviewProduct(rev.product_name);
+                        setSelectedReviewDetail(null);
+                      }}
+                      style={{ padding: "9px 14px", background: "white", color: "#334155", border: "1px solid #CBD5E1", borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+                    >
+                      <Search size={14} /> Filter Semua Ulasan Model Ini
+                    </button>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <a
+                        href="/buat-spk"
+                        style={{
+                          padding: "9px 16px",
+                          background: "#10B981",
+                          color: "white",
+                          borderRadius: 10,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          boxShadow: "0 2px 6px rgba(16,185,129,0.3)"
+                        }}
+                      >
+                        <Sparkles size={14} /> Buat SPK / Produksi Ulang
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReviewDetail(null)}
+                        style={{ padding: "9px 18px", background: "#64748B", color: "white", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Modal Analisis Model & Distribusi Rating Bintang */}
+          {selectedModelDetail && (() => {
+            const stat = selectedModelDetail;
+            const modelReviews = cleanOrganicReviews.filter((r: any) => (r.product_name || "Produk Jeans") === stat.product_name);
+            const total = stat.total_reviews || 1;
+            const starData = [
+              { star: 5, count: stat.star_5 || 0, color: "#10B981" },
+              { star: 4, count: stat.star_4 || 0, color: "#3B82F6" },
+              { star: 3, count: stat.star_3 || 0, color: "#F59E0B" },
+              { star: 2, count: stat.star_2 || 0, color: "#F97316" },
+              { star: 1, count: stat.star_1 || 0, color: "#EF4444" },
+            ];
+
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(15, 23, 42, 0.65)",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 9999,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 20
+                }}
+                onClick={() => setSelectedModelDetail(null)}
+              >
+                <div
+                  style={{
+                    background: "white",
+                    borderRadius: 24,
+                    width: "100%",
+                    maxWidth: 680,
+                    maxHeight: "92vh",
+                    overflowY: "auto",
+                    boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+                    display: "flex",
+                    flexDirection: "column"
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Modal Header */}
+                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", background: "#F8FAFC" }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                        Analisis Sentimen & Acuan Produksi
+                      </div>
+                      <h2 style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", margin: 0 }}>
+                        {stat.product_name}
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModelDetail(null)}
+                      style={{ background: "#F1F5F9", border: "none", borderRadius: 10, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748B" }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+                    
+                    {/* Ringkasan Skor & Distribusi Bintang */}
+                    <div style={{ display: "grid", gridTemplateColumns: "190px 1fr", gap: 20, alignItems: "center", background: "#F8FAFC", padding: 20, borderRadius: 18, border: "1px solid #E2E8F0" }}>
+                      <div style={{ textAlign: "center", borderRight: "1px solid #E2E8F0", paddingRight: 16 }}>
+                        <div style={{ fontSize: 44, fontWeight: 900, color: "#0F172A", lineHeight: 1 }}>
+                          {stat.average_rating}
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "center", gap: 3, margin: "8px 0" }}>
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={18}
+                              fill={i < Math.round(stat.average_rating) ? "#F59E0B" : "none"}
+                              color={i < Math.round(stat.average_rating) ? "#F59E0B" : "#CBD5E1"}
+                            />
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#64748B", fontWeight: 700 }}>
+                          Total {stat.total_reviews} Ulasan Pembeli
+                        </div>
+                        <div style={{ fontSize: 11, color: "#059669", fontWeight: 800, marginTop: 4 }}>
+                          100% Organik Marketplace
+                        </div>
+                      </div>
+
+                      {/* Baris Persentase Bintang */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {starData.map((s) => {
+                          const pct = Math.round((s.count / total) * 100);
+                          return (
+                            <div key={s.star} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                              <span style={{ width: 44, fontWeight: 700, color: "#475569", display: "flex", alignItems: "center", gap: 3 }}>
+                                {s.star} <Star size={11} fill="#F59E0B" color="#F59E0B" />
+                              </span>
+                              <div style={{ flex: 1, height: 9, background: "#E2E8F0", borderRadius: 99, overflow: "hidden" }}>
+                                <div style={{ width: `${pct}%`, height: "100%", background: s.color, borderRadius: 99, transition: "width 0.4s ease" }} />
+                              </div>
+                              <span style={{ width: 68, fontSize: 11, fontWeight: 700, color: "#64748B", textAlign: "right" }}>
+                                {s.count} ({pct}%)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Tags Positif Konsumen */}
+                    {Array.isArray(stat.positive_tags) && stat.positive_tags.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", marginBottom: 8 }}>
+                          Kekuatan Model Celana (Menurut Ulasan Pasar):
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {stat.positive_tags.map((tag: string, tIdx: number) => (
+                            <span key={tIdx} style={{ fontSize: 12, fontWeight: 800, padding: "5px 12px", borderRadius: 8, background: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                              <Check size={14} color="#059669" /> {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rekomendasi Produksi Box */}
+                    <div style={{
+                      padding: "16px 18px",
+                      borderRadius: 14,
+                      background: stat.average_rating >= 4.5 ? "#ECFDF5" : stat.average_rating >= 3.8 ? "#FFFBEB" : "#FEF2F2",
+                      border: stat.average_rating >= 4.5 ? "1px solid #A7F3D0" : stat.average_rating >= 3.8 ? "1px solid #FDE68A" : "1px solid #FECACA"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 900, color: stat.average_rating >= 4.5 ? "#047857" : stat.average_rating >= 3.8 ? "#B45309" : "#B91C1C", marginBottom: 6 }}>
+                        {stat.average_rating >= 4.5 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                        Status Rekomendasi: {stat.recommendation}
+                      </div>
+                      <p style={{ fontSize: 12.5, color: stat.average_rating >= 4.5 ? "#065F46" : stat.average_rating >= 3.8 ? "#92400E" : "#991B1B", margin: 0, lineHeight: 1.5 }}>
+                        {stat.notes}
+                      </p>
+                    </div>
+
+                    {/* Cuplikan Ulasan Nyata Terbaru untuk Model Ini */}
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", marginBottom: 10 }}>
+                        Sampel Ulasan Pembeli untuk Model Ini:
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {modelReviews.slice(0, 4).map((r: any) => (
+                          <div key={r.id} style={{ padding: "12px 14px", borderRadius: 10, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: "#0F172A" }}>@{r.buyer_name} <span style={{ fontSize: 10, color: "#64748B", fontWeight: 400 }}>· {r.variation || "-"}</span></span>
+                              <div style={{ display: "flex", gap: 2 }}>
+                                {[...Array(r.rating || 5)].map((_, i) => (
+                                  <Star key={i} size={12} fill="#F59E0B" color="#F59E0B" />
+                                ))}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 12, color: "#334155", fontStyle: "italic" }}>
+                              "{r.comment}"
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterReviewProduct(stat.product_name);
+                        setSelectedModelDetail(null);
+                      }}
+                      style={{ padding: "9px 14px", background: "white", color: "#334155", border: "1px solid #CBD5E1", borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+                    >
+                      <Search size={14} /> Lihat Semua {stat.total_reviews} Ulasan
+                    </button>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <a
+                        href="/buat-spk"
+                        style={{
+                          padding: "9px 16px",
+                          background: "#10B981",
+                          color: "white",
+                          borderRadius: 10,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          boxShadow: "0 2px 6px rgba(16,185,129,0.3)"
+                        }}
+                      >
+                        <Sparkles size={14} /> Buat SPK Potong / Produksi Ulang
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedModelDetail(null)}
+                        style={{ padding: "9px 18px", background: "#64748B", color: "white", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
         </>
         );
 }

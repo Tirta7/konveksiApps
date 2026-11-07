@@ -339,9 +339,15 @@ export function marketplaceConfigStatus() {
 export function startMarketplaceScheduler() {
   if (g.__mpScheduler) return;
   const INTERVAL = 30_000; // Tiap 30 detik cek pesanan baru otomatis
+  let tick = 0;
   g.__mpScheduler = setInterval(() => {
+    tick++;
     if (getShops(readData()).some((s) => s.aktif)) {
       syncAllShops().catch((e) => console.error("[marketplace] sinkron berkala gagal:", e?.message));
+      // Tiap 5 menit (10 tick x 30s), sinkron ulasan pembeli otomatis dari marketplace
+      if (tick % 10 === 0) {
+        syncMarketplaceReviews().catch((e) => console.error("[marketplace] sinkron ulasan berkala gagal:", e?.message));
+      }
     }
   }, INTERVAL);
   console.log("[marketplace] penjadwal sinkron aktif (tiap 30 detik)");
