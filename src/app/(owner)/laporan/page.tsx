@@ -728,15 +728,23 @@ export default function LaporanPage() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
         .table-row-hover:hover { background: #F8FAFC; }
+        html, body { overflow: hidden; height: 100%; }
+        .app-content { overflow: hidden !important; height: 100vh !important; padding-bottom: 0 !important; }
+        .laporan-root {
+          height: 100vh !important;
+          max-height: 100vh !important;
+          padding-bottom: 0 !important;
+          overflow: hidden !important;
+        }
       `}</style>
 
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", overflow: "hidden" }}>
+      <div className="laporan-root" style={{ display: "flex", flexDirection: "column", height: "100vh", maxHeight: "100vh", background: "#F1F5F9", overflow: "hidden", boxSizing: "border-box" }}>
 
         {/* Fixed Header */}
-        <div style={{ padding: "20px 32px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14 }}>
+        <div style={{ padding: "14px 28px", background: "white", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0F172A", marginBottom: 4 }}>Laporan Penjualan</h1>
-            <p style={{ fontSize: 13, color: "#64748B" }}>Analisis pesanan, komisi afiliasi, potongan platform, dan rekonsiliasi pencairan dana.</p>
+            <h1 style={{ fontSize: 21, fontWeight: 900, color: "#0F172A", margin: "0 0 2px 0" }}>Laporan Penjualan</h1>
+            <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>Analisis pesanan, komisi afiliasi, potongan platform, dan rekonsiliasi pencairan dana.</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             {activeTab === "keuangan" && (
@@ -846,30 +854,30 @@ export default function LaporanPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ padding: "0 32px", background: "white", borderBottom: "1px solid #E2E8F0", display: "flex", gap: 32, flexShrink: 0 }}>
+        <div style={{ padding: "0 28px", background: "white", borderBottom: "1px solid #E2E8F0", display: "flex", gap: 28, flexShrink: 0 }}>
           <div
             onClick={() => setActiveTab("keuangan")}
-            style={{ padding: "14px 0", cursor: "pointer", borderBottom: activeTab === "keuangan" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "keuangan" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}
+            style={{ padding: "10px 0", cursor: "pointer", borderBottom: activeTab === "keuangan" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "keuangan" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
           >
-            <Calculator size={18} /> Rekonsiliasi Keuangan & Settlement
+            <Calculator size={16} /> Rekonsiliasi Keuangan & Settlement
           </div>
           <div
             onClick={() => setActiveTab("produk")}
-            style={{ padding: "14px 0", cursor: "pointer", borderBottom: activeTab === "produk" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "produk" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}
+            style={{ padding: "10px 0", cursor: "pointer", borderBottom: activeTab === "produk" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "produk" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
           >
-            <PieChart size={18} /> Analisis Kategori & PO
+            <PieChart size={16} /> Analisis Kategori & PO
           </div>
           <div
             onClick={() => setActiveTab("review")}
-            style={{ padding: "14px 0", cursor: "pointer", borderBottom: activeTab === "review" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "review" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s" }}
+            style={{ padding: "10px 0", cursor: "pointer", borderBottom: activeTab === "review" ? "3px solid #2563EB" : "3px solid transparent", color: activeTab === "review" ? "#2563EB" : "#64748B", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
           >
-            <Star size={18} fill={activeTab === "review" ? "#F59E0B" : "none"} color={activeTab === "review" ? "#F59E0B" : "#64748B"} /> Review & Rating Produk (Acuan Repeat PO)
+            <Star size={16} fill={activeTab === "review" ? "#F59E0B" : "none"} color={activeTab === "review" ? "#F59E0B" : "#64748B"} /> Review & Rating Produk (Acuan Repeat PO)
           </div>
         </div>
 
         {/* Toolbar Filter Rentang Tanggal (Khusus Tab Keuangan) */}
         {activeTab === "keuangan" && (
-          <div style={{ padding: "12px 32px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ padding: "8px 28px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", flexShrink: 0, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#334155" }}>
                 <CalendarDays size={16} color="#3B82F6" />
@@ -963,86 +971,84 @@ export default function LaporanPage() {
           </div>
         )}
 
-        {/* Scrollable Area */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 32px" }}>
-
-          {activeTab === "keuangan" ? (
-            <>
-              {/* Financial Dashboard - 6 Cards Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 20 }}>
-                {/* 1. Omzet Kotor */}
-                <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Omzet Kotor (Gross)</span>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}><ShoppingBag size={16} /></div>
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#0F172A" }}>Rp {totalOmzetKotor.toLocaleString("id-ID")}</div>
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Nilai belanja kotor dari pembeli</div>
+        {activeTab === "keuangan" ? (
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* Financial Dashboard - 6 Cards Grid (Fixed, Compact) */}
+            <div style={{ padding: "10px 28px 0 28px", flexShrink: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              {/* 1. Omzet Kotor */}
+              <div style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Omzet Kotor (Gross)</span>
+                  <div style={{ width: 26, height: 26, borderRadius: 6, background: "#EFF6FF", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}><ShoppingBag size={14} /></div>
                 </div>
-
-                {/* 2. Menunggu Cair (Escrow) */}
-                <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", border: "1px solid #FED7AA", boxShadow: "0 2px 8px rgba(249,115,22,0.03)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#D97706", textTransform: "uppercase", letterSpacing: 0.5 }}>Menunggu Cair (Escrow)</span>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}><Clock size={16} /></div>
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#D97706" }}>Rp {totalMenungguCair.toLocaleString("id-ID")}</div>
-                  <div style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>Paket di kurir / belum konfirmasi terima</div>
-                </div>
-
-                {/* 3. Pencairan Bersih (Sudah Cair) */}
-                <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", border: "2px solid #10B981", boxShadow: "0 4px 12px rgba(16,185,129,0.1)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#059669", textTransform: "uppercase", letterSpacing: 0.5 }}>Pencairan Bersih (Cair)</span>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#ECFDF5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={16} /></div>
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "#10B981" }}>Rp {totalSudahCair.toLocaleString("id-ID")}</div>
-                  <div style={{ fontSize: 11, color: "#047857", marginTop: 4 }}>Uang bersih yang resmi masuk ke saldo/bank</div>
-                </div>
-
-                {/* 4. Komisi Afiliasi */}
-                <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#8B5CF6", textTransform: "uppercase", letterSpacing: 0.5 }}>Komisi Afiliasi (AMS)</span>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#F5F3FF", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center" }}><Users size={16} /></div>
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: totalBiayaAfiliasi > 0 ? "#8B5CF6" : "#64748B" }}>
-                    {totalBiayaAfiliasi > 0 ? `-Rp ${totalBiayaAfiliasi.toLocaleString("id-ID")}` : "Rp 0"}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Fee untuk konten kreator / affiliate</div>
-                </div>
-
-                {/* 5. Potongan Platform & Ongkir */}
-                <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Potongan Platform & Ongkir</span>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}><CreditCard size={16} /></div>
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: totalPotongan > 0 ? "#F59E0B" : "#64748B" }}>
-                    {totalPotongan > 0 ? `-Rp ${totalPotongan.toLocaleString("id-ID")}` : "Rp 0"}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Komisi marketplace, layanan & ongkir toko</div>
-                </div>
-
-                {/* 6. Kerugian Batal / Retur */}
-                <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: "#EF4444", textTransform: "uppercase", letterSpacing: 0.5 }}>Kerugian Batal / Retur</span>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FEF2F2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}><FileX size={16} /></div>
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: totalReturLoss > 0 ? "#EF4444" : "#64748B" }}>
-                    {totalReturLoss > 0 ? `-Rp ${totalReturLoss.toLocaleString("id-ID")}` : "Rp 0"}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Dana refund / pesanan batal tanpa banding</div>
-                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#0F172A" }}>Rp {totalOmzetKotor.toLocaleString("id-ID")}</div>
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Nilai belanja kotor dari pembeli</div>
               </div>
 
-              {/* Table Detail Rekonsiliasi */}
-              <div style={{ background: "white", borderRadius: 18, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-                <div style={{ padding: "16px 24px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              {/* 2. Menunggu Cair (Escrow) */}
+              <div style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "1px solid #FED7AA", boxShadow: "0 2px 6px rgba(249,115,22,0.03)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#D97706", textTransform: "uppercase", letterSpacing: 0.5 }}>Menunggu Cair (Escrow)</span>
+                  <div style={{ width: 26, height: 26, borderRadius: 6, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}><Clock size={14} /></div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#D97706" }}>Rp {totalMenungguCair.toLocaleString("id-ID")}</div>
+                <div style={{ fontSize: 10, color: "#B45309", marginTop: 2 }}>Paket di kurir / belum konfirmasi</div>
+              </div>
+
+              {/* 3. Pencairan Bersih (Sudah Cair) */}
+              <div style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "2px solid #10B981", boxShadow: "0 2px 6px rgba(16,185,129,0.08)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#059669", textTransform: "uppercase", letterSpacing: 0.5 }}>Pencairan Bersih (Cair)</span>
+                  <div style={{ width: 26, height: 26, borderRadius: 6, background: "#ECFDF5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}><Wallet size={14} /></div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#10B981" }}>Rp {totalSudahCair.toLocaleString("id-ID")}</div>
+                <div style={{ fontSize: 10, color: "#047857", marginTop: 2 }}>Uang bersih resmi masuk rekening</div>
+              </div>
+
+              {/* 4. Komisi Afiliasi */}
+              <div style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#8B5CF6", textTransform: "uppercase", letterSpacing: 0.5 }}>Komisi Afiliasi (AMS)</span>
+                  <div style={{ width: 26, height: 26, borderRadius: 6, background: "#F5F3FF", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center" }}><Users size={14} /></div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: totalBiayaAfiliasi > 0 ? "#8B5CF6" : "#64748B" }}>
+                  {totalBiayaAfiliasi > 0 ? `-Rp ${totalBiayaAfiliasi.toLocaleString("id-ID")}` : "Rp 0"}
+                </div>
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Fee konten kreator / affiliate</div>
+              </div>
+
+              {/* 5. Potongan Platform & Ongkir */}
+              <div style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>Potongan Platform</span>
+                  <div style={{ width: 26, height: 26, borderRadius: 6, background: "#FFFBEB", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}><CreditCard size={14} /></div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: totalPotongan > 0 ? "#F59E0B" : "#64748B" }}>
+                  {totalPotongan > 0 ? `-Rp ${totalPotongan.toLocaleString("id-ID")}` : "Rp 0"}
+                </div>
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Komisi marketplace, layanan &amp; ongkir</div>
+              </div>
+
+              {/* 6. Kerugian Batal / Retur */}
+              <div style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "1px solid #E2E8F0", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#EF4444", textTransform: "uppercase", letterSpacing: 0.5 }}>Kerugian Batal / Retur</span>
+                  <div style={{ width: 26, height: 26, borderRadius: 6, background: "#FEF2F2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}><FileX size={14} /></div>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: totalReturLoss > 0 ? "#EF4444" : "#64748B" }}>
+                  {totalReturLoss > 0 ? `-Rp ${totalReturLoss.toLocaleString("id-ID")}` : "Rp 0"}
+                </div>
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>Dana refund / batal tanpa banding</div>
+              </div>
+            </div>
+
+            {/* Table Area (Fills remaining height downwards, scrolling ONLY table rows) */}
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 28px 12px 28px", overflow: "hidden" }}>
+              <div style={{ flex: 1, minHeight: 0, background: "white", borderRadius: 14, border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "10px 18px", borderBottom: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                   <div>
-                    <h2 style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", margin: 0, marginBottom: 2 }}>Detail Rekonsiliasi Per Pesanan</h2>
-                    <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+                    <h2 style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", margin: 0 }}>Detail Rekonsiliasi Per Pesanan</h2>
+                    <p style={{ fontSize: 11.5, color: "#64748B", margin: 0 }}>
                       Menampilkan <b>{filteredOrders.length}</b> pesanan
                       {(filterStartDate || filterEndDate || search) && (
                         <span style={{ color: "#3B82F6", marginLeft: 6 }}>(difilter dari {unifiedOrders.length} total)</span>
@@ -1051,19 +1057,19 @@ export default function LaporanPage() {
                   </div>
                 </div>
 
-                <div style={{ overflowX: "auto", maxHeight: "calc(100vh - 380px)" }}>
+                <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                    <thead style={{ background: "#F1F5F9", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                    <thead style={{ background: "#F8FAFC", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
                       <tr>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Order ID & Waktu</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Produk & Qty</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Status Pencairan</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Omzet Kotor</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Komisi Platform</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Komisi Afiliasi</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Ongkir Toko</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Total Potongan</th>
-                        <th style={{ padding: "12px 18px", fontSize: 11, fontWeight: 800, color: "#64748B", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Pencairan Bersih</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Order ID &amp; Waktu</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Produk &amp; Qty</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0" }}>Status Pencairan</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Omzet Kotor</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Komisi Platform</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Komisi Afiliasi</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Ongkir Toko</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Total Potongan</th>
+                        <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 800, color: "#475569", textTransform: "uppercase", borderBottom: "2px solid #E2E8F0", textAlign: "right" }}>Pencairan Bersih</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1090,8 +1096,8 @@ export default function LaporanPage() {
                             title="Klik baris ini untuk melihat rincian potongan marketplace & pencairan bersih ala BigSeller"
                           >
                             {/* 1. Order ID & Waktu */}
-                            <td style={{ padding: "14px 18px", maxWidth: 220 }}>
-                              <div style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6 }}>
+                            <td style={{ padding: "10px 14px", maxWidth: 220 }}>
+                              <div style={{ fontWeight: 800, fontSize: 12.5, color: "#0F172A", fontFamily: "monospace", display: "flex", alignItems: "center", gap: 6 }}>
                                 {o.order_id}
                                 <span style={{
                                   fontSize: 9, fontWeight: 800, padding: "1px 5px", borderRadius: 4,
@@ -1108,8 +1114,8 @@ export default function LaporanPage() {
                             </td>
 
                             {/* 2. Produk & Qty */}
-                            <td style={{ padding: "14px 18px", maxWidth: 240 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            <td style={{ padding: "10px 14px", maxWidth: 240 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#1E293B", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {o.product || "-"}
                               </div>
                               <div style={{ fontSize: 11, color: "#64748B", marginTop: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1119,44 +1125,44 @@ export default function LaporanPage() {
                             </td>
 
                             {/* 3. Status Pencairan */}
-                            <td style={{ padding: "14px 18px" }}>
+                            <td style={{ padding: "10px 14px" }}>
                               {o.isRetur ? (
-                                <span style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10.5, fontWeight: 800, background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA" }}>
+                                <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 800, background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA" }}>
                                   {o.statusRetur || "RETUR / BATAL"}
                                 </span>
                               ) : o.isSudahCair ? (
-                                <span style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10.5, fontWeight: 800, background: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 800, background: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0", display: "inline-flex", alignItems: "center", gap: 4 }}>
                                   <CheckCircle2 size={11} /> SUDAH CAIR
                                 </span>
                               ) : (
-                                <span style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10.5, fontWeight: 800, background: "#FFFBEB", color: "#B45309", border: "1px solid #FDE68A", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <span style={{ padding: "2px 7px", borderRadius: 5, fontSize: 10, fontWeight: 800, background: "#FFFBEB", color: "#B45309", border: "1px solid #FDE68A", display: "inline-flex", alignItems: "center", gap: 4 }}>
                                   <Clock size={11} /> MENUNGGU CAIR
                                 </span>
                               )}
                             </td>
 
                             {/* 4. Omzet Kotor */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 800, color: "#0F172A", fontSize: 13 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 800, color: "#0F172A", fontSize: 13 }}>
                               Rp {o.omzetKotor.toLocaleString("id-ID")}
                             </td>
 
                             {/* 5. Komisi Platform */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 700, color: o.biayaKomisi > 0 ? "#F59E0B" : "#94A3B8", fontSize: 12 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: o.biayaKomisi > 0 ? "#F59E0B" : "#94A3B8", fontSize: 12 }}>
                               {o.biayaKomisi > 0 ? `-Rp ${o.biayaKomisi.toLocaleString("id-ID")}` : "-"}
                             </td>
 
                             {/* 6. Komisi Afiliasi */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 700, color: o.biayaAfiliasi > 0 ? "#8B5CF6" : "#94A3B8", fontSize: 12 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: o.biayaAfiliasi > 0 ? "#8B5CF6" : "#94A3B8", fontSize: 12 }}>
                               {o.biayaAfiliasi > 0 ? `-Rp ${o.biayaAfiliasi.toLocaleString("id-ID")}` : "-"}
                             </td>
 
                             {/* 7. Ongkir Toko */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 700, color: o.biayaOngkir > 0 ? "#EA580C" : "#94A3B8", fontSize: 12 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: o.biayaOngkir > 0 ? "#EA580C" : "#94A3B8", fontSize: 12 }}>
                               {o.biayaOngkir > 0 ? `-Rp ${o.biayaOngkir.toLocaleString("id-ID")}` : "-"}
                             </td>
 
                             {/* 8. Total Potongan */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 800, fontSize: 12 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 800, fontSize: 12 }}>
                               {o.isSudahCair ? (
                                 o.totalPotongan > 0 ? (
                                   <span style={{ color: "#DC2626" }}>-Rp {o.totalPotongan.toLocaleString("id-ID")}</span>
@@ -1169,7 +1175,7 @@ export default function LaporanPage() {
                             </td>
 
                             {/* 9. Pencairan Bersih */}
-                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 900, color: o.isSudahCair ? "#10B981" : "#D97706", fontSize: 14 }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 900, color: o.isSudahCair ? "#10B981" : "#D97706", fontSize: 13.5 }}>
                               Rp {(o.isSudahCair ? o.labaBersih : o.omzetKotor).toLocaleString("id-ID")}
                             </td>
                           </tr>
@@ -1180,7 +1186,7 @@ export default function LaporanPage() {
                 </div>
 
                 {/* Pagination Controls Laporan Keuangan */}
-                <div style={{ padding: "12px 24px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ padding: "8px 18px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#64748B" }}>
                     <span>Tampilkan:</span>
                     <select
@@ -1208,7 +1214,7 @@ export default function LaporanPage() {
                         disabled={orderPage <= 1}
                         onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
                         style={{
-                          padding: "6px 10px",
+                          padding: "5px 10px",
                           borderRadius: 6,
                           border: "1px solid #CBD5E1",
                           background: orderPage <= 1 ? "#F1F5F9" : "white",
@@ -1233,7 +1239,7 @@ export default function LaporanPage() {
                         disabled={orderPage >= totalOrderPages}
                         onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
                         style={{
-                          padding: "6px 10px",
+                          padding: "5px 10px",
                           borderRadius: 6,
                           border: "1px solid #CBD5E1",
                           background: orderPage >= totalOrderPages ? "#F1F5F9" : "white",
@@ -1252,10 +1258,13 @@ export default function LaporanPage() {
                   )}
                 </div>
               </div>
-            </>
-          ) : activeTab === "produk" ? (
-            <>
-              {/* Product Analytics Tab (Kategori & PO) */}
+            </div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 28px" }}>
+            {activeTab === "produk" ? (
+              <>
+                {/* Product Analytics Tab (Kategori & PO) */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
                 <div style={{ display: "flex", background: "white", border: "1px solid #E2E8F0", padding: 4, borderRadius: 12 }}>
                   <button style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer", transition: "all 0.2s", background: periode === "minggu" ? "#F1F5F9" : "transparent", color: periode === "minggu" ? "#0F172A" : "#64748B" }} onClick={() => setPeriode("minggu")}>Minggu Ini</button>
@@ -1823,6 +1832,7 @@ export default function LaporanPage() {
             </>
           )}
         </div>
+      )}
 
       </div>
 
