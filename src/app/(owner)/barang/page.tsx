@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
-import { Plus, Edit2, Trash2, X, Barcode, Search, Package, Boxes, Wallet, TrendingUp, ShoppingBag, Info, ChevronDown, ChevronUp, ChevronRight, Factory, PenLine, Store, Globe, Truck, AlertTriangle, RefreshCw, CloudUpload, ExternalLink, Layers } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Barcode, Search, Package, Boxes, Wallet, TrendingUp, ShoppingBag, Info, ChevronDown, ChevronUp, ChevronRight, Factory, PenLine, Store, Globe, Truck, AlertTriangle, RefreshCw, CloudUpload, ExternalLink, Layers, ShieldAlert, CheckSquare, Square, ArrowRight, ArrowLeft, Lock, Check } from "lucide-react";
 import { toast } from "sonner";
 import BarangBarcodeModal from "@/components/BarangBarcodeModal";
 
@@ -26,6 +26,12 @@ export default function BarangPage() {
   const [fSumber, setFSumber] = useState("semua");
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [variantModalItem, setVariantModalItem] = useState<any | null>(null);
+
+  // State Verifikasi Bertingkat Pengiriman Stok Marketplace
+  const [confirmSyncData, setConfirmSyncData] = useState<{ item?: any; isAll?: boolean } | null>(null);
+  const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
+  const [agreeCheckbox, setAgreeCheckbox] = useState(false);
+  const [confirmWord, setConfirmWord] = useState("");
 
   const [formData, setFormData] = useState({
     kategori_id: "",
@@ -59,7 +65,28 @@ export default function BarangPage() {
     }
   };
 
-  const handlePushStock = async (targetId?: number) => {
+  const openPushConfirm = (targetIdOrItem?: any) => {
+    let targetItem: any = null;
+    let isAll = false;
+
+    if (typeof targetIdOrItem === "number") {
+      targetItem = data.find((b) => b.id === targetIdOrItem);
+    } else if (targetIdOrItem && typeof targetIdOrItem === "object") {
+      targetItem = targetIdOrItem;
+    } else {
+      isAll = true;
+    }
+
+    setConfirmSyncData({ item: targetItem, isAll });
+    setConfirmStep(1);
+    setAgreeCheckbox(false);
+    setConfirmWord("");
+  };
+
+  const executePushStock = async () => {
+    if (!confirmSyncData) return;
+    const targetId = confirmSyncData.isAll ? undefined : confirmSyncData.item?.id;
+
     setSyncingStock(true);
     try {
       const res = await fetch("/api/marketplace/sync-stock", {
@@ -70,6 +97,7 @@ export default function BarangPage() {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || json.error || "Gagal mengirim stok ke marketplace");
       toast.success(json.message);
+      setConfirmSyncData(null);
       fetchData();
     } catch (err: any) {
       toast.error(err.message);
@@ -332,8 +360,8 @@ export default function BarangPage() {
           <button
             type="button"
             disabled={pullingCatalog || syncingStock || !data.length}
-            onClick={() => handlePushStock()}
-            title="Kirim jumlah stok gudang saat ini ke Shopee & TikTok"
+            onClick={() => openPushConfirm()}
+            title="Kirim jumlah stok gudang saat ini ke Shopee & TikTok (dengan verifikasi keamanan)"
             style={{
               background: "#ECFDF5",
               color: "#059669",
@@ -652,7 +680,7 @@ export default function BarangPage() {
                       <td style={{ padding: "14px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           {item.marketplace_mappings?.length > 0 && (
-                            <button className="brg-act" onClick={() => handlePushStock(item.id)} title="Kirim / update stok barang ini ke Shopee & TikTok" style={{ padding: "6px 8px", background: "#ECFDF5", color: "#059669", borderRadius: 6, border: "1px solid #A7F3D0", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700 }}><CloudUpload size={13} /> Sync Stok</button>
+                            <button className="brg-act" onClick={() => openPushConfirm(item)} title="Kirim / update stok barang ini ke Shopee & TikTok (dengan verifikasi keamanan)" style={{ padding: "6px 8px", background: "#ECFDF5", color: "#059669", borderRadius: 6, border: "1px solid #A7F3D0", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700 }}><CloudUpload size={13} /> Sync Stok</button>
                           )}
                           {item.sumber === "produksi" && (
                             <button className="brg-act" onClick={() => setBarcodeItem(item)} title="Lihat & cetak barcode per pcs (hanya yang sudah masuk stok)" style={{ padding: "6px 10px", background: "#EEF2FF", color: "#4F46E5", borderRadius: 6, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700 }}><Barcode size={15} /> Barcode</button>
@@ -744,7 +772,7 @@ export default function BarangPage() {
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => handlePushStock(item.id)}
+                                  onClick={() => openPushConfirm(item)}
                                   style={{
                                     fontSize: 11.5,
                                     fontWeight: 700,
@@ -1060,9 +1088,9 @@ export default function BarangPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const id = variantModalItem.id;
+                  const itm = variantModalItem;
                   setVariantModalItem(null);
-                  handlePushStock(id);
+                  openPushConfirm(itm);
                 }}
                 style={{
                   padding: "8px 14px",
@@ -1088,6 +1116,302 @@ export default function BarangPage() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Verifikasi Bertingkat Pengiriman Stok Marketplace */}
+      {confirmSyncData && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 640, margin: "16px", borderRadius: 16, overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.3)" }}>
+            
+            {/* Header Wizard Step Indicator */}
+            <div style={{ padding: "14px 24px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
+                {/* Step 1 Pill */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: confirmStep === 1 ? "#2563EB" : "#10B981",
+                    color: "white", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 800
+                  }}>
+                    {confirmStep > 1 ? "✓" : "1"}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: confirmStep === 1 ? "#0F172A" : "#64748B" }}>
+                    Tahap 1: Review Data
+                  </span>
+                </div>
+
+                <div style={{ width: 28, height: 2, background: confirmStep >= 2 ? "#10B981" : "#CBD5E1" }} />
+
+                {/* Step 2 Pill */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: confirmStep === 2 ? "#DC2626" : "#E2E8F0",
+                    color: confirmStep === 2 ? "white" : "#64748B",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 800
+                  }}>
+                    2
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: confirmStep === 2 ? "#0F172A" : "#94A3B8" }}>
+                    Tahap 2: Kunci Keamanan
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setConfirmSyncData(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 4 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "20px 24px", maxHeight: "65vh", overflowY: "auto" }}>
+              {confirmStep === 1 ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ background: "#FEF3C7", color: "#B45309", padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <AlertTriangle size={13} /> TINJAUAN PERUBAHAN STOK
+                    </span>
+                    <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>
+                      Toko: <b>Shopee (lavaira.id)</b>
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: "#0F172A", margin: "4px 0 12px" }}>
+                    {confirmSyncData.isAll ? "Sinkronisasi Seluruh Katalog Barang ke Toko Online" : confirmSyncData.item?.nama_barang}
+                  </h3>
+
+                  <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "12px 14px", marginBottom: 16, fontSize: 12.5, color: "#92400E", lineHeight: 1.5 }}>
+                    ⚠️ <b>Peringatan Dampak:</b> Menekan tombol kirim akan <b>menimpa (overwrite)</b> kuota stok yang tampil bagi pembeli di marketplace saat ini dengan data stok ERP. Jika stok fisik gudang 0 pcs, produk akan otomatis menjadi <b>Habis (Sold Out)</b>.
+                  </div>
+
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                    Daftar Stok yang Akan Dikirim:
+                  </div>
+
+                  <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", color: "#475569", textTransform: "uppercase", fontSize: 10.5 }}>
+                          <th style={{ padding: "8px 10px", textAlign: "left" }}>Varian</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left" }}>Seller SKU</th>
+                          <th style={{ padding: "8px 10px", textAlign: "right" }}>Stok ERP</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left" }}>Status Toko Online</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {confirmSyncData.isAll ? (
+                          data.filter((b) => b.marketplace_mappings?.length > 0).map((b) => (
+                            <tr key={b.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                              <td style={{ padding: "8px 10px", fontWeight: 700 }}>{b.nama_barang}</td>
+                              <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#64748B" }}>{b.kode}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 800, color: b.stok > 0 ? "#059669" : "#EF4444" }}>{b.stok} pcs</td>
+                              <td style={{ padding: "8px 10px" }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: b.stok > 0 ? "#DCFCE7" : "#FEE2E2", color: b.stok > 0 ? "#15803D" : "#B91C1C" }}>
+                                  {b.stok > 0 ? `Tersedia (${b.stok} pcs)` : "Habis di Toko"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          (confirmSyncData.item?.marketplace_mappings || []).map((m: any, idx: number) => {
+                            const vName = m.variation_name || (m.seller_sku ? m.seller_sku.split("-").pop() : `Varian ${idx + 1}`);
+                            const matchSize = confirmSyncData.item?.sizes?.find((s: any) =>
+                              s.size.toLowerCase() === vName.toLowerCase() ||
+                              (m.seller_sku && m.seller_sku.toLowerCase().endsWith("-" + s.size.toLowerCase()))
+                            );
+                            const curStock = matchSize ? matchSize.jumlah : confirmSyncData.item?.stok || 0;
+                            return (
+                              <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                                <td style={{ padding: "8px 10px", fontWeight: 800, color: "#0F172A" }}>
+                                  <span style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", padding: "1px 6px", borderRadius: 4 }}>
+                                    {vName}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#64748B", fontSize: 11 }}>
+                                  {m.seller_sku || m.raw_sku || "-"}
+                                </td>
+                                <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 800, color: curStock > 0 ? "#059669" : "#EF4444" }}>
+                                  {curStock} pcs
+                                </td>
+                                <td style={{ padding: "8px 10px" }}>
+                                  <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: curStock > 0 ? "#DCFCE7" : "#FEE2E2", color: curStock > 0 ? "#15803D" : "#B91C1C" }}>
+                                    {curStock > 0 ? `Tersedia (${curStock} pcs)` : "Habis di Toko"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                /* Step 2: Konfirmasi Keamanan Tingkat Lanjut */
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <span style={{ background: "#FEE2E2", color: "#DC2626", padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <ShieldAlert size={14} /> PENGUNCI KEAMANAN AKTIF
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: "#991B1B", margin: "4px 0 12px" }}>
+                    Verifikasi Akhir Sebelum Mengirim ke Toko
+                  </h3>
+
+                  <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 14px", marginBottom: 18, fontSize: 12.5, color: "#991B1B", lineHeight: 1.5 }}>
+                    🔒 Untuk memastikan Anda <b>tidak salah klik tanpa sengaja</b>, selesaikan 2 syarat verifikasi keamanan di bawah ini sebelum data dikirim ke Shopee/TikTok:
+                  </div>
+
+                  {/* Syarat 1: Checkbox Persetujuan */}
+                  <div
+                    onClick={() => setAgreeCheckbox(!agreeCheckbox)}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: agreeCheckbox ? "2px solid #2563EB" : "1px solid #CBD5E1",
+                      background: agreeCheckbox ? "#EFF6FF" : "#F8FAFC",
+                      cursor: "pointer",
+                      marginBottom: 14,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <div style={{ marginTop: 2, color: agreeCheckbox ? "#2563EB" : "#94A3B8" }}>
+                      {agreeCheckbox ? <CheckSquare size={18} /> : <Square size={18} />}
+                    </div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B", lineHeight: 1.4 }}>
+                      Saya telah memeriksa ketersediaan fisik stok di gudang dan menyetujui pembaruan kuota stok toko online secara langsung.
+                    </div>
+                  </div>
+
+                  {/* Syarat 2: Ketik Kata Konfirmasi */}
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "12px 14px" }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                      Ketik kata <span style={{ color: "#DC2626", fontWeight: 900, background: "#FEE2E2", padding: "1px 6px", borderRadius: 4 }}>KIRIM</span> di bawah untuk membuka kunci tombol:
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmWord}
+                      onChange={(e) => setConfirmWord(e.target.value.toUpperCase())}
+                      placeholder="Ketik KIRIM disini"
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        fontSize: 14,
+                        fontWeight: 800,
+                        letterSpacing: 2,
+                        borderRadius: 8,
+                        border: confirmWord.trim().toUpperCase() === "KIRIM" ? "2px solid #059669" : "1px solid #CBD5E1",
+                        background: "white",
+                        boxSizing: "border-box",
+                        textAlign: "center",
+                        outline: "none",
+                      }}
+                    />
+                    {confirmWord.trim().toUpperCase() === "KIRIM" ? (
+                      <div style={{ fontSize: 11.5, color: "#059669", fontWeight: 700, marginTop: 5, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        ✓ Kunci terbuka. Tombol kirim siap dijalankan.
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4, textAlign: "center" }}>
+                        Harap ketik kata KIRIM dengan huruf besar.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {confirmStep === 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmSyncData(null)}
+                    style={{ padding: "8px 16px", background: "#F1F5F9", color: "#475569", borderRadius: 8, border: "1px solid #CBD5E1", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmStep(2)}
+                    style={{
+                      padding: "9px 18px",
+                      background: "#2563EB",
+                      color: "white",
+                      borderRadius: 8,
+                      border: "none",
+                      fontWeight: 700,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    Lanjut ke Verifikasi Keamanan <ArrowRight size={14} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmStep(1)}
+                    style={{
+                      padding: "8px 16px",
+                      background: "#F1F5F9",
+                      color: "#475569",
+                      borderRadius: 8,
+                      border: "1px solid #CBD5E1",
+                      fontWeight: 700,
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <ArrowLeft size={14} /> Kembali ke Review
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!agreeCheckbox || confirmWord.trim().toUpperCase() !== "KIRIM" || syncingStock}
+                    onClick={executePushStock}
+                    style={{
+                      padding: "10px 20px",
+                      background: !agreeCheckbox || confirmWord.trim().toUpperCase() !== "KIRIM" || syncingStock ? "#E2E8F0" : "#DC2626",
+                      color: !agreeCheckbox || confirmWord.trim().toUpperCase() !== "KIRIM" || syncingStock ? "#94A3B8" : "white",
+                      borderRadius: 8,
+                      border: "none",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: !agreeCheckbox || confirmWord.trim().toUpperCase() !== "KIRIM" || syncingStock ? "not-allowed" : "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      boxShadow: !agreeCheckbox || confirmWord.trim().toUpperCase() !== "KIRIM" ? "none" : "0 4px 6px -1px rgba(220,38,38,0.3)",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <CloudUpload size={15} />
+                    {syncingStock ? "Sedang Mengirim ke Toko..." : "🚀 Ya, Kirim Stok ke Marketplace"}
+                  </button>
+                </>
+              )}
+            </div>
+
           </div>
         </div>
       )}
