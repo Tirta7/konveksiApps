@@ -67,8 +67,12 @@ async function fetchMapped(shop: MarketplaceShop, opts: { fromSec?: number; toSe
   const out: MappedOrder[] = [];
   let calls = 0;
   for (const o of raw) {
-    let tracking = known.get(String(o.order_sn)) || "";
-    if (!tracking && SHIPPED_SHOPEE.has(String(o.order_status)) && calls < 60) { calls++; tracking = await shopeeTrackingNumber(shop, String(o.order_sn)); }
+    let tracking = known.get(String(o.order_sn)) || o.package_list?.[0]?.tracking_number || "";
+    const hasLogistics = (o.package_list || []).some((p: any) => p.logistics_status && p.logistics_status !== "LOGISTICS_NOT_START");
+    if (!tracking && (SHIPPED_SHOPEE.has(String(o.order_status)) || hasLogistics) && calls < 60) { 
+      calls++; 
+      tracking = await shopeeTrackingNumber(shop, String(o.order_sn)); 
+    }
     out.push(mapShopeeOrder(o, shop, tracking));
   }
   return out;
