@@ -20,10 +20,14 @@ import {
   User,
   Box,
   CheckCircle,
-  Truck
+  Truck,
+  TrendingUp,
+  Landmark,
+  Wallet
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import BusinessOverview from "@/components/dashboard/BusinessOverview";
 
 function fmtWaktu(d: Date) {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -62,6 +66,7 @@ const TIPE_CFG: Record<string, { bg: string; color: string }> = {
 };
 
 export default function DashboardPage() {
+  const [dashboardTab, setDashboardTab] = useState<"bisnis" | "produksi">("bisnis");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -271,11 +276,14 @@ export default function DashboardPage() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <h1 style={{ fontSize: 21, fontWeight: 900, color: "#0F172A", margin: 0, letterSpacing: -0.3 }}>
-                Dashboard Produksi
+                {dashboardTab === "bisnis" ? "Dashboard Eksekutif & Finansial" : "Dashboard Operasional & Produksi"}
               </h1>
               {totalPoTerlambat > 0 && (
                 <button
-                  onClick={() => setPoFilter("overdue")}
+                  onClick={() => {
+                    setDashboardTab("produksi");
+                    setPoFilter("overdue");
+                  }}
                   style={{ 
                     background: "#FEE2E2", 
                     color: "#DC2626", 
@@ -296,11 +304,76 @@ export default function DashboardPage() {
               )}
             </div>
             <p style={{ fontSize: 12, color: "#64748B", margin: "3px 0 0" }}>
-              Ringkasan aktivitas real-time konveksi hari ini & pantauan progres CMT
+              {dashboardTab === "bisnis" 
+                ? "Analisis menyeluruh pendapatan, piutang, hutang, pengeluaran, tren penjualan & performa item produk"
+                : "Ringkasan aktivitas real-time konveksi hari ini & pantauan progres CMT"}
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {/* TAB SELECTOR IN HEADER */}
+            <div style={{
+              display: "flex",
+              background: "#F1F5F9",
+              borderRadius: 12,
+              padding: 3,
+              gap: 2,
+            }}>
+              <button
+                type="button"
+                onClick={() => setDashboardTab("bisnis")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 14px",
+                  borderRadius: 9,
+                  border: "none",
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: dashboardTab === "bisnis" ? "white" : "transparent",
+                  color: dashboardTab === "bisnis" ? "#0F172A" : "#64748B",
+                  boxShadow: dashboardTab === "bisnis" ? "0 1px 4px rgba(15,23,42,0.08)" : "none",
+                }}
+              >
+                <TrendingUp size={14} color={dashboardTab === "bisnis" ? "#2563EB" : "#64748B"} />
+                Bisnis & Finansial
+              </button>
+              <button
+                type="button"
+                onClick={() => setDashboardTab("produksi")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 14px",
+                  borderRadius: 9,
+                  border: "none",
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  background: dashboardTab === "produksi" ? "white" : "transparent",
+                  color: dashboardTab === "produksi" ? "#0F172A" : "#64748B",
+                  boxShadow: dashboardTab === "produksi" ? "0 1px 4px rgba(15,23,42,0.08)" : "none",
+                }}
+              >
+                <Layers size={14} color={dashboardTab === "produksi" ? "#2563EB" : "#64748B"} />
+                Operasional CMT
+                {totalPoTerlambat > 0 && (
+                  <span style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#EF4444",
+                    display: "inline-block",
+                  }} />
+                )}
+              </button>
+            </div>
+
             <span 
               title="WebSocket / SSE Terhubung: Sinkronisasi real-time aktif tanpa reload"
               style={{ 
@@ -346,8 +419,11 @@ export default function DashboardPage() {
 
         {/* MAIN BODY SCROLL */}
         <div className="dash-main-scroll">
-
-          {/* REAL-TIME OVERDUE ALERT BANNER */}
+          {dashboardTab === "bisnis" ? (
+            <BusinessOverview />
+          ) : (
+            <>
+              {/* REAL-TIME OVERDUE ALERT BANNER */}
           {totalPoTerlambat > 0 && (
             <div style={{ 
               background: "linear-gradient(135deg, #FFF1F2 0%, #FEF2F2 100%)", 
@@ -1051,6 +1127,8 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* PO DETAIL MODAL */}
