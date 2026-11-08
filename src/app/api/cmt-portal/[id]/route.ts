@@ -3,6 +3,7 @@ import { readData } from "@/lib/data-store";
 import { getCmtCompletion, getTransferCompletion, cmtReports, transferReports, isVendorTransferActive } from "@/lib/po-lifecycle";
 import { isOpenPool, poolMatchesVendorType, poolAvailability, stageLabel } from "@/lib/pool-guard";
 import { vendorOwnershipError, publicVendor } from "@/lib/auth";
+import { computeVendorSalarySummary } from "@/lib/vendor-salary";
 
 // GET portal data for a specific CMT vendor
 export async function GET(req: Request, context: { params: Promise<{ id: string }> | { id: string } }) {
@@ -166,150 +167,31 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     .sort((a: any, b: any) => new Date(b.tanggalSelesai || 0).getTime() - new Date(a.tanggalSelesai || 0).getTime())
     .slice(0, 50);
 
-  // ── Helper Tarif Pcs Vendor ──
-  const resolveTarif = (modelName?: string, customRate?: number) => {
-    if (customRate && Number(customRate) > 0) return Number(customRate);
-    if (modelName && vendor.tarifPotongan && vendor.tarifPotongan[modelName]) {
-      return Number(vendor.tarifPotongan[modelName]);
-    }
-    return Number(vendor.hargaPerPcs || 5000);
-  };
+  // ── Unified Vendor Salary Calculation (Per-PO + FIFO Allocation) ──
+  const salarySummary = computeVendorSalarySummary(data, vendor, now);
+  const rincianGajiPerPo = salarySummary.rincianGajiPerPo;
+  const officialSlips = salarySummary.officialSlips;
+  const unbilledSlips = salarySummary.unbilledSlips;
 
-  // ── Realtime Hak Gaji Per Pekerjaan / PO ──
-  const allVendorJobs = [...historiPO, ...activePO];
-
-  const rincianGajiPerPo = allVendorJobs.map((job: any) => {
-    const poId = job.po_id || job.id;
-    const noPo = job.no_po || job.noPo || "PO";
-    const model = job.model || "Umum";
-    const targetPcs = Number(job.jumlah_terbit ?? job.jumlahTerbit ?? 0);
-    const pcsSelesai = Number(job.totalDiambil || 0); // yang sudah di-ACC admin
-    const pcsPending = Number(job.totalPending || 0); // menunggu ACC
-    const tarifPerPcs = resolveTarif(model, job.hargaPerPcs);
-    const subtotalHak = pcsSelesai * tarifPerPcs;
-    const subtotalPending = pcsPending * tarifPerPcs;
-    const estimasiTotal = targetPcs * tarifPerPcs;
-
-    // Cek pembayaran tercatat di gaji_cmt untuk PO ini
-    const poPayments = (data.gaji_cmt || []).filter(
-      (g: any) => Number(g.cmtId) === Number(vendorId) && String(g.poId) === String(poId)
-    );
-    const paidForPo = poPayments.reduce(
-      (sum: number, g: any) => sum + Number(g.dibayar ?? (g.status === "Lunas" ? (g.totalGaji || g.total || 0) : 0)),
-      0
-    );
-    const sisaHak = Math.max(0, subtotalHak - paidForPo);
-
-    let statusBayar = "Belum Ada Pcs";
-    if (subtotalHak > 0) {
-      if (paidForPo >= subtotalHak) {
-        statusBayar = "Lunas";
-      } else if (paidForPo > 0) {
-        statusBayar = "Sebagian Dibayar";
-      } else {
-        statusBayar = job.tanggalSelesai || pcsSelesai >= targetPcs ? "Siap Cair" : "Akumulasi Berjalan";
-      }
-    }
-
-    return {
-      poId,
-      jobId: job.id,
-      noPo,
-      model,
-      targetPcs,
-      pcsSelesai,
-      pcsPending,
-      tarifPerPcs,
-      subtotalHak,
-      subtotalPending,
-      estimasiTotal,
-      dibayar: paidForPo,
-      sisaHak,
-      statusBayar,
-      isDone: !!job.tanggalSelesai || (targetPcs > 0 && pcsSelesai >= targetPcs),
-      tanggalSelesai: job.tanggalSelesai || null,
-      reportedAt: job.reportedAt || null,
-    };
-  });
-
-  // ── Official Payout Slips dari data.gaji_cmt ──
-  const officialSlips = (data.gaji_cmt || [])
-    .filter((g: any) => Number(g.cmtId) === Number(vendorId))
-    .map((g: any) => {
-      const amt = Number(g.totalGaji ?? g.total ?? 0);
-      const isLunas = g.status === "Lunas";
-      const dibayar = Number(g.dibayar ?? (isLunas ? amt : 0));
-      const sisaTagihan = Math.max(0, amt - dibayar);
-      const matchedJob = allVendorJobs.find(
-        (j: any) => String(j.id) === String(g.poId) || String(j.po_id) === String(g.poId)
-      );
-      const noPo = matchedJob ? (matchedJob.no_po || matchedJob.noPo) : (g.noPo || "-");
-      const model = matchedJob ? matchedJob.model : (g.model || "-");
-
-      return {
-        ...g,
-        id: g.id,
-        isOfficial: true,
-        isRealtime: false,
-        noPo,
-        model,
-        total: amt,
-        totalGaji: amt,
-        dibayar,
-        sisaTagihan,
-        status: g.status || "Lunas",
-        metode: g.metode || "Transfer Bank",
-        keterangan: g.catatan || (matchedJob ? `Pembayaran Upah SPK ${noPo} (${model})` : `Slip Pembayaran #${g.id}`),
-        tanggal: g.tanggal || new Date().toISOString(),
-      };
-    });
-
-  // ── Unbilled Realtime Slips (Upah dari PO yang sudah dikerjakan tapi belum ada slip resmi gaji_cmt) ──
-  const unbilledSlips = rincianGajiPerPo
-    .filter((r: any) => r.pcsSelesai > 0 && r.sisaHak > 0 && !officialSlips.some((o: any) => String(o.poId) === String(r.poId)))
-    .map((r: any) => ({
-      id: `rt-po-${r.poId}`,
-      poId: r.poId,
-      noPo: r.noPo,
-      model: r.model,
-      isOfficial: false,
-      isRealtime: true,
-      keterangan: `Upah SPK ${r.noPo} (${r.model}) - ${r.pcsSelesai.toLocaleString("id-ID")} pcs`,
-      jumlahPcs: r.pcsSelesai,
-      targetPcs: r.targetPcs,
-      tarifPerPcs: r.tarifPerPcs,
-      total: r.subtotalHak,
-      totalGaji: r.subtotalHak,
-      dibayar: r.dibayar,
-      sisaTagihan: r.sisaHak,
-      status: r.isDone ? "Siap Cair" : "Akumulasi Berjalan",
-      metode: "Transfer Bank",
-      tanggal: r.tanggalSelesai || r.reportedAt || new Date().toISOString(),
-      catatan: `${r.pcsSelesai.toLocaleString("id-ID")} pcs diverifikasi × Rp ${r.tarifPerPcs.toLocaleString("id-ID")}/pcs`,
-    }));
-
-  // Gabungkan semua slip gaji (slip resmi + slip real-time berjalan)
+  // Gabungkan semua slip gaji (slip resmi + slip real-time berjalan yang belum lunas)
   const gaji = [...officialSlips, ...unbilledSlips].sort(
     (a: any, b: any) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime()
   );
 
   // ── Ringkasan Akumulasi Hak & Hutang Gaji ──
-  const totalHakGaji = rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.subtotalHak, 0);
-  const totalPendingGaji = rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.subtotalPending, 0);
-  const totalSudahDibayar = officialSlips.reduce((sum: number, g: any) => sum + Number(g.dibayar || 0), 0);
-  const sisaHakGaji = Math.max(0, totalHakGaji - totalSudahDibayar);
-  const totalTertunggak = sisaHakGaji;
-
+  const totalTertunggak = salarySummary.sisaHakGaji;
   const ringkasanGaji = {
-    totalHakGaji,
-    totalPendingGaji,
-    totalSudahDibayar,
-    sisaHakGaji,
+    totalHakGaji: salarySummary.totalHakGaji,
+    totalPendingGaji: salarySummary.totalPendingGaji,
+    totalSudahDibayar: salarySummary.totalSudahDibayar,
+    sisaHakGaji: salarySummary.sisaHakGaji,
     totalTertunggak,
-    totalPcsSelesai: rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.pcsSelesai, 0),
-    totalPcsPending: rincianGajiPerPo.reduce((sum: number, r: any) => sum + r.pcsPending, 0),
-    tarifDasar: vendor.hargaPerPcs || 5000,
-    tarifPotongan: vendor.tarifPotongan || {},
+    statusPembayaran: salarySummary.statusPembayaran,
+    totalPcsSelesai: salarySummary.totalPcsSelesai,
+    totalPcsPending: salarySummary.totalPcsPending,
+    tarifDasar: salarySummary.tarifDasar,
+    tarifPotongan: salarySummary.tarifPotongan,
+    categoryBreakdown: salarySummary.categoryBreakdown,
   };
 
   // Requests dari CMT ini

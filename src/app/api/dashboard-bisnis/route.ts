@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 import { groupOrders } from "@/lib/marketplace";
+import { computeVendorSalarySummary } from "@/lib/vendor-salary";
 
 export const dynamic = "force-dynamic";
 
@@ -451,21 +452,13 @@ export async function GET(req: NextRequest) {
 
     const hutangUpah: any[] = [];
     for (const v of data.vendors || []) {
-      const vPos = (data.po_produksi || []).filter((p: any) => String(p.vendorId) === String(v.id));
-      if (!vPos.length) continue;
-      let hak = 0, pcs = 0;
-      for (const po of vPos) {
-        const approved = (data.cmt_progres || [])
-          .filter((r: any) => String(r.po_id) === String(po.id) && String(r.vendor_id) === String(v.id))
-          .filter((r: any) => r.status === "Diterima" || r.status === "Diverifikasi" || r.status === "selesai")
-          .reduce((s: number, r: any) => s + ((r.items || []).reduce((a: number, i: any) => a + num(i.jumlah), 0) || num(r.totalJumlah)), 0);
-        const tarif = num(po.hargaPerPcs || (v.tarifPotongan && v.tarifPotongan[po.model]) || v.hargaPerPcs || 5000);
-        hak += approved * tarif;
-        pcs += approved;
-      }
-      const dibayar = sum(gajiList.filter((g) => String(g.cmtId) === String(v.id)), gajiPaid);
+      const s = computeVendorSalarySummary(data, v);
+      const hak = s.totalHakGaji;
+      const dibayar = s.totalSudahDibayar;
+      const pcs = s.totalPcsSelesai;
       if (hak <= 0 && dibayar <= 0) continue;
       hutangUpah.push({
+        vendorId: v.id,
         nama: v.nama,
         jenis: `Upah ${String(v.tipe || "Vendor").toUpperCase()}`,
         referensi: `${pcs.toLocaleString("id-ID")} pcs ACC`,
@@ -473,8 +466,8 @@ export async function GET(req: NextRequest) {
         umurHari: 0,
         total: hak,
         dibayar,
-        sisa: Math.max(0, hak - dibayar),
-        status: dibayar >= hak ? "Lunas" : dibayar > 0 ? "Sebagian" : "Belum Dibayar",
+        sisa: s.sisaHakGaji,
+        status: s.statusPembayaran,
       });
     }
     const hutangList = [...hutangSupplier, ...hutangUpah].sort((a, b) => b.sisa - a.sisa);

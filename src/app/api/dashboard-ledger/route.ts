@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readData } from "@/lib/data-store";
 import { getCmtCompletion } from "@/lib/po-lifecycle";
 import { getVendorWip } from "@/lib/stock";
+import { computeVendorSalarySummary } from "@/lib/vendor-salary";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,20 @@ export async function GET() {
   const vendors = data.vendors.filter((v: any) => v.aktif);
   
   // 2. Siapkan wadah untuk setiap vendor
-  const vendorLedgers = vendors.map((v: any) => ({
-    ...v,
-    poList: [],
-    totalSisa: 0
-  }));
+  const vendorLedgers = vendors.map((v: any) => {
+    const salary = computeVendorSalarySummary(data, v);
+    return {
+      ...v,
+      poList: [],
+      totalSisa: 0,
+      salarySummary: {
+        totalHakGaji: salary.totalHakGaji,
+        totalSudahDibayar: salary.totalSudahDibayar,
+        sisaHakGaji: salary.sisaHakGaji,
+        statusPembayaran: salary.statusPembayaran,
+      },
+    };
+  });
 
   // 3. Saldo barang yang MASIH FISIK di vendor per PO.
   //    Sumber riil (sama dengan Dashboard & Gudang):

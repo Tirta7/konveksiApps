@@ -208,17 +208,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Catat po_pengambilan
-  if (!data.po_pengambilan) data.po_pengambilan = [];
-  data.po_pengambilan.push({
-    id: nextId(data, "po_pengambilan"),
-    poId: laporan.po_id,
-    jumlahDiambil: laporan.totalJumlah,
-    items: laporan.items,
-    tanggal: new Date().toISOString(),
-    keterangan: `Laporan progres ACC. ${laporan.catatan || ""}`.trim(),
-    laporanId: laporan.id,
-  });
+  // Catat po_pengambilan hanya untuk laporan CMT/Jahit (bukan transfer downstream washing/finishing)
+  if (!laporan.transfer_id) {
+    if (!data.po_pengambilan) data.po_pengambilan = [];
+    data.po_pengambilan.push({
+      id: nextId(data, "po_pengambilan"),
+      poId: laporan.po_id,
+      vendorId: laporan.vendor_id,
+      jumlahDiambil: laporan.totalJumlah,
+      items: laporan.items,
+      tanggal: new Date().toISOString(),
+      keterangan: `Laporan progres ACC. ${laporan.catatan || ""}`.trim(),
+      laporanId: laporan.id,
+    });
+  }
 
   if (!data.produksi_transfers) data.produksi_transfers = [];
   if (!data.po_ledgers) data.po_ledgers = [];

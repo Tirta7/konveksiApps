@@ -4,11 +4,21 @@ import { readData, writeData, nextId } from "@/lib/data-store";
 
 export async function GET() {
   const data = readData();
-  const list = data.po_pengambilan.map((p: any) => {
-    const po = data.po_produksi.find((po: any) => po.id === p.poId);
-    return { ...p, po };
-  }).reverse();
-  
+  const cmtProgresList = data.cmt_progres || [];
+  const list = (data.po_pengambilan || [])
+    .filter((p: any) => {
+      if (p.laporanId) {
+        const lap = cmtProgresList.find((cp: any) => Number(cp.id) === Number(p.laporanId));
+        if (lap && lap.transfer_id != null) return false;
+      }
+      return true;
+    })
+    .map((p: any) => {
+      const po = data.po_produksi.find((po: any) => po.id === p.poId);
+      return { ...p, po };
+    })
+    .reverse();
+
   return NextResponse.json(list);
 }
 

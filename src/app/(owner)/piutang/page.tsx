@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   HandCoins, CreditCard, Plus, Search, Store, AlertTriangle, CheckCircle2,

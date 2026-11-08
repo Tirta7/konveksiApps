@@ -210,6 +210,11 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt", view
           toast.error(`✕ Laporan pengerjaan (${d.jumlah} pcs) ditolak Admin.`);
         }
         fetchDataRef.current(true);
+      } else if (event === "salaryPaid" && Number(d.vendor_id) === Number(id)) {
+        toast.success(`💸 Pembayaran Upah sebesar Rp ${Number(d.dibayar || d.totalGaji || 0).toLocaleString("id-ID")} telah dicairkan Admin! (${d.statusVendor || "Lunas"})`);
+        fetchDataRef.current(true);
+      } else if ((event === "salaryUpdated" || event === "salaryDeleted") && (!d.vendor_id || Number(d.vendor_id) === Number(id))) {
+        fetchDataRef.current(true);
       } else if (event === "poolAllocated") {
         fetchDataRef.current(true);
       }
@@ -1295,20 +1300,22 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt", view
               background: "#1E293B",
               borderRadius: 14,
               padding: "16px 18px",
-              border: "1px solid #334155",
+              border: totalTertunggak === 0 && (ringkasanGaji?.totalSudahDibayar || 0) > 0 ? "1px solid #059669" : "1px solid #334155",
               cursor: "pointer",
               boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8" }}>Hak / Hutang Gaji</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8" }}>
+                {totalTertunggak === 0 && (ringkasanGaji?.totalSudahDibayar || 0) > 0 ? "Upah Lunas Dicairkan" : "Sisa Hak Upah"}
+              </span>
               <div
                 style={{
                   width: 32,
                   height: 32,
                   borderRadius: 8,
-                  background: "#451A03",
-                  color: "#F59E0B",
+                  background: totalTertunggak === 0 && (ringkasanGaji?.totalSudahDibayar || 0) > 0 ? "#064E3B" : "#451A03",
+                  color: totalTertunggak === 0 && (ringkasanGaji?.totalSudahDibayar || 0) > 0 ? "#10B981" : "#F59E0B",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center"
@@ -1317,13 +1324,19 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt", view
                 <DollarSign size={16} />
               </div>
             </div>
-            <div className="vendor-kpi-val" style={{ fontSize: 22, fontWeight: 900, color: "white", letterSpacing: "-0.02em" }}>
-              {formatRupiah(totalTertunggak)}
+            <div className="vendor-kpi-val" style={{ fontSize: 22, fontWeight: 900, color: totalTertunggak === 0 && (ringkasanGaji?.totalSudahDibayar || 0) > 0 ? "#34D399" : "white", letterSpacing: "-0.02em" }}>
+              {totalTertunggak === 0 && (ringkasanGaji?.totalSudahDibayar || 0) > 0
+                ? formatRupiah(ringkasanGaji.totalSudahDibayar)
+                : formatRupiah(totalTertunggak)}
             </div>
             <div style={{ fontSize: 10, color: totalTertunggak > 0 ? "#FCD34D" : "#10B981", fontWeight: 700, marginTop: 3 }}>
               {totalTertunggak > 0
-                ? `${(ringkasanGaji?.totalPcsSelesai ?? totalSelesaiPcs).toLocaleString("id-ID")} pcs siap dicairkan`
-                : "Semua upah terselesaikan"}
+                ? (ringkasanGaji?.totalSudahDibayar || 0) > 0
+                  ? `Dicairkan ${formatRupiah(ringkasanGaji.totalSudahDibayar)} · Sisa ${formatRupiah(totalTertunggak)}`
+                  : `${(ringkasanGaji?.totalPcsSelesai ?? totalSelesaiPcs).toLocaleString("id-ID")} pcs siap dicairkan`
+                : (ringkasanGaji?.totalSudahDibayar || 0) > 0
+                  ? `✓ LUNAS (${(ringkasanGaji?.totalPcsSelesai ?? totalSelesaiPcs).toLocaleString("id-ID")} pcs telah dibayar)`
+                  : "Semua upah terselesaikan"}
             </div>
           </div>
 
@@ -2640,6 +2653,11 @@ export default function VendorPortal({ vendorId = "1", defaultTipe = "cmt", view
                             <div style={{ fontSize: 15, fontWeight: 900, color: po.subtotalHak > 0 ? (isLunas ? "#34D399" : "#FDE68A") : "#94A3B8" }}>
                               {formatRupiah(po.subtotalHak)}
                             </div>
+                            {po.dibayar > 0 && (
+                              <div style={{ fontSize: 10, color: "#34D399", fontWeight: 700 }}>
+                                ✓ Dicairkan: {formatRupiah(po.dibayar)}
+                              </div>
+                            )}
                             {po.sisaHak > 0 && po.dibayar > 0 && (
                               <div style={{ fontSize: 10, color: "#FCD34D", fontWeight: 700 }}>
                                 Sisa belum cair: {formatRupiah(po.sisaHak)}
