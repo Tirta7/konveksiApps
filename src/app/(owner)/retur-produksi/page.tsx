@@ -64,7 +64,7 @@ export default function ReturProduksiPage() {
       .then((r) => r.json())
       .then((d) => {
         const vList = Array.isArray(d) ? d : [];
-        setVendors(vList.filter((v: any) => v.tipe === "washing" || String(v.nama || "").toLowerCase().includes("laundry") || String(v.nama || "").toLowerCase().includes("wash")));
+        setVendors(vList);
       })
       .catch(() => {});
   };
@@ -85,7 +85,8 @@ export default function ReturProduksiPage() {
     setSelectedReturForSpk(r);
     setTargetVendorId(String(r.vendor_id || vendors[0]?.id || ""));
     setJumlahCuci(Number(r.jumlah || 1));
-    setCatatanCuci(`[SPK RETUR CUCI KE-${(Number(r.ke_berapa_kali) || 1) + 1}] Cacat: ${r.alasan || "Barang kotor / reject washing"}. Mohon dicuci ulang dengan teliti.`);
+    const targetNama = r.vendor_nama || "Vendor";
+    setCatatanCuci(`[SPK RETUR PERBAIKAN KE-${(Number(r.ke_berapa_kali) || 1) + 1}] Cacat: ${r.alasan || "Barang reject / cacat produksi"}. Mohon diperbaiki dengan teliti.`);
     // Default target 3 hari ke depan
     const d = new Date();
     d.setDate(d.getDate() + 3);
@@ -96,16 +97,19 @@ export default function ReturProduksiPage() {
   const handleKirimSpkRetur = async () => {
     if (!selectedReturForSpk) return;
     if (!targetVendorId) {
-      toast.error("Pilih vendor washing terlebih dahulu");
+      toast.error("Pilih vendor penanggung jawab terlebih dahulu");
       return;
     }
     if (jumlahCuci <= 0) {
-      toast.error("Jumlah cuci ulang harus lebih dari 0");
+      toast.error("Jumlah pengerjaan ulang harus lebih dari 0");
       return;
     }
 
     setSubmittingSpk(true);
     try {
+      const vendorObj = vendors.find((v) => String(v.id) === String(targetVendorId));
+      const targetTahap = vendorObj?.tipe === "washing" ? "washing" : "cmt";
+
       const res = await fetch("/api/returns/produksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,6 +117,7 @@ export default function ReturProduksiPage() {
           action: "buat_spk_retur",
           id: selectedReturForSpk.id,
           vendor_id: targetVendorId,
+          ke_tahap: targetTahap,
           jumlah: jumlahCuci,
           catatan: catatanCuci,
           target_selesai: targetSelesai,
@@ -122,7 +127,7 @@ export default function ReturProduksiPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Gagal menerbitkan SPK Retur");
 
-      toast.success(json.message || "SPK Cuci Ulang berhasil diterbitkan!");
+      toast.success(json.message || "SPK Rework berhasil diterbitkan!");
       setSpkModalOpen(false);
       setSelectedReturForSpk(null);
       load();
@@ -638,10 +643,10 @@ export default function ReturProduksiPage() {
                   </div>
                 </div>
 
-                {/* Form Pilihan Vendor Washing */}
+                {/* Form Pilihan Vendor */}
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 800, color: "#0F172A", marginBottom: 6, display: "block" }}>
-                    Pilih Vendor Washing Penanggung Jawab:
+                    Pilih Vendor Mitra Penanggung Jawab (CMT / Washing):
                   </label>
                   <select
                     value={targetVendorId}
@@ -650,7 +655,7 @@ export default function ReturProduksiPage() {
                   >
                     {vendors.map((v) => (
                       <option key={v.id} value={v.id}>
-                        {v.nama} {v.tipe ? `(${v.tipe})` : ""}
+                        {v.nama} {v.tipe ? `(${String(v.tipe).toUpperCase()})` : ""}
                       </option>
                     ))}
                   </select>
@@ -684,16 +689,16 @@ export default function ReturProduksiPage() {
                   </div>
                 </div>
 
-                {/* Form Catatan Khusus Cuci */}
+                {/* Form Catatan Khusus Rework */}
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 800, color: "#0F172A", marginBottom: 6, display: "block" }}>
-                    Instruksi Khusus untuk Vendor Washing:
+                    Instruksi Khusus untuk Vendor (CMT / Washing):
                   </label>
                   <textarea
                     rows={3}
                     value={catatanCuci}
                     onChange={(e) => setCatatanCuci(e.target.value)}
-                    placeholder="Contoh: Cuci ulang noda kotor, jangan gunakan zat kimia terlalu keras..."
+                    placeholder="Contoh: Jahit ulang sambungan saku, cuci ulang noda kotor..."
                     style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 12.5, color: "#0F172A", resize: "none" }}
                   />
                 </div>
@@ -729,7 +734,7 @@ export default function ReturProduksiPage() {
                     boxShadow: "0 2px 8px rgba(59,130,246,0.3)"
                   }}
                 >
-                  <Sparkles size={15} /> {submittingSpk ? "Menerbitkan..." : "Terbitkan SPK Cuci Ulang"}
+                  <Sparkles size={15} /> {submittingSpk ? "Menerbitkan..." : "Terbitkan SPK Rework / Perbaikan"}
                 </button>
               </div>
 

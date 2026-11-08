@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useState, useRef } from "react";
 import { CreditCard, CheckCircle2, Building2, Users, Wallet, ArrowUpRight, Plus, ExternalLink } from "lucide-react";
 import Link from "next/link";
