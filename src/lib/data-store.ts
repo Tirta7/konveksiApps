@@ -48,6 +48,10 @@ export interface DataStore {
   po_pipeline: any[];
   nota_reject_vendor?: any[];
   item_pendukung: any[];
+  marketplace_shops?: any[];
+  product_reviews?: any[];
+  piutang_grosir?: any[];
+  biaya_operasional?: any[];
   pengaturan_sistem?: any;
   _counters: Record<string, number>;
 }
@@ -61,6 +65,7 @@ function getInitialData(): DataStore {
     data_pelanggan: [],
     po_produksi: [], po_pengambilan: [], barcode_item: [], cmt_requests: [], cmt_progres: [], vendor_types: [], produksi_transfers: [], po_ledgers: [],
     pipeline_stages: [], po_pipeline: [], item_pendukung: [], nota_reject_vendor: [],
+    marketplace_shops: [], product_reviews: [], piutang_grosir: [], biaya_operasional: [],
     pengaturan_sistem: {
       nama_usaha: process.env.STORE_NAME || "KONVEKSI APPS | JEANS PRODUCTION",
       tagline: process.env.STORE_NAME ? `Sistem Manajemen & Tracking Produksi ${process.env.STORE_NAME}` : "Sistem Tracking Produksi Jeans",

@@ -4,18 +4,6 @@ import { groupOrders } from "@/lib/marketplace";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Ringkasan Bisnis & Keuangan untuk Dashboard Owner.
- *
- * GET ?range=7|30|90|365|mtd|ytd|all  (default 30)
- *
- * Sumber data (semua dari data-store yang sama dengan modul lain):
- *  - Pendapatan  : penjualan_online (per Order ID, non-batal) + penjualan_barcode non-online (Grosir / Retail)
- *  - Piutang     : pesanan marketplace yang belum cair (belum ada settlement) + saldo piutang pelanggan grosir
- *  - Hutang      : hutang supplier (pembelian kain tempo) + sisa hak upah vendor (pcs ACC × tarif − dibayar)
- *  - Pengeluaran : pembelian bahan (purchase_orders), upah vendor dibayar (gaji_cmt), potongan marketplace (settlement_online)
- */
-
 const num = (v: any) => {
   if (typeof v === "number") return isFinite(v) ? v : 0;
   const n = Number(String(v ?? "").replace(/[^0-9.-]/g, ""));
@@ -47,11 +35,10 @@ function extractSize(sku: string, variation: string): string {
   const tokens = String(sku || "").trim().split(/\s+/);
   const last = tokens[tokens.length - 1] || "";
   if (SIZE_RE.test(last)) return last.toUpperCase();
-  // Variasi marketplace: "RETRO FOLD, L BB 49 - 54 KG"
   const parts = String(variation || "").split(",");
   const afterComma = (parts[1] || parts[0] || "").trim().split(/\s+/)[0] || "";
   if (SIZE_RE.test(afterComma)) return afterComma.toUpperCase();
-  return "Lainnya";
+  return "L";
 }
 
 function modelFromSku(sku: string): string {
@@ -68,7 +55,9 @@ function isBatal(r: any) {
 export async function GET(req: NextRequest) {
   try {
     const data: any = readData();
-    const rangeParam = (new URL(req.url).searchParams.get("range") || "30").toLowerCase();
+    const sp = new URL(req.url).searchParams;
+    const rangeParam = (sp.get("range") || "30").toLowerCase();
+    const shopFilter = sp.get("shop") || "all"; // "all" | "offline" | shop_key
 
     const now = new Date();
     const today = startOfDay(now);
@@ -80,26 +69,45 @@ export async function GET(req: NextRequest) {
     for (const r of rawOnline) if (isBatal(r)) batalIds.add(String(r.order_id || "").trim());
 
     const grouped = Object.values(groupOrders(data)) as any[];
-    const onlineOrders = grouped
+    const allOnlineOrders = grouped
       .filter((o) => (o.items || []).length > 0)
-      .map((o) => ({
-        ...o,
-        _date: parseDate(o.tanggal_pesanan) || parseDate(o.tanggal_diimpor),
-        _batal: batalIds.has(String(o.order_id)) || isBatal(o),
-        _retur: /retur|return/i.test(String(o.status || "")),
-      }));
+      .map((o) => {
+        const shopKey = o.shop_key || `mp:${o.marketplace || "Marketplace"}`;
+        const shopName = o.shop_name || o.marketplace || "Toko Online";
+        return {
+          ...o,
+          _shopKey: shopKey,
+          _shopName: shopName,
+          _date: parseDate(o.tanggal_pesanan) || parseDate(o.tanggal_diimpor),
+          _batal: batalIds.has(String(o.order_id)) || isBatal(o),
+          _retur: /retur|return/i.test(String(o.status || "")),
+        };
+      });
 
-    const offlineSales: any[] = (data.penjualan_barcode || [])
+    const allOfflineSales: any[] = (data.penjualan_barcode || [])
       .filter((p: any) => !/online/i.test(String(p.kanal || "")))
       .map((p: any) => ({ ...p, _date: parseDate(p.tanggal) }));
+
+    // Filter berdasarkan toko yang dipilih
+    const onlineOrders =
+      shopFilter === "all"
+        ? allOnlineOrders
+        : shopFilter === "offline"
+        ? []
+        : allOnlineOrders.filter((o) => o._shopKey === shopFilter);
+
+    const offlineSales =
+      shopFilter === "all" || shopFilter === "offline"
+        ? allOfflineSales
+        : [];
 
     // ── Tentukan rentang tanggal ──
     let start: Date;
     let label: string;
     if (rangeParam === "all") {
       const dates = [
-        ...onlineOrders.map((o) => o._date),
-        ...offlineSales.map((s) => s._date),
+        ...allOnlineOrders.map((o) => o._date),
+        ...allOfflineSales.map((s) => s._date),
         ...(data.purchase_orders || []).map((p: any) => parseDate(p.tanggal || p.createdAt)),
       ].filter(Boolean) as Date[];
       start = dates.length ? startOfDay(new Date(Math.min(...dates.map((d) => d.getTime())))) : new Date(today.getTime() - 29 * 86400000);
@@ -118,11 +126,9 @@ export async function GET(req: NextRequest) {
     const spanMs = end.getTime() - start.getTime() + 1;
     const prevStart = new Date(start.getTime() - spanMs);
     const prevEnd = new Date(start.getTime() - 1);
-
     const inRange = (d: Date | null, s = start, e = end) => !!d && d >= s && d <= e;
 
-    // ── Bucket tren ──
-    const spanDays = Math.round(spanMs / 86400000);
+    const spanDays = Math.max(1, Math.round(spanMs / 86400000));
     const granularity: "day" | "week" | "month" = spanDays <= 35 ? "day" : spanDays <= 120 ? "week" : "month";
     const bucketKey = (d: Date) => {
       if (granularity === "day") return ymd(d);
@@ -152,14 +158,91 @@ export async function GET(req: NextRequest) {
       if (b) b[field] += v;
     };
 
+    const sum = (arr: any[], f: (x: any) => number) => arr.reduce((s, x) => s + f(x), 0);
+
+    // ════════════════ MULTI-TOKO ONLINE HUB (Selalu dihitung untuk seluruh toko) ════════════════
+    const settlements: any[] = data.settlement_online || [];
+    const settleByOrder = new Map<string, any>();
+    for (const s of settlements) settleByOrder.set(String(s.order_id), s);
+
+    const registeredShops: any[] = Array.isArray(data.marketplace_shops) ? data.marketplace_shops : [];
+    const multiShopMap = new Map<string, any>();
+    for (const rs of registeredShops) {
+      multiShopMap.set(String(rs.key), {
+        shop_key: String(rs.key),
+        shop_name: rs.shop_name || rs.label || "Toko Online",
+        marketplace: rs.label || (rs.platform === "shopee" ? "Shopee" : "TikTok Shop"),
+        platform: rs.platform,
+        aktif: rs.aktif !== false,
+        connected: true,
+        last_sync_run: rs.last_sync_run || null,
+        pesanan: 0,
+        pcs: 0,
+        omzet: 0,
+        potongan: 0,
+        pencairan: 0,
+        escrow: 0,
+        batal: 0,
+      });
+    }
+    for (const o of allOnlineOrders.filter((x) => inRange(x._date))) {
+      const k = o._shopKey;
+      const entry =
+        multiShopMap.get(k) ||
+        (() => {
+          const nw = {
+            shop_key: k,
+            shop_name: o._shopName,
+            marketplace: o.marketplace || "Marketplace",
+            platform: o.platform || (/shopee/i.test(String(o.marketplace)) ? "shopee" : "tiktok"),
+            aktif: true,
+            connected: false,
+            last_sync_run: null,
+            pesanan: 0,
+            pcs: 0,
+            omzet: 0,
+            potongan: 0,
+            pencairan: 0,
+            escrow: 0,
+            batal: 0,
+          };
+          multiShopMap.set(k, nw);
+          return nw;
+        })();
+
+      if (o._batal) {
+        entry.batal += 1;
+        continue;
+      }
+      const amt = num(o.total_amount);
+      entry.pesanan += 1;
+      entry.pcs += num(o.total_qty);
+      entry.omzet += amt;
+
+      const st = settleByOrder.get(String(o.order_id));
+      if (st) {
+        const pot = Math.abs(num(st.biaya_komisi)) + Math.abs(num(st.biaya_afiliasi)) + Math.abs(num(st.biaya_ongkir)) + Math.abs(num(st.biaya_lainnya));
+        entry.potongan += pot;
+        entry.pencairan += num(st.penyelesaian_pembayaran);
+      }
+      if (!(st && num(st.penyelesaian_pembayaran) > 0) && !o._retur) {
+        entry.escrow += amt;
+      }
+    }
+    const totalAllShopOmzet = Array.from(multiShopMap.values()).reduce((s, x) => s + x.omzet, 0);
+    const multiTokoList = Array.from(multiShopMap.values())
+      .map((x) => ({
+        ...x,
+        share: totalAllShopOmzet > 0 ? (x.omzet / totalAllShopOmzet) * 100 : 0,
+      }))
+      .sort((a, b) => b.omzet - a.omzet);
+
     // ════════════════ PENDAPATAN ════════════════
     const validOnline = onlineOrders.filter((o) => !o._batal);
     const onlineInRange = validOnline.filter((o) => inRange(o._date));
     const onlinePrev = validOnline.filter((o) => inRange(o._date, prevStart, prevEnd));
     const offlineInRange = offlineSales.filter((s) => inRange(s._date));
     const offlinePrev = offlineSales.filter((s) => inRange(s._date, prevStart, prevEnd));
-
-    const sum = (arr: any[], f: (x: any) => number) => arr.reduce((s, x) => s + f(x), 0);
 
     const pendOnline = sum(onlineInRange, (o) => num(o.total_amount));
     const pendOffline = sum(offlineInRange, (s) => num(s.total));
@@ -168,6 +251,7 @@ export async function GET(req: NextRequest) {
 
     const pcsOnline = sum(onlineInRange, (o) => num(o.total_qty));
     const pcsOffline = sum(offlineInRange, (s) => num(s.jumlah || (s.items || []).length));
+    const pcsTotal = pcsOnline + pcsOffline;
     const pcsPrev = sum(onlinePrev, (o) => num(o.total_qty)) + sum(offlinePrev, (s) => num(s.jumlah || (s.items || []).length));
     const jumlahPesanan = onlineInRange.length + offlineInRange.length;
     const jumlahPesananPrev = onlinePrev.length + offlinePrev.length;
@@ -185,21 +269,22 @@ export async function GET(req: NextRequest) {
       addTrend(s._date, "pcs", num(s.jumlah || (s.items || []).length));
     }
 
-    // Per kanal & platform
+    // Per kanal & nama toko
     const kanalMap: Record<string, { name: string; value: number; pesanan: number; pcs: number }> = {};
     const addKanal = (name: string, v: number, pcs: number) => {
       const k = (kanalMap[name] ||= { name, value: 0, pesanan: 0, pcs: 0 });
       k.value += v; k.pesanan += 1; k.pcs += pcs;
     };
-    for (const o of onlineInRange) addKanal(String(o.marketplace || "Marketplace"), num(o.total_amount), num(o.total_qty));
+    for (const o of onlineInRange) {
+      const labelKanal = o._shopName && o._shopName !== o.marketplace ? `${o._shopName} (${o.marketplace})` : String(o.marketplace || "Marketplace");
+      addKanal(labelKanal, num(o.total_amount), num(o.total_qty));
+    }
     for (const s of offlineInRange) addKanal(String(s.kanal || "Offline").replace(/^Penjualan\s+/i, ""), num(s.total), num(s.jumlah || (s.items || []).length));
     const perKanal = Object.values(kanalMap).sort((a, b) => b.value - a.value);
 
-    // Batal & retur (dalam rentang)
     const batalInRange = onlineOrders.filter((o) => o._batal && inRange(o._date));
     const nilaiBatal = sum(batalInRange, (o) => num(o.total_amount));
 
-    // Status pesanan online (rentang)
     const statusMap: Record<string, number> = {};
     for (const o of onlineOrders.filter((o) => inRange(o._date))) {
       const st = o._batal ? "Batal" : String(o.status || "Lainnya");
@@ -207,7 +292,7 @@ export async function GET(req: NextRequest) {
     }
     const statusPesanan = Object.entries(statusMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-    // ════════════════ PENGELUARAN ════════════════
+    // ════════════════ PENGELUARAN (Bahan + Upah + Potongan + OPEX) ════════════════
     const purchaseOrders = (data.purchase_orders || []).filter((p: any) => !/batal|cancel/i.test(String(p.status || "")));
     const poInRange = purchaseOrders.filter((p: any) => inRange(parseDate(p.tanggal || p.createdAt)));
     const poPrev = purchaseOrders.filter((p: any) => inRange(parseDate(p.tanggal || p.createdAt), prevStart, prevEnd));
@@ -222,14 +307,20 @@ export async function GET(req: NextRequest) {
     const upahDibayar = sum(gajiInRange, gajiPaid);
     for (const g of gajiInRange) addTrend(parseDate(g.tanggal || g.createdAt), "pengeluaran", gajiPaid(g));
 
-    const settlements: any[] = data.settlement_online || [];
-    const settleByOrder = new Map<string, any>();
-    for (const s of settlements) settleByOrder.set(String(s.order_id), s);
-    // Potongan marketplace dihitung pada tanggal pesanan agar sejalan dengan pendapatan
+    // Biaya Operasional (OPEX)
+    const opexAll: any[] = Array.isArray(data.biaya_operasional) ? data.biaya_operasional : [];
+    const opexInRange = opexAll.filter((x) => inRange(parseDate(x.tanggal || x.createdAt)));
+    const opexPrev = opexAll.filter((x) => inRange(parseDate(x.tanggal || x.createdAt), prevStart, prevEnd));
+    const opexTotal = sum(opexInRange, (x) => num(x.nominal));
+    for (const x of opexInRange) addTrend(parseDate(x.tanggal || x.createdAt), "pengeluaran", num(x.nominal));
+
+    // Potongan marketplace (hanya untuk pesanan dari toko yang sedang difilter)
+    const allowedOrderIds = new Set(onlineOrders.map((o) => String(o.order_id)));
     let komisi = 0, afiliasi = 0, ongkir = 0, lainnya = 0, pencairan = 0;
     let potonganPrev = 0;
     const orderDateById = new Map<string, Date | null>(onlineOrders.map((o) => [String(o.order_id), o._date]));
     for (const s of settlements) {
+      if (shopFilter !== "all" && !allowedOrderIds.has(String(s.order_id))) continue;
       const d = orderDateById.get(String(s.order_id)) || parseDate(s.tanggal_pembayaran);
       const pot = Math.abs(num(s.biaya_komisi)) + Math.abs(num(s.biaya_afiliasi)) + Math.abs(num(s.biaya_ongkir)) + Math.abs(num(s.biaya_lainnya));
       if (inRange(d)) {
@@ -242,19 +333,29 @@ export async function GET(req: NextRequest) {
       } else if (inRange(d, prevStart, prevEnd)) potonganPrev += pot;
     }
     const potonganMarketplace = komisi + afiliasi + ongkir + lainnya;
-    const pengeluaranTotal = pembelianBahan + upahDibayar + potonganMarketplace;
-    const pengeluaranPrev = sum(poPrev, poTotal) + sum(gajiPrev, gajiPaid) + potonganPrev;
+    const pengeluaranTotal = pembelianBahan + upahDibayar + potonganMarketplace + opexTotal;
+    const pengeluaranPrev = sum(poPrev, poTotal) + sum(gajiPrev, gajiPaid) + potonganPrev + sum(opexPrev, (x) => num(x.nominal));
 
     const pengeluaranBreakdown = [
       { name: "Pembelian Bahan / Kain", value: pembelianBahan, color: "#6366F1" },
       { name: "Upah Vendor (CMT/Washing)", value: upahDibayar, color: "#F59E0B" },
-      { name: "Komisi Platform", value: komisi, color: "#EF4444" },
-      { name: "Komisi Afiliasi", value: afiliasi, color: "#EC4899" },
+      { name: "Komisi Platform Marketplace", value: komisi, color: "#EF4444" },
+      { name: "Komisi Afiliasi / Kreator", value: afiliasi, color: "#EC4899" },
       { name: "Ongkir Ditanggung Toko", value: ongkir, color: "#14B8A6" },
+      { name: "Biaya Operasional (OPEX)", value: opexTotal, color: "#8B5CF6" },
       { name: "Biaya Lainnya", value: lainnya, color: "#94A3B8" },
     ];
 
     const pengeluaranDetail = [
+      ...opexInRange.map((x: any) => ({
+        id: x.id,
+        isOpex: true,
+        tanggal: x.tanggal || x.createdAt,
+        kategori: "OPEX · " + (x.kategori || "Operasional"),
+        keterangan: `${x.keterangan || x.kategori}${x.toko && x.toko !== "Semua Toko / Umum" ? ` (${x.toko})` : ""}`,
+        metode: x.metode || "Kas/Transfer",
+        nilai: num(x.nominal),
+      })),
       ...poInRange.map((p: any) => {
         const sup = (data.data_supplier || []).find((s: any) => s.id === p.supplier_id);
         return {
@@ -276,10 +377,9 @@ export async function GET(req: NextRequest) {
           nilai: gajiPaid(g),
         };
       }),
-    ].sort((a, b) => (parseDate(b.tanggal)?.getTime() || 0) - (parseDate(a.tanggal)?.getTime() || 0)).slice(0, 25);
+    ].sort((a, b) => (parseDate(b.tanggal)?.getTime() || 0) - (parseDate(a.tanggal)?.getTime() || 0)).slice(0, 30);
 
-    // ════════════════ PIUTANG ════════════════
-    // Pesanan marketplace valid yang belum dicairkan (seluruh waktu = saldo berjalan)
+    // ════════════════ PIUTANG (Escrow Multi-Toko + Buku Piutang Grosir) ════════════════
     const belumCair = validOnline.filter((o) => {
       const s = settleByOrder.get(String(o.order_id));
       return !(s && num(s.penyelesaian_pembayaran) > 0) && !o._retur;
@@ -287,14 +387,14 @@ export async function GET(req: NextRequest) {
     const piutangMarketplace = sum(belumCair, (o) => num(o.total_amount));
     const piutangPerPlatform: Record<string, { name: string; value: number; pesanan: number; dikirim: number; selesai: number }> = {};
     for (const o of belumCair) {
-      const k = String(o.marketplace || "Marketplace");
+      const k = o._shopName && o._shopName !== o.marketplace ? `${o._shopName} (${o.marketplace})` : String(o.marketplace || "Marketplace");
       const p = (piutangPerPlatform[k] ||= { name: k, value: 0, pesanan: 0, dikirim: 0, selesai: 0 });
       p.value += num(o.total_amount);
       p.pesanan += 1;
       if (/selesai|completed/i.test(String(o.status))) p.selesai += num(o.total_amount);
       else p.dikirim += num(o.total_amount);
     }
-    // Umur piutang marketplace
+
     const aging = [
       { name: "0-7 hari", value: 0, count: 0 },
       { name: "8-14 hari", value: 0, count: 0 },
@@ -307,10 +407,27 @@ export async function GET(req: NextRequest) {
       aging[idx].value += num(o.total_amount);
       aging[idx].count += 1;
     }
-    const pelangganPiutang = (data.data_pelanggan || [])
-      .filter((p: any) => num(p.piutang) > 0)
-      .map((p: any) => ({ nama: p.nama, tipe: p.tipe || "Pelanggan", kota: p.kota || "", nilai: num(p.piutang), kontak: p.kontak || "" }))
-      .sort((a: any, b: any) => b.nilai - a.nilai);
+
+    // Piutang Grosir dari piutang_grosir (atau fallback data_pelanggan)
+    const rawPiutangGrosir: any[] = Array.isArray(data.piutang_grosir) ? data.piutang_grosir : [];
+    const pelangganPiutang =
+      rawPiutangGrosir.length > 0
+        ? rawPiutangGrosir
+            .map((p: any) => ({
+              id: p.id,
+              no_faktur: p.no_faktur,
+              nama: p.pelanggan_nama || "Pelanggan Grosir",
+              tipe: "Grosir",
+              kota: p.pelanggan_kota || "",
+              jatuh_tempo: p.jatuh_tempo || "",
+              nilai: Math.max(0, num(p.total_tagihan) - num(p.jumlah_dibayar)),
+            }))
+            .filter((p) => p.nilai > 0)
+            .sort((a, b) => b.nilai - a.nilai)
+        : (data.data_pelanggan || [])
+            .filter((p: any) => num(p.piutang) > 0)
+            .map((p: any) => ({ nama: p.nama, tipe: p.tipe || "Pelanggan", kota: p.kota || "", nilai: num(p.piutang) }))
+            .sort((a: any, b: any) => b.nilai - a.nilai);
     const piutangPelanggan = sum(pelangganPiutang, (p) => p.nilai);
 
     // ════════════════ HUTANG ════════════════
@@ -332,7 +449,6 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Sisa hak upah vendor (sama dengan perhitungan modul Gaji CMT)
     const hutangUpah: any[] = [];
     for (const v of data.vendors || []) {
       const vPos = (data.po_produksi || []).filter((p: any) => String(p.vendorId) === String(v.id));
@@ -366,7 +482,7 @@ export async function GET(req: NextRequest) {
     const sisaUpah = sum(hutangUpah, (h) => h.sisa);
     const hutangTotal = sisaSupplier + sisaUpah;
 
-    // ════════════════ PRODUK ════════════════
+    // ════════════════ PRODUK, HPP OTOMATIS (UNIT ECONOMICS) & SMART REORDER ════════════════
     const skuMap: Record<string, any> = {};
     const modelMap: Record<string, any> = {};
     const sizeMap: Record<string, number> = {};
@@ -374,8 +490,9 @@ export async function GET(req: NextRequest) {
       const k = (skuMap[sku] ||= { sku, nama, pcs: 0, omzet: 0, kanal: new Set<string>() });
       k.pcs += pcs; k.omzet += omzet; k.kanal.add(kanal);
       const model = modelFromSku(sku);
-      const m = (modelMap[model] ||= { model, pcs: 0, omzet: 0, sizes: {} as Record<string, number> });
+      const m = (modelMap[model] ||= { model, nama: nama || model, pcs: 0, omzet: 0, sizes: {} as Record<string, number> });
       m.pcs += pcs; m.omzet += omzet; m.sizes[size] = (m.sizes[size] || 0) + pcs;
+      if (!m.nama && nama) m.nama = nama;
       sizeMap[size] = (sizeMap[size] || 0) + pcs;
     };
     for (const o of onlineInRange) {
@@ -385,19 +502,20 @@ export async function GET(req: NextRequest) {
         const q = num(it.quantity) || 1;
         const omzet = isTt ? (num(o.total_amount) * q) / totQty : num(it.order_amount);
         const sku = String(it.seller_sku || it.variation || it.product_name || "TANPA SKU").trim().toUpperCase();
-        addProduk(sku, String(it.product_name || ""), extractSize(it.seller_sku, it.variation), q, omzet, String(o.marketplace || "Online"));
+        addProduk(sku, String(it.product_name || ""), extractSize(it.seller_sku, it.variation), q, omzet, String(o._shopName || o.marketplace || "Online"));
       }
     }
     for (const s of offlineInRange) {
       for (const it of s.items || []) {
         const sku = String(it.sku || it.nama_barang || "TANPA SKU").toUpperCase();
-        addProduk(sku, String(it.nama_barang || ""), String(it.size || "Lainnya").toUpperCase(), 1, num(it.harga), String(s.kanal || "Offline"));
+        addProduk(sku, String(it.nama_barang || ""), String(it.size || "L").toUpperCase(), 1, num(it.harga), String(s.kanal || "Offline"));
       }
     }
     const topSku = Object.values(skuMap)
-      .map((x: any) => ({ ...x, kanal: Array.from(x.kanal), share: pcsOnline + pcsOffline > 0 ? (x.pcs / (pcsOnline + pcsOffline)) * 100 : 0 }))
+      .map((x: any) => ({ ...x, kanal: Array.from(x.kanal), share: pcsTotal > 0 ? (x.pcs / pcsTotal) * 100 : 0 }))
       .sort((a: any, b: any) => b.pcs - a.pcs);
     const topModel = Object.values(modelMap).sort((a: any, b: any) => b.omzet - a.omzet);
+
     const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "XXXL", "4XL", "5XL"];
     const perSize = Object.entries(sizeMap)
       .map(([size, pcs]) => ({ size, pcs }))
@@ -409,7 +527,135 @@ export async function GET(req: NextRequest) {
         return a.size.localeCompare(b.size, undefined, { numeric: true });
       });
 
-    // Tren pcs per model (top 4) untuk grafik garis
+    // ── Kalkulasi HPP Standar dari Data Produksi Riil ──
+    const avgHargaKainPerMeter = (() => {
+      const kains = (data.data_kain || []).filter((k: any) => num(k.harga_beli) > 0);
+      return kains.length ? sum(kains, (k) => num(k.harga_beli)) / kains.length : 21170;
+    })();
+    const avgPemakaianMeter = (() => {
+      const cuts = (data.pemotongan_kain || []).filter((c: any) => num(c.pemakaian_cm) > 0);
+      return cuts.length ? sum(cuts, (c) => num(c.pemakaian_cm)) / cuts.length / 100 : 1.2;
+    })();
+    const defaultBiayaKain = Math.round(avgHargaKainPerMeter * avgPemakaianMeter); // ~Rp 25.404
+    const defaultBiayaJahit = (() => {
+      const cmtVendors = (data.vendors || []).filter((v: any) => v.tipe === "cmt" && num(v.hargaPerPcs) > 0);
+      return cmtVendors.length ? Math.round(sum(cmtVendors, (v) => num(v.hargaPerPcs)) / cmtVendors.length) : 8000;
+    })();
+    const defaultBiayaWashing = (() => {
+      const washVendors = (data.vendors || []).filter((v: any) => v.tipe === "washing" && num(v.hargaPerPcs) > 0);
+      return washVendors.length ? Math.round(sum(washVendors, (v) => num(v.hargaPerPcs)) / washVendors.length) : 5000;
+    })();
+    const defaultBiayaAksesoris = 3500; // Benang, resleting YKK, kancing, rivet, hangtag
+    const defaultHppPerPcs = defaultBiayaKain + defaultBiayaAksesoris + defaultBiayaJahit + defaultBiayaWashing;
+
+    // Rasio potongan marketplace rata-rata terhadap omzet online
+    const feeRatio = pendOnline > 0 ? potonganMarketplace / pendOnline : 0.14;
+
+    const unitEconomics = topModel.slice(0, 10).map((m: any) => {
+      // Cek apakah ada data_barang yang cocok
+      const matchedBrg = (data.data_barang || []).find(
+        (b: any) =>
+          String(b.nama_barang || "").toUpperCase().includes(m.model) ||
+          m.model.includes(String(b.warna || "").toUpperCase())
+      );
+      const hppPerPcs = matchedBrg && num(matchedBrg.harga_beli) > 20000 ? num(matchedBrg.harga_beli) + defaultBiayaJahit + defaultBiayaWashing : defaultHppPerPcs;
+      const hargaJualRata = m.pcs > 0 ? m.omzet / m.pcs : 0;
+      const potonganPerPcs = Math.round(hargaJualRata * feeRatio);
+      const labaPerPcs = Math.round(hargaJualRata - potonganPerPcs - hppPerPcs);
+      const totalHpp = m.pcs * hppPerPcs;
+      const totalPotongan = m.pcs * potonganPerPcs;
+      const totalLabaBersih = m.omzet - totalPotongan - totalHpp;
+      const marginPct = m.omzet > 0 ? (totalLabaBersih / m.omzet) * 100 : 0;
+
+      return {
+        model: m.model,
+        nama: m.nama,
+        pcs: m.pcs,
+        omzet: m.omzet,
+        hargaJualRata: Math.round(hargaJualRata),
+        biayaKain: defaultBiayaKain,
+        biayaAksesoris: defaultBiayaAksesoris,
+        biayaJahit: defaultBiayaJahit,
+        biayaWashing: defaultBiayaWashing,
+        hppPerPcs,
+        potonganPerPcs,
+        labaPerPcs,
+        totalHpp,
+        totalPotongan,
+        totalLabaBersih: Math.round(totalLabaBersih),
+        marginPct,
+      };
+    });
+
+    const totalHppTerjual = sum(unitEconomics, (u) => u.totalHpp);
+    const labaBersihRiil = pendTotal - potonganMarketplace - totalHppTerjual - opexTotal;
+    const marginBersihRiil = pendTotal > 0 ? (labaBersihRiil / pendTotal) * 100 : 0;
+
+    // ── Smart Reorder & Stock Run-Rate (Rekomendasi Repeat PO Otomatis) ──
+    // Hitung stok siap jual & WIP dari barcode_item dan data_barang
+    const totalSiapJualGlobal = (data.barcode_item || []).filter((b: any) => b.status === "siap_jual" || b.status === "gudang").length;
+    const totalWipGlobal = (data.barcode_item || []).filter((b: any) => b.status === "potong" || b.status === "washing_dikerjakan").length;
+    const reviews: any[] = Array.isArray(data.product_reviews) ? data.product_reviews : [];
+
+    // Hitung jumlah hari aktif penjualan dalam periode untuk velocity akurat
+    const activeSaleDates = new Set(onlineInRange.map((o) => (o._date ? ymd(o._date) : "")).filter(Boolean));
+    const effectiveDays = Math.max(1, Math.min(spanDays, activeSaleDates.size || 7));
+
+    const reorderRecommendations = topModel.slice(0, 8).map((m: any) => {
+      const sharePcs = pcsTotal > 0 ? m.pcs / pcsTotal : 0;
+      const matchedBrg = (data.data_barang || []).find(
+        (b: any) =>
+          String(b.nama_barang || "").toUpperCase().includes(m.model) ||
+          m.model.includes(String(b.warna || "").toUpperCase())
+      );
+      // Estimasi stok siap jual untuk model ini (dari stok barang atau proporsi barcode gudang)
+      const stokReady = matchedBrg && num(matchedBrg.stok) > 0 ? num(matchedBrg.stok) : Math.round(totalSiapJualGlobal * sharePcs * 0.15);
+      const stokWip = Math.round(totalWipGlobal * sharePcs * 0.2);
+      const velocityPerHari = Number((m.pcs / effectiveDays).toFixed(1));
+      const estimasiHabisHari = velocityPerHari > 0 ? Math.round(stokReady / velocityPerHari) : 99;
+
+      // Rating ulasan model
+      const modelRevs = reviews.filter(
+        (r: any) =>
+          String(r.product_name || "").toUpperCase().includes(m.model) ||
+          String(r.variation || "").toUpperCase().includes(m.model)
+      );
+      const avgRating = modelRevs.length > 0 ? sum(modelRevs, (r) => num(r.rating || 5)) / modelRevs.length : 4.9;
+
+      // Kebutuhan 21 hari ke depan
+      const targetBuffer21Hari = Math.ceil(velocityPerHari * 21);
+      const kurangPcs = Math.max(0, targetBuffer21Hari - stokReady);
+      const rekomendasiPotong = kurangPcs > 0 ? Math.max(120, Math.ceil(kurangPcs / 60) * 60) : 120;
+
+      // Rasio size sesuai histori laku model ini
+      const topSizes = Object.entries(m.sizes as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .map(([sz, count]) => ({
+          size: sz,
+          terjual: count,
+          rasioPct: m.pcs > 0 ? Math.round((count / m.pcs) * 100) : 0,
+          rekomendasiPcs: m.pcs > 0 ? Math.round((count / m.pcs) * rekomendasiPotong) : 0,
+        }));
+
+      const prioritas: "KRITIS" | "SIAGA" | "AMAN" =
+        estimasiHabisHari <= 5 ? "KRITIS" : estimasiHabisHari <= 12 ? "SIAGA" : "AMAN";
+
+      return {
+        model: m.model,
+        nama: m.nama,
+        pcsTerjual: m.pcs,
+        velocityPerHari,
+        stokReady,
+        stokWip,
+        estimasiHabisHari,
+        avgRating: Number(avgRating.toFixed(1)),
+        rekomendasiPotong,
+        prioritas,
+        topSizes,
+      };
+    }).sort((a, b) => a.estimasiHabisHari - b.estimasiHabisHari);
+
+    // Tren pcs per model (top 4)
     const topModelNames = topModel.slice(0, 4).map((m: any) => m.model);
     const modelTrendMap = new Map<string, any>();
     for (const [k, b] of trendMap) {
@@ -465,26 +711,36 @@ export async function GET(req: NextRequest) {
     const perKurir = countBy(onlineInRange, (o) => String(o.shipping_provider || "").trim(), (o) => num(o.total_amount)).slice(0, 6);
     const perPembayaran = countBy(onlineInRange, (o) => String(o.payment_method || "").trim(), (o) => num(o.total_amount)).slice(0, 6);
 
-    // Hari terbaik
     const trend = Array.from(trendMap.values()).map((t) => ({ ...t, laba: t.pendapatan - t.pengeluaran }));
     const best = trend.reduce((b, t) => (t.pendapatan > (b?.pendapatan || 0) ? t : b), null as any);
 
-    // Transaksi terbaru
     const transaksiTerbaru = [
       ...onlineInRange.map((o) => ({
-        tanggal: o._date?.toISOString(), id: o.order_id, kanal: o.marketplace, pelanggan: o.buyer_username || o.recipient || "-",
-        pcs: num(o.total_qty), nilai: num(o.total_amount), status: o.status,
+        tanggal: o._date?.toISOString(),
+        id: o.order_id,
+        kanal: o._shopName && o._shopName !== o.marketplace ? `${o._shopName} (${o.marketplace})` : o.marketplace,
+        pelanggan: o.buyer_username || o.recipient || "-",
+        pcs: num(o.total_qty),
+        nilai: num(o.total_amount),
+        status: o.status,
       })),
       ...offlineInRange.map((s) => ({
-        tanggal: s._date?.toISOString(), id: s.no_transaksi, kanal: String(s.kanal || "Offline").replace(/^Penjualan\s+/i, ""),
-        pelanggan: s.pelanggan || "-", pcs: num(s.jumlah || (s.items || []).length), nilai: num(s.total), status: "Lunas",
+        tanggal: s._date?.toISOString(),
+        id: s.no_transaksi,
+        kanal: String(s.kanal || "Offline").replace(/^Penjualan\s+/i, ""),
+        pelanggan: s.pelanggan || "-",
+        pcs: num(s.jumlah || (s.items || []).length),
+        nilai: num(s.total),
+        status: s.metode_pembayaran || "Lunas",
       })),
-    ].sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime()).slice(0, 10);
+    ].sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime()).slice(0, 12);
 
     const growth = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
     return NextResponse.json({
       generatedAt: now.toISOString(),
+      shopFilter,
+      multiToko: multiTokoList,
       range: { key: rangeParam, label, start: start.toISOString(), end: end.toISOString(), granularity, prevStart: prevStart.toISOString(), prevEnd: prevEnd.toISOString() },
       ringkasan: {
         pendapatan: pendTotal,
@@ -495,17 +751,21 @@ export async function GET(req: NextRequest) {
         pengeluaranGrowth: growth(pengeluaranTotal, pengeluaranPrev),
         arusKasBersih: pendTotal - pengeluaranTotal,
         margin: pendTotal > 0 ? ((pendTotal - pengeluaranTotal) / pendTotal) * 100 : 0,
+        hppTerjual: totalHppTerjual,
+        labaBersihRiil: Math.round(labaBersihRiil),
+        marginBersihRiil,
+        hppStandarPerPcs: defaultHppPerPcs,
         piutang: piutangMarketplace + piutangPelanggan,
         hutang: hutangTotal,
         posisiBersih: piutangMarketplace + piutangPelanggan - hutangTotal,
         pesanan: jumlahPesanan,
         pesananPrev: jumlahPesananPrev,
         pesananGrowth: growth(jumlahPesanan, jumlahPesananPrev),
-        pcs: pcsOnline + pcsOffline,
+        pcs: pcsTotal,
         pcsPrev,
-        pcsGrowth: growth(pcsOnline + pcsOffline, pcsPrev),
+        pcsGrowth: growth(pcsTotal, pcsPrev),
         aov: jumlahPesanan > 0 ? pendTotal / jumlahPesanan : 0,
-        hargaRataPcs: pcsOnline + pcsOffline > 0 ? pendTotal / (pcsOnline + pcsOffline) : 0,
+        hargaRataPcs: pcsTotal > 0 ? pendTotal / pcsTotal : 0,
         nilaiBatal,
         jumlahBatal: batalInRange.length,
         rasioBatal: onlineOrders.filter((o) => inRange(o._date)).length > 0 ? (batalInRange.length / onlineOrders.filter((o) => inRange(o._date)).length) * 100 : 0,
@@ -520,7 +780,7 @@ export async function GET(req: NextRequest) {
       },
       pengeluaran: {
         total: pengeluaranTotal,
-        pembelianBahan, upahDibayar, potonganMarketplace,
+        pembelianBahan, upahDibayar, potonganMarketplace, opexTotal,
         komisi, afiliasi, ongkir, lainnya,
         breakdown: pengeluaranBreakdown,
         detail: pengeluaranDetail,
@@ -548,6 +808,8 @@ export async function GET(req: NextRequest) {
         perSize,
         modelTrend: { models: topModelNames, data: Array.from(modelTrendMap.values()) },
         jumlahSku: topSku.length,
+        unitEconomics,
+        reorderRecommendations,
       },
       inventori: {
         status: inventori,
@@ -562,4 +824,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e?.message || "Gagal memuat ringkasan bisnis" }, { status: 500 });
   }
 }
-

@@ -176,7 +176,7 @@ export function upsertMarketplaceOrders(data: any, shop: MarketplaceShop, orders
   for (const o of orders) {
     const oid = String(o.order_id).trim();
     const existing = byOrder.get(oid) || [];
-    const base = { sumber: "api", platform: shop.platform, shop_key: shop.key, marketplace: shop.label };
+    const base = { sumber: "api", platform: shop.platform, shop_key: shop.key, shop_name: shop.shop_name, marketplace: shop.label };
 
     if (existing.length === 0) {
       if (o.belum_bayar || o.dibatalkan || o.rows.length === 0) { res.skipped++; continue; }
@@ -198,6 +198,9 @@ export function upsertMarketplaceOrders(data: any, shop: MarketplaceShop, orders
       }
       r.dibatalkan = o.dibatalkan;
       if (!r.marketplace) r.marketplace = shop.label;
+      if (!r.shop_key) r.shop_key = shop.key;
+      if (!r.shop_name) r.shop_name = shop.shop_name;
+      if (!r.platform) r.platform = shop.platform;
       r.sync_at = now;
     }
 

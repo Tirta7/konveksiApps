@@ -9,6 +9,7 @@ import {
   TrendingUp, TrendingDown, Wallet, Receipt, ShoppingBag, Package, HandCoins, Landmark,
   Scale, AlertTriangle, RefreshCw, Store, Shirt, Truck, MapPin, CreditCard, Boxes,
   ArrowUpRight, ArrowDownRight, Calendar, Award, Layers, Ruler, Activity, Info,
+  Plus, Trash2, Calculator, Flame, Star, Scissors, CheckCircle2, X,
 } from "lucide-react";
 
 // ───────────────────────── Helpers ─────────────────────────
@@ -55,15 +56,31 @@ const RANGES = [
 
 const PALETTE = ["#2563EB", "#F97316", "#10B981", "#8B5CF6", "#EC4899", "#14B8A6", "#F59E0B", "#64748B"];
 const KANAL_COLOR: Record<string, string> = {
-  "TikTok Shop": "#0F172A", Shopee: "#F97316", Grosir: "#6366F1", "Retail Offline": "#10B981", Marketplace: "#64748B",
+  "TikTok Shop": "#0F172A", Shopee: "#F97316", Tokopedia: "#16A34A", Grosir: "#6366F1", "Retail Offline": "#10B981", Marketplace: "#64748B",
 };
-const kanalColor = (name: string, i: number) => KANAL_COLOR[name] || PALETTE[i % PALETTE.length];
+const kanalColor = (name: string, i: number) => {
+  if (KANAL_COLOR[name]) return KANAL_COLOR[name];
+  if (/shopee/i.test(name)) return "#F97316";
+  if (/tiktok/i.test(name)) return "#0F172A";
+  if (/tokopedia/i.test(name)) return "#16A34A";
+  return PALETTE[i % PALETTE.length];
+};
 const STATUS_COLOR: Record<string, string> = {
   Selesai: "#10B981", Dikirim: "#3B82F6", "Perlu Dikirim": "#F59E0B", Diproses: "#8B5CF6", Batal: "#EF4444", Retur: "#EC4899",
 };
 const INV_COLOR: Record<string, string> = {
   potong: "#3B82F6", washing_dikerjakan: "#06B6D4", gudang: "#8B5CF6", siap_jual: "#10B981", terjual: "#F97316", reject: "#EF4444",
 };
+const OPEX_CATEGORIES = [
+  "Iklan & Ads (Shopee/TikTok/Meta)",
+  "Plastik, Lakban & Perlengkapan Packing",
+  "Listrik, Air & Internet",
+  "Gaji Admin & Staf Gudang",
+  "Sewa Ruko / Workshop",
+  "Transportasi & Ekspedisi Kargo",
+  "Perawatan Mesin Jahit & Alat",
+  "Biaya Operasional Lainnya",
+];
 
 // ───────────────────────── UI Primitives ─────────────────────────
 function Card({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
@@ -143,19 +160,30 @@ function ProgressRow({ label, value, total, color, right }: { label: React.React
 // ───────────────────────── Main Component ─────────────────────────
 export default function BusinessOverview() {
   const [range, setRange] = useState("30");
+  const [shopFilter, setShopFilter] = useState("all");
   const [d, setD] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [trendMode, setTrendMode] = useState<"keuangan" | "pesanan">("keuangan");
   const [produkMode, setProdukMode] = useState<"pcs" | "omzet">("pcs");
+  const [opexModalOpen, setOpexModalOpen] = useState(false);
+  const [opexSaving, setOpexSaving] = useState(false);
+  const [opexForm, setOpexForm] = useState({
+    tanggal: new Date().toISOString().slice(0, 10),
+    kategori: OPEX_CATEGORIES[0],
+    keterangan: "",
+    nominal: "",
+    metode: "Transfer Bank",
+    toko: "Semua Toko",
+  });
   const reqId = useRef(0);
 
-  const load = useCallback(async (r: string, silent = false) => {
+  const load = useCallback(async (r: string, shop: string, silent = false) => {
     const id = ++reqId.current;
     if (!silent) setLoading(true);
     try {
-      const res = await fetch(`/api/dashboard-bisnis?range=${r}`, { cache: "no-store" });
+      const res = await fetch(`/api/dashboard-bisnis?range=${r}&shop=${encodeURIComponent(shop)}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || `Server merespons ${res.status}`);
       if (id !== reqId.current) return;
@@ -169,16 +197,43 @@ export default function BusinessOverview() {
     }
   }, []);
 
-  useEffect(() => { load(range); }, [range, load]);
+  useEffect(() => { load(range, shopFilter); }, [range, shopFilter, load]);
 
-  // Real-time: segarkan otomatis saat ada perubahan data (SSE) + interval cadangan
+  // Real-time: segarkan otomatis saat ada perubahan data (WebSocket / SSE) + interval cadangan
   useEffect(() => {
     let t: any;
-    const handler = () => { clearTimeout(t); t = setTimeout(() => load(range, true), 600); };
+    const handler = () => { clearTimeout(t); t = setTimeout(() => load(range, shopFilter, true), 450); };
     window.addEventListener("konveksi-sync", handler);
-    const iv = setInterval(() => { if (!document.hidden) load(range, true); }, 60000);
+    const iv = setInterval(() => { if (!document.hidden) load(range, shopFilter, true); }, 60000);
     return () => { window.removeEventListener("konveksi-sync", handler); clearInterval(iv); clearTimeout(t); };
-  }, [range, load]);
+  }, [range, shopFilter, load]);
+
+  const handleSaveOpex = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const nominal = Number(String(opexForm.nominal).replace(/\D/g, "")) || 0;
+    if (nominal <= 0) return;
+    setOpexSaving(true);
+    try {
+      const res = await fetch("/api/pengeluaran", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...opexForm, nominal }),
+      });
+      if (res.ok) {
+        setOpexModalOpen(false);
+        setOpexForm((f) => ({ ...f, keterangan: "", nominal: "" }));
+        load(range, shopFilter, true);
+      }
+    } finally {
+      setOpexSaving(false);
+    }
+  };
+
+  const handleDeleteOpex = async (id: number) => {
+    if (!id) return;
+    await fetch(`/api/pengeluaran?id=${id}`, { method: "DELETE" });
+    load(range, shopFilter, true);
+  };
 
   const r = d?.ringkasan;
   const totalInv = useMemo(() => (d?.inventori?.status || []).reduce((s: number, x: any) => s + x.value, 0), [d]);
@@ -201,19 +256,22 @@ export default function BusinessOverview() {
           <AlertTriangle size={30} color="#DC2626" style={{ margin: "0 auto 10px" }} />
           <div style={{ fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>Ringkasan bisnis gagal dimuat</div>
           <div style={{ fontSize: 13, color: "#64748B", marginBottom: 16 }}>{error}</div>
-          <button className="bo-btn-primary" onClick={() => load(range)}>Coba Lagi</button>
+          <button className="bo-btn-primary" onClick={() => load(range, shopFilter)}>Coba Lagi</button>
         </Card>
       </div>
     );
   }
 
   const trend: any[] = d?.trend || [];
+  const multiToko: any[] = d?.multiToko || [];
   const perKanal: any[] = d?.pendapatan?.perKanal || [];
   const pengBreak: any[] = (d?.pengeluaran?.breakdown || []).filter((x: any) => x.value > 0);
   const topSku: any[] = d?.produk?.topSku || [];
   const perSize: any[] = d?.produk?.perSize || [];
   const modelTrend = d?.produk?.modelTrend || { models: [], data: [] };
   const topModel: any[] = d?.produk?.topModel || [];
+  const unitEconomics: any[] = d?.produk?.unitEconomics || [];
+  const reorderRecs: any[] = d?.produk?.reorderRecommendations || [];
   const statusPesanan: any[] = d?.pendapatan?.statusPesanan || [];
   const aging: any[] = d?.piutang?.aging || [];
   const hutangList: any[] = d?.hutang?.list || [];
@@ -223,7 +281,7 @@ export default function BusinessOverview() {
     <div className="bo-wrap">
       <BoStyles />
 
-      {/* ── Toolbar Periode ── */}
+      {/* ── Toolbar Periode & Filter Multi-Toko ── */}
       <div className="bo-toolbar">
         <div className="bo-range">
           <Calendar size={14} color="#64748B" style={{ flexShrink: 0 }} />
@@ -231,11 +289,28 @@ export default function BusinessOverview() {
             <button key={x.key} onClick={() => setRange(x.key)} className={`bo-range-btn ${range === x.key ? "active" : ""}`}>{x.label}</button>
           ))}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#64748B", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#64748B", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 9, padding: "4px 8px" }}>
+            <Store size={13} color="#2563EB" />
+            <span style={{ fontWeight: 700, color: "#475569" }}>Toko:</span>
+            <select
+              value={shopFilter}
+              onChange={(e) => setShopFilter(e.target.value)}
+              style={{ border: "none", background: "transparent", fontSize: 11.5, fontWeight: 800, color: "#0F172A", outline: "none", cursor: "pointer" }}
+            >
+              <option value="all">Semua Toko & Kanal ({multiToko.length} Toko Online)</option>
+              {multiToko.map((s) => (
+                <option key={s.shop_key} value={s.shop_key}>
+                  {s.marketplace} — {s.shop_name} ({fmtNum(s.pesanan)} order)
+                </option>
+              ))}
+              <option value="offline">Grosir & Retail Offline Saja</option>
+            </select>
+          </div>
           <span>
             Periode: <b style={{ color: "#0F172A" }}>{fmtTgl(d?.range?.start)} – {fmtTgl(d?.range?.end)}</b>
           </span>
-          <button onClick={() => load(range)} className="bo-btn-ghost" title="Muat ulang">
+          <button onClick={() => load(range, shopFilter)} className="bo-btn-ghost" title="Muat ulang">
             <RefreshCw size={12} className={loading ? "bo-spin" : ""} /> {updatedAt ? updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--"}
           </button>
         </div>
@@ -252,14 +327,14 @@ export default function BusinessOverview() {
         <KpiHero
           tone="#F97316" icon={<Receipt size={18} />} title="Total Pengeluaran" value={rp(r.pengeluaran)}
           growth={<Growth value={r.pengeluaranGrowth} invert />}
-          foot={<>Bahan <b>{rpShort(d.pengeluaran.pembelianBahan)}</b> · Upah <b>{rpShort(d.pengeluaran.upahDibayar)}</b> · Potongan <b>{rpShort(d.pengeluaran.potonganMarketplace)}</b></>}
+          foot={<>Bahan <b>{rpShort(d.pengeluaran.pembelianBahan)}</b> · Upah <b>{rpShort(d.pengeluaran.upahDibayar)}</b> · Potongan <b>{rpShort(d.pengeluaran.potonganMarketplace)}</b> · OPEX <b>{rpShort(d.pengeluaran.opex || 0)}</b></>}
           spark={trend.map((t) => t.pengeluaran)}
         />
         <KpiHero
           tone={r.arusKasBersih >= 0 ? "#10B981" : "#EF4444"} icon={r.arusKasBersih >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
           title="Arus Kas Bersih (Estimasi)" value={rp(r.arusKasBersih)}
-          growth={<span className="bo-growth" style={{ background: r.margin >= 0 ? "#ECFDF5" : "#FEF2F2", color: r.margin >= 0 ? "#047857" : "#B91C1C" }}>Margin {pct(r.margin)}</span>}
-          foot={<>Pendapatan − Pengeluaran pada periode ini</>}
+          growth={<span className="bo-growth" style={{ background: r.margin >= 0 ? "#ECFDF5" : "#FEF2F2", color: r.margin >= 0 ? "#047857" : "#B91C1C" }}>Margin Kas {pct(r.margin)}</span>}
+          foot={<>Laba Unit (Setelah HPP): <b style={{ color: (r.labaBersihRiil ?? 0) >= 0 ? "#059669" : "#DC2626" }}>{rpShort(r.labaBersihRiil || 0)}</b></>}
           spark={trend.map((t) => t.laba)}
         />
         <KpiHero
@@ -272,8 +347,8 @@ export default function BusinessOverview() {
 
       {/* ── KPI Sekunder: Posisi Keuangan ── */}
       <div className="bo-grid-4">
-        <KpiMini tone="#0EA5E9" icon={<HandCoins size={16} />} title="Piutang Berjalan" value={rp(r.piutang)} href="/laporan"
-          note={`${fmtNum(d.piutang.pesananBelumCair)} pesanan marketplace belum cair`} />
+        <KpiMini tone="#0EA5E9" icon={<HandCoins size={16} />} title="Piutang Berjalan" value={rp(r.piutang)} href="/piutang"
+          note={`Escrow ${rpShort(d.piutang.marketplace)} (${fmtNum(d.piutang.pesananBelumCair)} order) · Grosir ${rpShort(d.piutang.pelanggan)}`} />
         <KpiMini tone="#DC2626" icon={<Landmark size={16} />} title="Hutang Berjalan" value={rp(r.hutang)} href="/hutang"
           note={`Supplier ${rpShort(d.hutang.supplier)} · Upah ${rpShort(d.hutang.upahVendor)}`} />
         <KpiMini tone={r.posisiBersih >= 0 ? "#059669" : "#B91C1C"} icon={<Scale size={16} />} title="Posisi Bersih (Piutang − Hutang)" value={rp(r.posisiBersih)}
@@ -283,6 +358,67 @@ export default function BusinessOverview() {
           value={r.hariTerbaik ? rp(r.hariTerbaik.nilai) : `${fmtNum(r.jumlahBatal)} order`}
           note={`Batal ${fmtNum(r.jumlahBatal)} order (${pct(r.rasioBatal)}) · ${rpShort(r.nilaiBatal)}`} />
       </div>
+
+      {/* ── Performa Multi-Toko Online (Omnichannel Consolidation Hub) ── */}
+      <Card>
+        <CardHead
+          icon={<Store size={16} />}
+          title="Konsolidasi Multi-Toko Online (Omnichannel Hub)"
+          subtitle="Gabungan performa seluruh toko Shopee, TikTok Shop & Tokopedia dalam 1 ERP Konveksi"
+          tone="#2563EB"
+          right={
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {shopFilter !== "all" && (
+                <button onClick={() => setShopFilter("all")} className="bo-btn-ghost" style={{ color: "#2563EB", borderColor: "#BFDBFE", background: "#EFF6FF" }}>
+                  Tampilkan Semua Toko
+                </button>
+              )}
+              <Link href="/pengaturan" className="bo-link">+ Hubungkan Toko Online Baru →</Link>
+            </div>
+          }
+        />
+        <div className="bo-pad">
+          {multiToko.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+              {multiToko.map((s: any, i: number) => {
+                const isSelected = shopFilter === s.shop_key;
+                const badgeColor = kanalColor(s.marketplace, i);
+                return (
+                  <div
+                    key={s.shop_key}
+                    onClick={() => setShopFilter(isSelected ? "all" : s.shop_key)}
+                    style={{
+                      border: isSelected ? `2px solid #2563EB` : "1px solid #E2E8F0",
+                      background: isSelected ? "#EFF6FF" : "#FAFBFD",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      cursor: "pointer",
+                      transition: "all .15s",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                        <span className="bo-pill" style={{ background: `${badgeColor}18`, color: badgeColor }}>{s.marketplace}</span>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.shop_name}</span>
+                      </div>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, color: "#2563EB", background: "#DBEAFE", padding: "2px 7px", borderRadius: 99 }}>{pct(s.share)}</span>
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", marginBottom: 6 }}>{rp(s.omzet)}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 11, color: "#64748B" }}>
+                      <div>Order: <b style={{ color: "#1E293B" }}>{fmtNum(s.pesanan)}</b> ({fmtNum(s.pcs)} pcs)</div>
+                      <div>Cair: <b style={{ color: "#059669" }}>{rpShort(s.pencairan)}</b></div>
+                      <div>Potongan: <b style={{ color: "#DC2626" }}>{rpShort(s.potongan)}</b></div>
+                      <div>Escrow: <b style={{ color: "#0284C7" }}>{rpShort(s.escrow)}</b></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Empty text="Belum ada toko online terhubung. Hubungkan banyak toko Shopee / TikTok Shop / Tokopedia di menu Pengaturan." height={110} />
+          )}
+        </div>
+      </Card>
 
       {/* ── Tren + Kanal ── */}
       <div className="bo-grid-main">
@@ -392,7 +528,21 @@ export default function BusinessOverview() {
         </Card>
 
         <Card>
-          <CardHead icon={<Receipt size={16} />} title="Rincian Pengeluaran" subtitle="Bahan, upah vendor & potongan marketplace" tone="#F97316" />
+          <CardHead
+            icon={<Receipt size={16} />}
+            title="Rincian Pengeluaran"
+            subtitle="Bahan, upah vendor, potongan marketplace & OPEX"
+            tone="#F97316"
+            right={
+              <button
+                onClick={() => setOpexModalOpen(true)}
+                className="bo-btn-ghost"
+                style={{ background: "#FFF7ED", color: "#EA580C", borderColor: "#FED7AA" }}
+              >
+                <Plus size={12} /> Catat Biaya Operasional
+              </button>
+            }
+          />
           <div className="bo-pad">
             {pengBreak.length ? (
               <div className="bo-donut-row">
@@ -424,8 +574,13 @@ export default function BusinessOverview() {
       {/* ── Piutang & Hutang ── */}
       <div className="bo-grid-2">
         <Card>
-          <CardHead icon={<HandCoins size={16} />} title="Rincian Piutang" subtitle="Dana yang belum diterima" tone="#0EA5E9"
-            right={<span className="bo-pill" style={{ background: "#E0F2FE", color: "#0369A1" }}>{rp(d.piutang.total)}</span>} />
+          <CardHead icon={<HandCoins size={16} />} title="Rincian Piutang" subtitle="Dana yang belum diterima (Escrow Multi-Toko & Grosir)" tone="#0EA5E9"
+            right={
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="bo-pill" style={{ background: "#E0F2FE", color: "#0369A1" }}>{rp(d.piutang.total)}</span>
+                <Link href="/piutang" className="bo-link">Buku Piutang →</Link>
+              </div>
+            } />
           <div className="bo-pad">
             <div className="bo-stat-row">
               <StatBox label="Marketplace (Escrow)" value={rp(d.piutang.marketplace)} sub={`${fmtNum(d.piutang.pesananBelumCair)} pesanan`} color="#0EA5E9" />
@@ -451,7 +606,7 @@ export default function BusinessOverview() {
 
             {d.piutang.perPlatform.length > 0 && (
               <>
-                <div className="bo-subtitle">Per Platform</div>
+                <div className="bo-subtitle">Per Platform / Toko</div>
                 <div className="bo-table-wrap">
                   <table className="bo-table">
                     <thead><tr><th>Platform</th><th className="r">Order</th><th className="r">Dlm Pengiriman</th><th className="r">Selesai (Tunggu Cair)</th><th className="r">Total</th></tr></thead>
@@ -515,6 +670,145 @@ export default function BusinessOverview() {
               </div>
             ) : <Empty text="Tidak ada hutang tercatat" height={120} />}
           </div>
+        </Card>
+      </div>
+
+      {/* ── Smart Reorder & Stock Run-Rate + Kalkulator HPP Otomatis ── */}
+      <div className="bo-section-title"><Flame size={16} /> Rekomendasi Produksi Pintar & Unit Economics (HPP)</div>
+      <div className="bo-grid-2">
+        <Card>
+          <CardHead
+            icon={<Flame size={16} />}
+            title="Smart Reorder & Stock Run-Rate"
+            subtitle="Prediksi habis stok dari kecepatan jual harian (velocity) vs stok ready + WIP"
+            tone="#EF4444"
+            right={<Link href="/buat-spk" className="bo-link">+ Buat SPK Potong →</Link>}
+          />
+          {reorderRecs.length > 0 ? (
+            <div className="bo-table-wrap" style={{ maxHeight: 360, margin: "0 16px 16px" }}>
+              <table className="bo-table">
+                <thead>
+                  <tr>
+                    <th>Model / Artikel</th>
+                    <th>Status</th>
+                    <th className="r">Velocity</th>
+                    <th className="r">Stok + WIP</th>
+                    <th className="r">Est. Habis</th>
+                    <th className="r">Saran Repeat PO</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reorderRecs.map((rec: any) => {
+                    const pillStyle =
+                      rec.prioritas === "KRITIS"
+                        ? { background: "#FEE2E2", color: "#B91C1C" }
+                        : rec.prioritas === "SIAGA"
+                        ? { background: "#FEF3C7", color: "#B45309" }
+                        : { background: "#DCFCE7", color: "#15803D" };
+                    return (
+                      <tr key={rec.model}>
+                        <td>
+                          <div style={{ fontWeight: 800, color: "#0F172A" }}>{rec.model}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "#64748B", marginTop: 2, flexWrap: "wrap" }}>
+                            <span>Terjual {fmtNum(rec.terjualPeriode)} pcs</span>
+                            {rec.avgRating && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 2, color: "#D97706", fontWeight: 700 }}>
+                                <Star size={10} fill="#F59E0B" color="#F59E0B" /> {rec.avgRating}
+                              </span>
+                            )}
+                            {rec.topSizes?.length > 0 && (
+                              <span>Size laku: <b>{rec.topSizes.map((s: any) => `${s.size}(${s.saranPcs})`).join(", ")}</b></span>
+                            )}
+                          </div>
+                        </td>
+                        <td><span className="bo-pill" style={pillStyle}>{rec.prioritas}</span></td>
+                        <td className="r"><b>{rec.velocityPerHari}</b> <span style={{ fontSize: 10, color: "#94A3B8" }}>pcs/hr</span></td>
+                        <td className="r">
+                          <b>{fmtNum(rec.stokReady)}</b>
+                          {rec.stokWip > 0 && <span style={{ fontSize: 10.5, color: "#2563EB" }}> +{fmtNum(rec.stokWip)} WIP</span>}
+                        </td>
+                        <td className="r">
+                          <b style={{ color: rec.estimasiHabisHari <= 7 ? "#DC2626" : rec.estimasiHabisHari <= 14 ? "#D97706" : "#059669" }}>
+                            {rec.estimasiHabisHari >= 999 ? "Aman" : `${rec.estimasiHabisHari} hari`}
+                          </b>
+                        </td>
+                        <td className="r">
+                          {rec.rekomendasiPotong > 0 ? (
+                            <b style={{ color: "#2563EB" }}>+{fmtNum(rec.rekomendasiPotong)} pcs</b>
+                          ) : (
+                            <span style={{ color: "#94A3B8", fontSize: 11 }}>Stok Cukup</span>
+                          )}
+                        </td>
+                        <td>
+                          <Link
+                            href={`/buat-spk?model=${encodeURIComponent(rec.model)}&qty=${rec.rekomendasiPotong || 100}`}
+                            className="bo-pill"
+                            style={{ background: "#EFF6FF", color: "#2563EB", textDecoration: "none", gap: 4 }}
+                          >
+                            <Scissors size={10} /> SPK
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty text="Belum ada data penjualan model untuk analisis reorder" height={200} />
+          )}
+        </Card>
+
+        <Card>
+          <CardHead
+            icon={<Calculator size={16} />}
+            title="Kalkulator HPP Otomatis & Unit Economics"
+            subtitle="Rincian HPP per pcs (Kain + Aksesoris + Jahit CMT + Washing) & Margin Bersih per Model"
+            tone="#059669"
+          />
+          {unitEconomics.length > 0 ? (
+            <div className="bo-table-wrap" style={{ maxHeight: 360, margin: "0 16px 16px" }}>
+              <table className="bo-table">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th className="r">Harga Jual</th>
+                    <th className="r">HPP / Pcs</th>
+                    <th className="r">Fee MP / Pcs</th>
+                    <th className="r">Laba / Pcs</th>
+                    <th className="r">Total Laba</th>
+                    <th className="r">Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unitEconomics.map((u: any) => (
+                    <tr key={u.model}>
+                      <td>
+                        <div style={{ fontWeight: 800, color: "#0F172A" }}>{u.model}</div>
+                        <div style={{ fontSize: 10, color: "#94A3B8" }}>
+                          Kain {rpShort(u.biayaKain)} · Aks {rpShort(u.biayaAksesoris)} · CMT {rpShort(u.biayaJahit)}
+                          {u.biayaWashing > 0 ? ` · Wash ${rpShort(u.biayaWashing)}` : ""}
+                        </div>
+                      </td>
+                      <td className="r">{rpShort(u.hargaJualRata)}</td>
+                      <td className="r"><b style={{ color: "#475569" }}>{rpShort(u.hppPerPcs)}</b></td>
+                      <td className="r" style={{ color: "#DC2626" }}>{rpShort(u.potonganPerPcs)}</td>
+                      <td className="r"><b style={{ color: u.labaPerPcs >= 0 ? "#059669" : "#DC2626" }}>{rpShort(u.labaPerPcs)}</b></td>
+                      <td className="r"><b style={{ color: u.totalLabaBersih >= 0 ? "#059669" : "#DC2626" }}>{rpShort(u.totalLabaBersih)}</b></td>
+                      <td className="r">
+                        <span className="bo-pill" style={u.marginPct >= 20 ? { background: "#DCFCE7", color: "#15803D" } : u.marginPct >= 10 ? { background: "#FEF3C7", color: "#B45309" } : { background: "#FEE2E2", color: "#B91C1C" }}>
+                          {pct(u.marginPct)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty text="Belum ada data HPP model produk" height={200} />
+          )}
         </Card>
       </div>
 
@@ -691,13 +985,17 @@ export default function BusinessOverview() {
           {d.transaksiTerbaru.length ? (
             <div className="bo-table-wrap" style={{ margin: "0 16px 16px" }}>
               <table className="bo-table">
-                <thead><tr><th>Waktu</th><th>ID / Pelanggan</th><th>Kanal</th><th className="r">Pcs</th><th className="r">Nilai</th></tr></thead>
+                <thead><tr><th>Waktu</th><th>ID / Pelanggan</th><th>Kanal / Toko</th><th className="r">Pcs</th><th className="r">Nilai</th></tr></thead>
                 <tbody>
                   {d.transaksiTerbaru.map((t: any, i: number) => (
                     <tr key={`${t.id}-${i}`}>
                       <td style={{ whiteSpace: "nowrap", fontSize: 11 }}>{fmtTglJam(t.tanggal)}</td>
                       <td><div style={{ fontWeight: 700, color: "#1E293B", fontSize: 11.5 }}>{t.id}</div><div style={{ fontSize: 10.5, color: "#94A3B8" }}>{t.pelanggan}</div></td>
-                      <td><span className="bo-pill" style={{ background: `${kanalColor(t.kanal, i)}15`, color: kanalColor(t.kanal, i) }}>{t.kanal}</span></td>
+                      <td>
+                        <span className="bo-pill" style={{ background: `${kanalColor(t.kanal, i)}15`, color: kanalColor(t.kanal, i) }}>
+                          {t.kanal}{t.shop_name ? ` · ${t.shop_name}` : ""}
+                        </span>
+                      </td>
                       <td className="r">{fmtNum(t.pcs)}</td>
                       <td className="r"><b>{rpShort(t.nilai)}</b></td>
                     </tr>
@@ -709,19 +1007,48 @@ export default function BusinessOverview() {
         </Card>
 
         <Card>
-          <CardHead icon={<Receipt size={16} />} title="Riwayat Pengeluaran" subtitle="Pembelian bahan & pembayaran upah vendor" tone="#F97316"
-            right={<Link href="/pembelian" className="bo-link">Pembelian →</Link>} />
+          <CardHead icon={<Receipt size={16} />} title="Riwayat Pengeluaran" subtitle="Pembelian bahan, upah vendor & biaya operasional" tone="#F97316"
+            right={
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button onClick={() => setOpexModalOpen(true)} className="bo-btn-ghost" style={{ padding: "3px 8px" }}>+ OPEX</button>
+                <Link href="/pembelian" className="bo-link">Pembelian →</Link>
+              </div>
+            } />
           {d.pengeluaran.detail.length ? (
             <div className="bo-table-wrap" style={{ margin: "0 16px 16px" }}>
               <table className="bo-table">
-                <thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th className="r">Nilai</th></tr></thead>
+                <thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th className="r">Nilai</th><th></th></tr></thead>
                 <tbody>
                   {d.pengeluaran.detail.map((x: any, i: number) => (
                     <tr key={i}>
                       <td style={{ whiteSpace: "nowrap", fontSize: 11 }}>{fmtTgl(x.tanggal)}</td>
-                      <td><span className="bo-pill" style={x.kategori === "Pembelian Bahan" ? { background: "#EEF2FF", color: "#4338CA" } : { background: "#FEF3C7", color: "#92400E" }}>{x.kategori}</span></td>
-                      <td><div className="bo-ellipsis" style={{ fontSize: 11.5, maxWidth: 260 }}>{x.keterangan}</div><div style={{ fontSize: 10.5, color: "#94A3B8" }}>{x.metode}</div></td>
+                      <td>
+                        <span
+                          className="bo-pill"
+                          style={
+                            x.kategori === "Pembelian Bahan"
+                              ? { background: "#EEF2FF", color: "#4338CA" }
+                              : x.kategori === "Upah Vendor"
+                              ? { background: "#FEF3C7", color: "#92400E" }
+                              : { background: "#FCE7F3", color: "#BE185D" }
+                          }
+                        >
+                          {x.kategori}
+                        </span>
+                      </td>
+                      <td><div className="bo-ellipsis" style={{ fontSize: 11.5, maxWidth: 240 }}>{x.keterangan}</div><div style={{ fontSize: 10.5, color: "#94A3B8" }}>{x.metode}</div></td>
                       <td className="r"><b style={{ color: "#C2410C" }}>{rpShort(x.nilai)}</b></td>
+                      <td className="r">
+                        {x.opexId && (
+                          <button
+                            onClick={() => handleDeleteOpex(x.opexId)}
+                            title="Hapus biaya operasional"
+                            style={{ border: "none", background: "transparent", color: "#94A3B8", cursor: "pointer", padding: 2 }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -731,9 +1058,114 @@ export default function BusinessOverview() {
         </Card>
       </div>
 
+      {/* ── Modal Catat Biaya Operasional (OPEX) ── */}
+      {opexModalOpen && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+          }}
+          onClick={() => setOpexModalOpen(false)}
+        >
+          <div
+            className="bo-card"
+            style={{ width: "100%", maxWidth: 460, padding: 20 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: "#0F172A" }}>Catat Biaya Operasional (OPEX)</div>
+                <div style={{ fontSize: 11.5, color: "#64748B" }}>Iklan Ads, plastik packing, listrik, gaji admin, dll.</div>
+              </div>
+              <button onClick={() => setOpexModalOpen(false)} style={{ border: "none", background: "#F1F5F9", borderRadius: 8, padding: 6, cursor: "pointer" }}>
+                <X size={15} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveOpex} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>Tanggal</label>
+                  <input
+                    type="date"
+                    value={opexForm.tanggal}
+                    onChange={(e) => setOpexForm({ ...opexForm, tanggal: e.target.value })}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12 }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>Alokasi Toko</label>
+                  <select
+                    value={opexForm.toko}
+                    onChange={(e) => setOpexForm({ ...opexForm, toko: e.target.value })}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12 }}
+                  >
+                    <option value="Semua Toko">Semua Toko (Umum)</option>
+                    {multiToko.map((s: any) => (
+                      <option key={s.shop_key} value={`${s.marketplace} - ${s.shop_name}`}>{s.marketplace} - {s.shop_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>Kategori Biaya</label>
+                <select
+                  value={opexForm.kategori}
+                  onChange={(e) => setOpexForm({ ...opexForm, kategori: e.target.value })}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12 }}
+                >
+                  {OPEX_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>Nominal (Rp)</label>
+                  <input
+                    type="number"
+                    placeholder="Contoh: 250000"
+                    value={opexForm.nominal}
+                    onChange={(e) => setOpexForm({ ...opexForm, nominal: e.target.value })}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12 }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>Metode Bayar</label>
+                  <select
+                    value={opexForm.metode}
+                    onChange={(e) => setOpexForm({ ...opexForm, metode: e.target.value })}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12 }}
+                  >
+                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="Tunai / Kas">Tunai / Kas</option>
+                    <option value="Saldo Toko / Ads">Saldo Toko / Ads</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>Keterangan Detail</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Topup Iklan Shopee GMV Max / Beli Plastik Polymailer 10 pack"
+                  value={opexForm.keterangan}
+                  onChange={(e) => setOpexForm({ ...opexForm, keterangan: e.target.value })}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 12 }}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                <button type="button" onClick={() => setOpexModalOpen(false)} className="bo-btn-ghost">Batal</button>
+                <button type="submit" disabled={opexSaving} className="bo-btn-primary" style={{ padding: "8px 16px", fontSize: 12 }}>
+                  {opexSaving ? "Menyimpan..." : "Simpan Pengeluaran"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div style={{ fontSize: 10.5, color: "#94A3B8", textAlign: "center", padding: "4px 0 8px", lineHeight: 1.6 }}>
-        Pendapatan dihitung dari pesanan marketplace (non-batal) & penjualan offline berdasarkan tanggal pesanan. Potongan marketplace diambil dari data settlement.
-        Arus kas bersih = pendapatan − (pembelian bahan + upah vendor dibayar + potongan marketplace). Piutang & hutang menampilkan saldo berjalan saat ini.
+        Pendapatan dihitung dari seluruh toko online terhubung (non-batal) & penjualan offline. Potongan marketplace diambil dari settlement.
+        Arus kas bersih = pendapatan − (pembelian bahan + upah vendor dibayar + potongan marketplace + biaya operasional OPEX). Seluruh data tersinkronisasi real-time via WebSocket.
       </div>
     </div>
   );
@@ -868,4 +1300,3 @@ function BoStyles() {
     `}</style>
   );
 }
-

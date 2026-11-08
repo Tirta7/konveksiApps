@@ -30,15 +30,43 @@ const num = (v: any) => Number(String(v ?? "0").replace(/[^\d.-]/g, "")) || 0;
 
 /** Kelompokkan baris CSV pesanan per Order ID + lampirkan hasil scan & retur. */
 export function groupOrders(data: any) {
+  const shops: any[] = Array.isArray(data.marketplace_shops) ? data.marketplace_shops : [];
+  const shopByKey = new Map<string, any>(shops.map((s) => [String(s.key), s]));
+  const resolveShop = (r: any, mp: string) => {
+    if (r.shop_key && shopByKey.has(String(r.shop_key))) {
+      const s = shopByKey.get(String(r.shop_key))!;
+      return { shop_key: s.key, shop_name: r.shop_name || s.shop_name, platform: r.platform || s.platform };
+    }
+    if (r.shop_name) {
+      const byName = shops.find((s) => String(s.shop_name).toLowerCase() === String(r.shop_name).toLowerCase());
+      if (byName) return { shop_key: byName.key, shop_name: byName.shop_name, platform: byName.platform };
+      return { shop_key: r.shop_key || `custom:${r.shop_name}`, shop_name: r.shop_name, platform: r.platform || (/shopee/i.test(mp) ? "shopee" : "tiktok") };
+    }
+    // Jika hanya ada 1 toko terhubung untuk platform tsb, tautkan otomatis agar pesanan lama ikut terkelompok
+    const plat = /shopee/i.test(mp) ? "shopee" : /tiktok|tokopedia/i.test(mp) ? "tiktok" : "";
+    const matching = plat ? shops.filter((s) => s.platform === plat) : [];
+    if (matching.length === 1) {
+      return { shop_key: matching[0].key, shop_name: matching[0].shop_name, platform: matching[0].platform };
+    }
+    return { shop_key: r.shop_key || "", shop_name: r.shop_name || "", platform: r.platform || plat };
+  };
+
   const map: Record<string, any> = {};
   for (const r of data.penjualan_online || []) {
     const oid = String(r.order_id || "").trim();
     if (!oid) continue;
+    const mp =
+      r.marketplace ||
+      (/^\d{15,}$/.test(oid) ? "TikTok Shop" : /^\d{6}[A-Z0-9]{6,}$/i.test(oid) ? "Shopee" : "Marketplace");
+    const sh = resolveShop(r, mp);
     const o = (map[oid] ||= {
       order_id: oid,
-      marketplace:
-        r.marketplace ||
-        (/^\d{15,}$/.test(oid) ? "TikTok Shop" : /^\d{6}[A-Z0-9]{6,}$/i.test(oid) ? "Shopee" : "Marketplace"),
+      marketplace: mp,
+      shop_key: sh.shop_key,
+      shop_name: sh.shop_name,
+      platform: sh.platform,
+      sumber: r.sumber || "csv",
+      dibatalkan: Boolean(r.dibatalkan),
       status: r.status,
       tanggal_pesanan: r.tanggal_pesanan,
       tanggal_diimpor: r.tanggal_diimpor || r.tanggal,
@@ -56,6 +84,9 @@ export function groupOrders(data: any) {
       total_qty: 0,
       total_amount: 0,
     });
+    if (!o.shop_key && sh.shop_key) o.shop_key = sh.shop_key;
+    if (!o.shop_name && sh.shop_name) o.shop_name = sh.shop_name;
+    if (r.dibatalkan) o.dibatalkan = true;
     o.items.push({
       id: r.id,
       product_name: r.product_name,

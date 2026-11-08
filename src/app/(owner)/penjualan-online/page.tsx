@@ -136,6 +136,7 @@ export default function PenjualanOnlinePage() {
   const [scanOrderId, setScanOrderId] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [filterStatusPesanan, setFilterStatusPesanan] = useState<string>("semua");
+  const [filterToko, setFilterToko] = useState<string>("semua");
   const [filterTipe, setFilterTipe] = useState("Semua");
   const [filterStatusScan, setFilterStatusScan] = useState<"semua" | "belum_discan" | "sudah_discan">("semua");
   const [filterStartDate, setFilterStartDate] = useState("");
@@ -438,13 +439,31 @@ export default function PenjualanOnlinePage() {
     setActiveDatePreset("semua");
   };
 
+  const shopOptions = Array.from(
+    new Map(
+      data
+        .filter((d) => d.marketplace || d.shop_name)
+        .map((d) => {
+          const key = d.shop_key || `${d.marketplace || "Marketplace"}::${d.shop_name || d.marketplace || "Utama"}`;
+          const label = d.shop_name ? `${d.marketplace || "Toko"} — ${d.shop_name}` : String(d.marketplace || "Toko Utama");
+          return [key, { key, label }];
+        })
+    ).values()
+  );
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterTipe, filterStatusScan, filterStatusPesanan, filterStartDate, filterEndDate, pageSize]);
+  }, [search, filterToko, filterTipe, filterStatusScan, filterStatusPesanan, filterStartDate, filterEndDate, pageSize]);
 
   const filteredData = data.filter(d => {
     if (!d.order_id || d.order_id.includes("Platform unique")) return false;
     
+    // Filter Multi-Toko Online
+    if (filterToko !== "semua") {
+      const itemShopKey = d.shop_key || `${d.marketplace || "Marketplace"}::${d.shop_name || d.marketplace || "Utama"}`;
+      if (itemShopKey !== filterToko) return false;
+    }
+
     // Filter status pesanan marketplace (Perlu Dikirim, Dikirim, Selesai, Dibatalkan)
     if (!matchStatusPesanan(d, filterStatusPesanan)) return false;
 
@@ -889,6 +908,30 @@ export default function PenjualanOnlinePage() {
             ))}
           </div>
 
+          {/* Dropdown Filter Multi-Toko Online */}
+          <select
+            value={filterToko}
+            onChange={(e) => setFilterToko(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              background: filterToko !== "semua" ? "#EFF6FF" : "#F8FAFC",
+              border: filterToko !== "semua" ? "1.5px solid #2563EB" : "1px solid #CBD5E1",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 800,
+              color: filterToko !== "semua" ? "#1D4ED8" : "#334155",
+              outline: "none",
+              cursor: "pointer",
+            }}
+          >
+            <option value="semua">🏪 Semua Toko Online ({shopOptions.length || 1})</option>
+            {shopOptions.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+
           {/* Dropdown Status Scan Fisik Gudang */}
           <select 
             value={filterStatusScan} 
@@ -1269,7 +1312,7 @@ export default function PenjualanOnlinePage() {
                                 color: d.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
                                 border: d.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
                               }}>
-                                {d.marketplace}
+                                {d.marketplace}{d.shop_name ? ` · ${d.shop_name}` : ""}
                               </span>
                             )}
                           </div>

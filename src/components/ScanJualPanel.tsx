@@ -19,6 +19,11 @@ export default function ScanJualPanel({ kanal, accent = "#2563EB", pelangganLabe
   const [cart, setCart] = useState<Item[]>([]);
   const [lastMsg, setLastMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pelanggan, setPelanggan] = useState("");
+  const [pelangganId, setPelangganId] = useState<number | "">("");
+  const [pelangganList, setPelangganList] = useState<any[]>([]);
+  const [metodeBayar, setMetodeBayar] = useState<"Lunas" | "Tempo">("Lunas");
+  const [dibayarAwal, setDibayarAwal] = useState("");
+  const [jatuhTempo, setJatuhTempo] = useState(() => new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0]);
   const [catatan, setCatatan] = useState("");
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<Sale[]>([]);
@@ -63,7 +68,17 @@ export default function ScanJualPanel({ kanal, accent = "#2563EB", pelangganLabe
       setHistory(Array.isArray(d) ? d : []);
     } catch { /* abaikan */ }
   };
-  useEffect(() => { loadHistory(); inputRef.current?.focus(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [kanal]);
+  useEffect(() => {
+    loadHistory();
+    if (!orderMode) {
+      fetch("/api/pelanggan").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setPelangganList(d); }).catch(() => {});
+    }
+    inputRef.current?.focus();
+    const h = () => { loadHistory(); loadOrders(); };
+    window.addEventListener("konveksi-sync", h);
+    return () => window.removeEventListener("konveksi-sync", h);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [kanal]);
 
   const scan = async (raw: string) => {
     const kode = raw.trim().toUpperCase();
@@ -113,12 +128,26 @@ export default function ScanJualPanel({ kanal, accent = "#2563EB", pelangganLabe
       const res = await fetch("/api/penjualan-barcode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codes: cart.map((c) => c.kode), kanal, pelanggan, catatan, harga, order_id: orderMode ? order?.order_id : undefined }),
+        body: JSON.stringify({
+          codes: cart.map((c) => c.kode),
+          kanal,
+          pelanggan,
+          pelanggan_id: pelangganId || undefined,
+          metode_pembayaran: orderMode ? "Marketplace" : metodeBayar,
+          dibayar_awal: !orderMode && metodeBayar === "Tempo" ? Number(dibayarAwal || 0) : undefined,
+          jatuh_tempo: !orderMode && metodeBayar === "Tempo" ? jatuhTempo : undefined,
+          catatan,
+          harga,
+          order_id: orderMode ? order?.order_id : undefined,
+        }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "Gagal menyimpan");
-      toast.success(`${j.sale.no_transaksi} tersimpan${j.sale.order_id ? ` · Order ${j.sale.order_id}` : ""} · ${j.sale.jumlah} pcs · stok Data Barang berkurang`);
-      setCart([]); setPelanggan(""); setCatatan(""); setLastMsg(null);
+      toast.success(
+        `${j.sale.no_transaksi} tersimpan${j.sale.order_id ? ` · Order ${j.sale.order_id}` : ""} · ${j.sale.jumlah} pcs` +
+          (!orderMode && metodeBayar === "Tempo" ? " · tercatat di Buku Piutang" : " · stok berkurang otomatis")
+      );
+      setCart([]); setPelanggan(""); setPelangganId(""); setDibayarAwal(""); setCatatan(""); setLastMsg(null);
       if (orderMode) { setOrder(null); setOrderQ(""); loadOrders(); }
       loadHistory();
       onSaved?.();
@@ -275,7 +304,50 @@ export default function ScanJualPanel({ kanal, accent = "#2563EB", pelangganLabe
               <div style={{ textAlign: "right", fontSize: 12, color: "#475569", marginTop: 4 }}>{rp(g.subtotal)}</div>
             </div>
           ))}
-          <input value={pelanggan} onChange={(e) => setPelanggan(e.target.value)} placeholder={pelangganLabel + " (opsional)"} style={inp} />
+          {!orderMode && pelangganList.length > 0 && (
+            <select
+              value={pelangganId}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : "";
+                setPelangganId(v);
+                const found = pelangganList.find((p) => Number(p.id) === Number(v));
+                if (found) setPelanggan(found.nama);
+              }}
+              style={{ ...inp, background: "white" }}
+            >
+              <option value="">— Pilih dari Data Pelanggan (atau ketik manual di bawah) —</option>
+              {pelangganList.map((p) => (
+                <option key={p.id} value={p.id}>{p.nama}{p.kota ? ` · ${p.kota}` : ""}</option>
+              ))}
+            </select>
+          )}
+          <input value={pelanggan} onChange={(e) => setPelanggan(e.target.value)} placeholder={pelangganLabel + (metodeBayar === "Tempo" ? " (wajib utk Tempo)" : " (opsional)")} style={inp} />
+          {!orderMode && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "#F8FAFC", padding: 10, borderRadius: 10, border: "1px solid #E2E8F0" }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" onClick={() => setMetodeBayar("Lunas")}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: metodeBayar === "Lunas" ? "2px solid #10B981" : "1px solid #CBD5E1", background: metodeBayar === "Lunas" ? "#ECFDF5" : "white", color: metodeBayar === "Lunas" ? "#047857" : "#475569", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                  ✓ Lunas (Tunai/TF)
+                </button>
+                <button type="button" onClick={() => setMetodeBayar("Tempo")}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: metodeBayar === "Tempo" ? "2px solid #F59E0B" : "1px solid #CBD5E1", background: metodeBayar === "Tempo" ? "#FFFBEB" : "white", color: metodeBayar === "Tempo" ? "#B45309" : "#475569", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                  ⏳ Tempo (Piutang)
+                </button>
+              </div>
+              {metodeBayar === "Tempo" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10.5, fontWeight: 700, color: "#64748B" }}>DP / Dibayar Awal (Rp)</label>
+                    <input type="number" min={0} value={dibayarAwal} onChange={(e) => setDibayarAwal(e.target.value)} placeholder="0" style={{ ...inp, padding: "7px 10px", fontSize: 12 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10.5, fontWeight: 700, color: "#64748B" }}>Jatuh Tempo</label>
+                    <input type="date" value={jatuhTempo} onChange={(e) => setJatuhTempo(e.target.value)} style={{ ...inp, padding: "7px 10px", fontSize: 12 }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <input value={catatan} onChange={(e) => setCatatan(e.target.value)} placeholder="Catatan (opsional)" style={inp} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed #CBD5E1", paddingTop: 10 }}>
             <span style={{ fontSize: 13, color: "#64748B" }}>Total</span>

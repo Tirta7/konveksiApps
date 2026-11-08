@@ -468,6 +468,8 @@ export default function LaporanPage() {
         return {
           order_id: sale.order_id,
           marketplace: sale.marketplace || (/^\d{6}[A-Z0-9]{6,}$/i.test(sale.order_id) ? "Shopee" : "TikTok Shop"),
+          shop_name: sale.shop_name || "",
+          shop_key: sale.shop_key || "",
           product: items.length ? items.map((i: any) => i.product_name).join(", ") : sale.product_name,
           variation: items.length ? items.map((i: any) => i.variation).filter(Boolean).join(", ") : sale.variation,
           total_qty: totalQty,
@@ -1105,7 +1107,7 @@ export default function LaporanPage() {
                                   color: o.marketplace === "Shopee" ? "#C2410C" : "#1D4ED8",
                                   border: o.marketplace === "Shopee" ? "1px solid #FED7AA" : "1px solid #BFDBFE"
                                 }}>
-                                  {o.marketplace}
+                                  {o.marketplace}{o.shop_name ? ` · ${o.shop_name}` : ""}
                                 </span>
                               </div>
                               <div style={{ fontSize: 11, color: "#64748B", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>

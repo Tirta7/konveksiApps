@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     if (sp.get("grouped")) return NextResponse.json(Object.values(orders));
     const lines = ((data as any).penjualan_online || []).map((r: any) => {
       const o = orders[String(r.order_id || "").trim()];
-      return { ...r, marketplace: r.marketplace || o?.marketplace, status_kemas: o?.status_kemas || "Belum Discan", scanned_qty: o?.scanned_qty || 0, order_qty: o?.total_qty || r.quantity, barcodes: o?.barcodes || [], returs: o?.returs || [] };
+      return { ...r, marketplace: r.marketplace || o?.marketplace, shop_key: r.shop_key || o?.shop_key || "", shop_name: r.shop_name || o?.shop_name || "", platform: r.platform || o?.platform || "", status_kemas: o?.status_kemas || "Belum Discan", scanned_qty: o?.scanned_qty || 0, order_qty: o?.total_qty || r.quantity, barcodes: o?.barcodes || [], returs: o?.returs || [] };
     });
     return NextResponse.json(lines);
   } catch (e: any) {

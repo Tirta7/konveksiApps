@@ -47,7 +47,7 @@ const OWNER_PAGES = [/^\/laporan(\/|$)/, /^\/hutang(\/|$)/, /^\/piutang(\/|$)/, 
 function ownerOnlyApi(pathname: string, method: string) {
   // Sinkronisasi pesanan & retur marketplace boleh dijalankan oleh Admin/Gudang
   if (pathname === "/api/marketplace/sync") return false;
-  if (/^\/api\/(hutang|settlement|laporan|users|marketplace|dashboard-bisnis)(\/|$)/.test(pathname)) return true;
+  if (/^\/api\/(hutang|piutang|pengeluaran|settlement|laporan|users|marketplace|dashboard-bisnis)(\/|$)/.test(pathname)) return true;
   if (pathname === "/api/pengaturan" && method !== "GET") return true;
   return false;
 }
