@@ -1,21 +1,20 @@
 /**
- * VOC ML - Middleware Pengunci Lisensi & Machine ID
+ * VOC ML - Middleware Pengunci Lisensi, Auto-Billing QRIS & Machine ID
  * 
  * Melindungi aplikasi Konveksi Apps berbasis Machine ID hardware klien.
- * Jika lisensi belum diaktivasi dari dashboard VOC ML pusat, rute diblokir
- * dengan HTTP 403 dan Layar Merah (Red Lock Screen).
+ * Mengintegrasikan sistem lisensi resmi VOC ML (Pilar 1 - 8).
  */
 import path from 'node:path';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { execSync } from 'node:child_process';
-import { checkLicense, fetchMessages } from '../client-sdk/vocml-client.js';
 
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
 
 // Fungsi membaca Machine ID asli dari hardware komputer (Mac / Windows / Linux)
-function getHardwareMachineId() {
+export function getHardwareMachineId() {
   if (process.env.VOCML_MACHINE_ID && process.env.VOCML_MACHINE_ID.trim()) {
-    return process.env.VOCML_MACHINE_ID.trim();
+    return process.env.VOCML_MACHINE_ID.trim().toUpperCase();
   }
   try {
     if (process.platform === 'darwin') {
@@ -30,6 +29,12 @@ function getHardwareMachineId() {
         const hex = crypto.createHash("sha256").update(uuid.toUpperCase()).digest("hex").toUpperCase();
         return `MID-${hex.substring(0, 4)}-${hex.substring(4, 8)}-${hex.substring(8, 12)}`;
       }
+    } else if (process.platform === 'linux') {
+      const id = fs.readFileSync('/etc/machine-id', 'utf8').trim();
+      if (id) {
+        const hex = crypto.createHash("sha256").update(id.toUpperCase()).digest("hex").toUpperCase();
+        return `MID-${hex.substring(0, 4)}-${hex.substring(4, 8)}-${hex.substring(8, 12)}`;
+      }
     }
   } catch (e) {}
   return 'MID-2201-35AE-22B8';
@@ -40,15 +45,14 @@ const activeMachineId = getHardwareMachineId();
 // Konfigurasi Lisensi VOC ML
 export const VOCML_CONFIG = {
   serverUrl: process.env.VOCML_SERVER_URL || 'https://vocml.vocpos.id',
-  product: process.env.VOCML_PRODUCT || 'pos',
-  storeName: process.env.STORE_NAME || 'Laptop Developer (Tirta)',
+  product: process.env.VOCML_PRODUCT || 'konveksi',
+  storeName: process.env.STORE_NAME || 'Konveksi ERP',
   machineId: activeMachineId,
   publicKeyPem: process.env.VOCML_PUBLIC_KEY || `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEADenKScMcRxd/GFPnwHLg026Y3mKWNmtyUR1KPQgLTFI=
 -----END PUBLIC KEY-----`,
   cacheFile: process.env.VOCML_CACHE_FILE || path.join(DATA_DIR, 'license-cache.json'),
   appVersion: '1.0.0',
-  // Lisensi AKTIF (hanya dinonaktifkan jika secara eksplisit diset VOCML_DISABLED=true)
   disabled: process.env.VOCML_DISABLED === 'true' || process.env.VOCML_DISABLED === '1'
 };
 
@@ -61,16 +65,99 @@ export let licenseStatus = {
   storeName: VOCML_CONFIG.storeName,
   serverUrl: VOCML_CONFIG.serverUrl,
   product: VOCML_CONFIG.product,
-  productName: 'Sistem Manajemen Garment & Konveksi Enterprise',
+  productName: 'Konveksi ERP',
   appVersion: VOCML_CONFIG.appVersion || '1.0.0',
   expiresAt: null,
+  remainingDays: null,
   licenseKey: null,
   lastChecked: null,
   disabled: VOCML_CONFIG.disabled,
+  trial: null,
+  billing: null,
   messages: []
 };
 
 let pollTimer = null;
+
+const ALLOWED_SET = new Set(['active', 'expiring', 'trial']);
+
+/** Verifikasi token Ed25519 server */
+function verifyServerToken(token, publicKeyPem) {
+  try {
+    const [data, sig] = String(token).split('.');
+    if (!data || !sig) return null;
+    const ok = crypto.verify(null, Buffer.from(data), crypto.createPublicKey(publicKeyPem), Buffer.from(sig, 'base64url'));
+    return ok ? JSON.parse(Buffer.from(data, 'base64url').toString('utf8')) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readCache() {
+  try {
+    if (fs.existsSync(/*turbopackIgnore: true*/ VOCML_CONFIG.cacheFile)) {
+      return JSON.parse(fs.readFileSync(/*turbopackIgnore: true*/ VOCML_CONFIG.cacheFile, 'utf8'));
+    }
+  } catch {}
+  return null;
+}
+
+function writeCache(data) {
+  try {
+    fs.writeFileSync(/*turbopackIgnore: true*/ VOCML_CONFIG.cacheFile, JSON.stringify(data, null, 2), 'utf8');
+  } catch {}
+}
+
+async function requestServerCheck(prod) {
+  const base = VOCML_CONFIG.serverUrl.replace(/\/$/, '');
+  const qs = new URLSearchParams({
+    machine_id: VOCML_CONFIG.machineId,
+    product: prod,
+    app_version: VOCML_CONFIG.appVersion
+  });
+
+  let res = await fetch(`${base}/api/v1/check?${qs.toString()}`, {
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(8000),
+    cache: 'no-store'
+  });
+
+  if (res.status === 404) {
+    res = await fetch(`${base}/api/v1/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        machine_id: VOCML_CONFIG.machineId,
+        product: prod,
+        store_name: VOCML_CONFIG.storeName,
+        app_version: VOCML_CONFIG.appVersion
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+  }
+
+  const json = await res.json().catch(() => ({}));
+  return { status: res.status, ok: res.ok, json };
+}
+
+async function fetchBroadcastMessages(prod) {
+  try {
+    const base = VOCML_CONFIG.serverUrl.replace(/\/$/, '');
+    const qs = new URLSearchParams({
+      machine_id: VOCML_CONFIG.machineId,
+      product: prod
+    });
+    const res = await fetch(`${base}/api/v1/messages?${qs.toString()}`, {
+      signal: AbortSignal.timeout(5000),
+      cache: 'no-store'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return Array.isArray(data.messages) ? data.messages : [];
+    }
+  } catch {}
+  return [];
+}
 
 // Fungsi verifikasi lisensi ke server VOC ML
 export async function runLicenseVerification() {
@@ -79,53 +166,99 @@ export async function runLicenseVerification() {
     licenseStatus.status = 'disabled';
     licenseStatus.reason = 'Lisensi Dinonaktifkan (VOCML_DISABLED=true)';
     licenseStatus.lastChecked = new Date().toISOString();
-    return;
-  }
-
-  // Jika Machine ID belum diisi sama sekali
-  if (!VOCML_CONFIG.machineId) {
-    licenseStatus = {
-      ...licenseStatus,
-      allowed: false,
-      status: 'unconfigured',
-      reason: 'VOCML_MACHINE_ID belum diatur pada file .env',
-      machineId: 'TIDAK TERDETEKSI (Jalankan INSTALL.bat)',
-      lastChecked: new Date().toISOString()
-    };
-    scheduleNextCheck(5 * 1000);
-    return;
+    return licenseStatus;
   }
 
   try {
-    const [res, msgs] = await Promise.all([
-      checkLicense(VOCML_CONFIG),
-      fetchMessages(VOCML_CONFIG).catch(() => [])
-    ]);
+    let chosenProduct = VOCML_CONFIG.product;
+    let check = await requestServerCheck(chosenProduct);
+
+    // Fallback jika server remote belum mendukung enum 'konveksi'
+    if (!check.ok && check.json?.error && String(check.json.error).includes('product harus salah satu')) {
+      chosenProduct = 'pos';
+      check = await requestServerCheck(chosenProduct);
+    }
+
+    if (!check.ok) {
+      throw new Error(check.json?.error || `HTTP ${check.status}`);
+    }
+
+    const body = check.json;
+    const msgs = await fetchBroadcastMessages(chosenProduct);
+
+    // Simpan cache offline
+    writeCache({
+      token: body.token,
+      data: body,
+      product: chosenProduct,
+      checkedAt: Date.now()
+    });
+
+    const currentStatus = body.status || 'pending';
+    const isAllowed = ALLOWED_SET.has(currentStatus);
 
     licenseStatus = {
-      allowed: res.allowed,
-      status: res.status || (res.allowed ? 'active' : 'pending'),
-      reason: res.reason || (res.allowed ? 'Aktif & Terverifikasi' : 'Lisensi Belum Sah / Belum Diaktifkan'),
-      machineId: res.machineId || VOCML_CONFIG.machineId,
-      storeName: VOCML_CONFIG.storeName,
+      allowed: isAllowed,
+      status: currentStatus,
+      reason: body.lock_reason || (isAllowed ? 'Aktif & Terverifikasi' : 'Menunggu aktivasi lisensi'),
+      machineId: body.machine_id || VOCML_CONFIG.machineId,
+      storeName: body.store_name || VOCML_CONFIG.storeName,
       serverUrl: VOCML_CONFIG.serverUrl,
-      product: VOCML_CONFIG.product,
-      productName: 'Sistem Manajemen Garment & Konveksi Enterprise',
+      product: chosenProduct,
+      productName: 'Konveksi ERP',
       appVersion: VOCML_CONFIG.appVersion || '1.0.0',
-      expiresAt: res.expiresAt || null,
-      licenseKey: res.licenseKey || null,
+      expiresAt: body.expires_at || null,
+      remainingDays: body.remaining_days ?? body.days_left ?? null,
+      licenseKey: body.license_key || null,
       lastChecked: new Date().toISOString(),
       disabled: false,
+      trial: body.trial || null,
+      billing: body.billing || null,
       messages: msgs || []
     };
 
-    if (res.allowed) {
-      scheduleNextCheck(15 * 1000); // 15 Detik (Responsif Realtime)
+    if (licenseStatus.allowed) {
+      scheduleNextCheck(30 * 1000); // 30 detik untuk sync berkala
     } else {
       console.warn(`[VOCML] 🔒 APLIKASI TERKUNCI: ${licenseStatus.reason}. Cek ulang dalam 5 detik...`);
-      scheduleNextCheck(5 * 1000); // 5 Detik
+      scheduleNextCheck(5 * 1000);
     }
   } catch (err) {
+    // Mode Offline (Pilar 8)
+    const cache = readCache();
+    if (cache && cache.token) {
+      const payload = verifyServerToken(cache.token, VOCML_CONFIG.publicKeyPem);
+      if (payload && payload.machine_id === VOCML_CONFIG.machineId) {
+        const graceDays = payload.grace_days || 5;
+        const graceMs = graceDays * 86400000;
+        const withinGrace = (Date.now() - (cache.checkedAt || 0)) <= graceMs;
+
+        if (ALLOWED_SET.has(payload.status) && withinGrace) {
+          licenseStatus = {
+            allowed: true,
+            status: payload.status,
+            reason: `Aktif (Mode Offline - Toleransi ${graceDays} Hari)`,
+            machineId: VOCML_CONFIG.machineId,
+            storeName: VOCML_CONFIG.storeName,
+            serverUrl: VOCML_CONFIG.serverUrl,
+            product: cache.product || VOCML_CONFIG.product,
+            productName: 'Konveksi ERP',
+            appVersion: VOCML_CONFIG.appVersion || '1.0.0',
+            expiresAt: payload.expires_at || null,
+            remainingDays: payload.remaining_days || null,
+            licenseKey: payload.license_key || null,
+            lastChecked: new Date(cache.checkedAt || Date.now()).toISOString(),
+            disabled: false,
+            trial: cache.data?.trial || null,
+            billing: cache.data?.billing || null,
+            messages: []
+          };
+          scheduleNextCheck(30 * 1000);
+          return licenseStatus;
+        }
+      }
+    }
+
     licenseStatus = {
       ...licenseStatus,
       allowed: false,
@@ -135,6 +268,8 @@ export async function runLicenseVerification() {
     };
     scheduleNextCheck(5 * 1000);
   }
+
+  return licenseStatus;
 }
 
 function scheduleNextCheck(delayMs) {
@@ -142,79 +277,108 @@ function scheduleNextCheck(delayMs) {
   pollTimer = setTimeout(runLicenseVerification, delayMs);
 }
 
-// Mulai cek lisensi saat server diinisialisasi
+// Inisialisasi saat server startup
 runLicenseVerification();
 
-// HTML Layar Merah (Aplikasi Terkunci / Red Lock Screen)
+// HTML Layar Kunci Red Lock Screen (Fallback server level jika diblokir sebelum browser load React)
 export function renderLockedScreenHTML(status) {
+  const billing = status.billing;
+  const packages = billing?.packages || [];
+  const defaultPkg = packages[0];
+  const qrisUrl = defaultPkg?.qris_image_url || billing?.qris_image_url || '';
+  const amountText = defaultPkg?.amount_text || billing?.amount_text || 'Rp 450.000';
+
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Terkunci - Lisensi Diperlukan</title>
+  <title>Aplikasi Terkunci - Lisensi Diperlukan | Konveksi ERP</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    body { background: #450a0a; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-    .card { background: #7f1d1d; border: 2px solid #ef4444; border-radius: 20px; max-width: 580px; width: 100%; padding: 36px; box-shadow: 0 25px 60px -15px rgba(0,0,0,0.7); text-align: center; }
-    .icon-badge { display: inline-flex; align-items: center; justify-content: center; width: 84px; height: 84px; background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; border-radius: 50%; font-size: 42px; margin-bottom: 20px; animation: pulse-ring 2s infinite; }
-    @keyframes pulse-ring { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-    h1 { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; color: #fee2e2; }
-    p.desc { font-size: 14.5px; color: #fca5a5; margin-bottom: 24px; line-height: 1.55; }
-    .info-box { background: rgba(0,0,0,0.35); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; text-align: left; font-size: 13.5px; }
-    .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed rgba(254, 202, 202, 0.15); padding-bottom: 8px; }
-    .info-row:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
-    .label { color: #fca5a5; font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
-    .value { color: #fff; font-weight: 800; font-size: 13.5px; text-align: right; }
-    .value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 6px; border: 1px solid #991b1b; color: #fef08a; letter-spacing: 0.05em; font-size: 12.5px; word-break: break-all; }
-    .instructions { background: rgba(254, 240, 138, 0.1); border: 1px solid rgba(254, 240, 138, 0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px; text-align: left; font-size: 12.5px; color: #fef08a; line-height: 1.5; }
-    .instructions strong { color: #fff; }
-    .pulse-dot { display: inline-block; width: 9px; height: 9px; background: #22c55e; border-radius: 50%; margin-right: 7px; animation: blink 1.2s infinite; }
-    @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
-    .footer { font-size: 12px; color: #fca5a5; display: flex; align-items: center; justify-content: center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 18px; max-width: 780px; width: 100%; padding: 32px; box-shadow: 0 25px 60px rgba(0,0,0,0.5); }
+    .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; margin-top: 20px; }
+    @media(max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 999px; font-size: 12px; font-weight: 700; }
+    h1 { font-size: 22px; font-weight: 800; margin: 12px 0 6px; color: #fff; }
+    p.desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+    .qris-box { background: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .qris-img-container { background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; }
+    .qris-img { width: 180px; height: 180px; object-fit: contain; display: block; }
+    .total-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
+    .total-val { font-size: 22px; font-weight: 800; color: #38bdf8; font-family: ui-monospace, monospace; margin: 4px 0; }
+    .pkg-list { display: flex; flex-direction: column; gap: 10px; }
+    .pkg-item { padding: 12px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .pkg-item:hover, .pkg-item.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
+    .pkg-name { font-size: 13px; font-weight: 700; color: #fff; }
+    .pkg-price { font-size: 14px; font-weight: 800; color: #38bdf8; font-family: ui-monospace, monospace; }
+    .btn-pay { width: 100%; margin-top: 16px; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    .mid-box { margin-top: 16px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; font-family: ui-monospace, monospace; }
+    .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: blink 1.5s infinite; margin-right: 6px; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   </style>
   <script>
-    // Refresh otomatis setiap 5 detik agar langsung masuk begitu lisensi diaktifkan
-    setTimeout(function() {
-      window.location.reload();
-    }, 5000);
+    function selectPackage(el, url, amount) {
+      document.querySelectorAll('.pkg-item').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('qris-img').src = url;
+      document.getElementById('total-amount').innerText = amount;
+    }
+    // Fast polling untuk auto-unlock seketika
+    setInterval(async function() {
+      try {
+        const res = await fetch('/api/license-status?refresh=1');
+        if (res.ok) {
+          const d = await res.json();
+          if (d.allowed) {
+            window.location.reload();
+          }
+        }
+      } catch(e) {}
+    }, 3000);
   </script>
 </head>
 <body>
   <div class="card">
-    <div class="icon-badge">🔒</div>
-    <h1>Aplikasi Terkunci</h1>
-    <p class="desc">Aplikasi ini membutuhkan lisensi aktif dari server otentikasi resmi. Halaman ini akan terbuka secara otomatis segera setelah lisensi disetujui.</p>
-    
-    <div class="info-box">
-      <div class="info-row">
-        <span class="label">Outlet / Toko:</span>
-        <span class="value">${status.storeName || 'Cabang Utama'}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Status Lisensi:</span>
-        <span class="value" style="color: #fca5a5;">${status.reason}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Machine ID:</span>
-        <span class="value mono">${status.machineId}</span>
-      </div>
-    </div>
+    <div class="badge">🔒 LISENSI DIPERLUKAN</div>
+    <h1>Konveksi ERP — Akses Terkunci</h1>
+    <p class="desc">Aplikasi ini membutuhkan lisensi aktif untuk melanjutkan operasional. Silakan scan QRIS dinamis di bawah untuk perpanjangan seketika.</p>
 
-    <div class="instructions">
-      ${status.reason === 'Menunggu aktivasi lisensi' ? `
-        💡 <strong>Status: Menunggu Konfirmasi Lisensi</strong><br>
-        Machine ID ini telah didaftarkan ke server otentikasi.<br>
-        Silakan hubungi administrator / penyedia sistem Anda untuk aktivasi lisensi. Halaman ini akan terbuka otomatis dalam 5 detik setelah disetujui.
-      ` : `
-        💡 <strong>Informasi Administrator:</strong><br>
-        ${status.reason}. Pastikan komputer terhubung ke internet untuk validasi lisensi.
-      `}
-    </div>
+    <div class="grid">
+      <!-- Kolom Kiri: QRIS Tunggal -->
+      <div class="qris-box">
+        <div class="qris-img-container">
+          <img id="qris-img" src="${qrisUrl}" alt="QRIS Dinamis VOC ML" class="qris-img" />
+        </div>
+        <div class="total-label">TOTAL TAGIHAN</div>
+        <div id="total-amount" class="total-val">${amountText}</div>
+        <div style="font-size: 11px; color: #64748B;">QRIS • ${billing?.merchant_name || 'Virtual Operation Control'}</div>
+        <button class="btn-pay" onclick="window.location.reload()">✅ Saya Sudah Bayar</button>
+      </div>
 
-    <div class="footer">
-      <span class="pulse-dot"></span>
-      <span>Memeriksa status aktivasi otomatis setiap 5 detik...</span>
+      <!-- Kolom Kanan: Pilihan Paket -->
+      <div>
+        <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px;">PILIHAN PAKET LISENSI</div>
+        <div class="pkg-list">
+          ${packages.map((pkg, idx) => `
+            <div class="pkg-item ${idx === 0 ? 'active' : ''}" onclick="selectPackage(this, '${pkg.qris_image_url}', '${pkg.amount_text}')">
+              <div>
+                <div class="pkg-name">${pkg.name} (${pkg.label || pkg.days + ' Hari'})</div>
+                <div style="font-size: 11px; color: #64748b;">${pkg.promo_badge ? '⭐ ' + pkg.promo_badge : 'Resmi VOC ML'}</div>
+              </div>
+              <div class="pkg-price">${pkg.amount_text}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="mid-box">
+          <span>MACHINE ID:</span>
+          <span style="color: #38bdf8;">${status.machineId}</span>
+        </div>
+        <div style="margin-top: 12px; font-size: 11px; color: #94a3b8; display: flex; align-items: center;">
+          <span class="pulse"></span> Menunggu deteksi pembayaran seketika...
+        </div>
+      </div>
     </div>
   </div>
 </body>
@@ -223,20 +387,19 @@ export function renderLockedScreenHTML(status) {
 
 /**
  * License Guard untuk Node HTTP Server / Next.js
- * Mengembalikan true jika request diizinkan, atau false jika request diblokir (sudah dikirim 403).
  */
 export function checkRequestAllowed(req, res) {
   const url = req.url || '';
   
-  // Rute aman yang selalu diizinkan (health check, lisensi info, static assets)
+  // Rute aman yang selalu diizinkan
   if (
     url === '/api/health' ||
-    url === '/api/license-status' ||
+    url.startsWith('/api/license') ||
+    url.startsWith('/api/license-status') ||
     url.startsWith('/_next/static/') ||
     url.startsWith('/_next/image') ||
     url === '/favicon.ico'
   ) {
-    // Tangani endpoint status lisensi langsung (tanpa mengekspos internal server URL)
     if (url.startsWith('/api/license-status')) {
       const getPublicStatus = () => {
         const { serverUrl, ...safe } = licenseStatus;
@@ -253,7 +416,7 @@ export function checkRequestAllowed(req, res) {
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(getPublicStatus()));
-      return false; // selesai ditangani
+      return false;
     }
     return true;
   }

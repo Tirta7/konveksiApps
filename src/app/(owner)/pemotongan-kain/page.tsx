@@ -196,6 +196,30 @@ export default function PemotonganKainPage() {
     if (totalPcs <= 0) return toast.error("Total potongan tidak valid");
     if (form.meter_kain <= 0) return toast.error("Total kain (meter) tidak valid. Harap pilih minimal 1 Roll kain.");
     
+    // PILAR 6: TITIK AKSI POTONG KUOTA TRANSAKSI (VOC ML)
+    // HANYA memotong 1 kuota saat tombol "Simpan Data Potongan & Terbitkan SPK" ditekan (submitStatus !== "Draft")
+    // PENTING: "Simpan Draft Saja" (submitStatus === "Draft") BEBAS KUOTA (Gratis / Tanpa Potong)
+    if (submitStatus !== "Draft") {
+      try {
+        const consumeRes = await fetch("/api/license/consume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quantity: 1 })
+        });
+        const consumeData = await consumeRes.json().catch(() => ({}));
+        
+        if (consumeRes.status === 403 || consumeData.allowed === false) {
+          toast.error("⚠️ Kuota Transaksi Anda Telah Habis! Silakan perpanjang lisensi untuk melanjutkan operasional.", {
+            duration: 8000
+          });
+          window.dispatchEvent(new CustomEvent("open-license-modal"));
+          return;
+        }
+      } catch (err) {
+        console.warn("[VOCML] Pengecekan kuota lisensi dilewati:", err);
+      }
+    }
+
     try {
       const payload = { 
         ...form, 

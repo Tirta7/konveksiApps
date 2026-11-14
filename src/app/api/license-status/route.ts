@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
-    // Dynamic import to avoid bundling issues in edge/serverless if applicable
     const { licenseStatus, runLicenseVerification } = await import('@/license.mjs');
     const { searchParams } = new URL(request.url);
-    if (searchParams.get('refresh') === '1') {
+
+    if (searchParams.get('refresh') === '1' || !licenseStatus.billing) {
       await runLicenseVerification();
     }
+
     const { serverUrl, ...safe } = licenseStatus;
     return NextResponse.json(safe);
   } catch (e: any) {

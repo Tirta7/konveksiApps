@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 
 const B32 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const PRODUCT_CODES = { billiard: 1, pos: 2, konveksi: 3 };
+const PRODUCT_CODES = { billiard: 1, pos: 2, messagerahasia: 3, konveksi: 4, erp: 5, enkatextile: 6 };
 
 function b32decode(str) {
   let bits = 0, value = 0;
@@ -84,7 +84,7 @@ function writeCache(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data)); } catch { /* abaikan */ }
 }
 
-const ALLOWED = new Set(['active', 'expiring']);
+const ALLOWED = new Set(['active', 'expiring', 'trial']);
 
 export async function checkLicense({ serverUrl, product, machineId, publicKeyPem, cacheFile, apiKey = '', storeName = '', appVersion = '', timeoutMs = 8000 }) {
   const base = serverUrl.replace(/\/$/, '');
@@ -118,40 +118,71 @@ export async function checkLicense({ serverUrl, product, machineId, publicKeyPem
     if (!payload || payload.machine_id !== machineId.toUpperCase()) {
       return result(false, 'offline', { reason: 'Tidak dapat terhubung ke server lisensi', offline: true });
     }
-    // Jika status terakhir di cache adalah LOCKED, aplikasi tetap terkunci!
-    if (payload.status === 'locked') {
-      return result(false, 'locked', { reason: payload.lock_reason || 'Aplikasi dikunci oleh administrator', expiresAt: payload.expires_at, offline: true });
-    }
-    const key = payload.license_key ? verifyLicenseKey(payload.license_key, machineId, product, publicKeyPem) : { valid: false };
-
-    // 1. Jika komputer memiliki License Key valid yang belum expired:
-    // Tetap AKTIF dan tidak terkunci sampai masa aktif habis, meskipun server lisensi mati!
-    if (key.valid && !key.expired) {
-      return result(true, payload.status || 'active', {
-        expiresAt: key.expiresAt,
-        licenseKey: payload.license_key,
-        offline: true,
-        reason: 'Aktif (Mode Offline Terverifikasi)'
-      });
-    }
-
-    // 2. Jika status cache masih dalam masa toleransi (grace period):
-    const graceMs = (payload.grace_days || 5) * 86400000;
+    const graceMs = (payload.grace_days || 0) * 86400000;
     const withinGrace = Date.now() - cache.checkedAt <= graceMs && cache.checkedAt <= Date.now();
-    if (ALLOWED.has(payload.status) && withinGrace) {
-      return result(true, payload.status, {
-        expiresAt: payload.expires_at,
-        licenseKey: payload.license_key,
-        offline: true,
-        reason: 'Aktif (Masa Toleransi Offline)'
-      });
+    const key = payload.license_key ? verifyLicenseKey(payload.license_key, machineId, product, publicKeyPem) : { valid: false };
+    if (ALLOWED.has(payload.status) && withinGrace && key.valid && !key.expired) {
+      return result(true, payload.status, { expiresAt: key.expiresAt, offline: true });
     }
-
-    return result(false, 'offline', {
-      reason: 'Tidak terhubung ke server dan masa aktif lisensi telah berakhir',
-      offline: true
-    });
+    return result(false, 'offline', { reason: 'Tidak terhubung ke server lisensi dan masa toleransi offline habis', offline: true });
   }
+}
+
+/**
+ * Dengarkan perubahan lisensi real-time (SSE /api/v1/stream) agar aplikasi langsung tahu
+ * saat pembayaran QRIS berhasil (event 'renew') atau lisensi dikunci/dibuka ('lock'/'unlock').
+ * Mengembalikan fungsi stop() untuk memutus koneksi.
+ */
+export function subscribeLicenseStream({ serverUrl, product, machineId, apiKey = '', onEvent, onError, reconnectMs = 5000 }) {
+  const base = serverUrl.replace(/\/$/, '');
+  const qs = new URLSearchParams({ machine_id: machineId, product });
+  const headers = { Accept: 'text/event-stream', ...(apiKey ? { 'X-VOCML-Key': apiKey } : {}) };
+  let stopped = false;
+  let controller = null;
+  let timer = null;
+
+  async function connect() {
+    if (stopped) return;
+    controller = new AbortController();
+    try {
+      const res = await fetch(`${base}/api/v1/stream?${qs}`, { headers, signal: controller.signal });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (!stopped) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const blocks = buf.split('\n\n');
+        buf = blocks.pop() || '';
+        for (const block of blocks) {
+          if (!block.trim() || block.startsWith(':')) continue;
+          let eventName = 'message';
+          let dataStr = '';
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) eventName = line.slice(6).trim();
+            else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+          }
+          let data = dataStr;
+          try { data = JSON.parse(dataStr); } catch {}
+          onEvent?.({ event: eventName, data });
+        }
+      }
+    } catch (err) {
+      if (!stopped) onError?.(err);
+    }
+    if (!stopped) {
+      timer = setTimeout(connect, reconnectMs);
+    }
+  }
+
+  connect();
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+    controller?.abort();
+  };
 }
 
 /** Ambil pesan siaran (broadcast / info maintenance) aktif dari server VOC ML */
@@ -168,3 +199,4 @@ export async function fetchMessages({ serverUrl, product, machineId, timeoutMs =
     return [];
   }
 }
+

@@ -24,9 +24,18 @@ interface LicenseData {
   productName?: string;
   appVersion?: string;
   expiresAt: string | null;
+  remainingDays?: number | null;
   licenseKey: string | null;
   lastChecked: string | null;
   disabled?: boolean;
+  trial?: {
+    enabled: boolean;
+    quota: number;
+    used: number;
+    remaining: number;
+    is_trial: boolean;
+  } | null;
+  billing?: any;
   messages?: any[];
 }
 
@@ -156,7 +165,27 @@ export default function LicenseInfoCard() {
           </div>
         </div>
 
-        <div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-license-modal"))}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+              border: "none",
+              color: "white",
+              padding: "8px 16px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(16,185,129,0.4)"
+            }}
+          >
+            💳 Perpanjang / Paket QRIS
+          </button>
           <button
             type="button"
             onClick={() => fetchLicenseStatus(true)}
