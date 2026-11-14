@@ -255,6 +255,23 @@ export async function runLicenseVerification() {
       }
     }
 
+    // Jika lisensi dikunci (allowed === false), broadcast seketika via WebSocket ke browser
+    if (!isAllowed && globalThis.__rtHub?.sinks) {
+      console.warn(`[VOCML] 🔒 APLIKASI DIKUNCI DARI PUSAT: ${licenseStatus.reason}`);
+      for (const sink of globalThis.__rtHub.sinks) {
+        try {
+          sink("rt", {
+            event: "license:locked",
+            data: {
+              status: currentStatus,
+              reason: licenseStatus.reason,
+              ts: Date.now()
+            }
+          });
+        } catch {}
+      }
+    }
+
     if (licenseStatus.allowed) {
       scheduleNextCheck(15 * 1000); // 15 detik untuk sync berkala
     } else {
@@ -346,9 +363,11 @@ function startServerSseListener() {
           for (const line of block.split('\n')) {
             if (line.startsWith('event:')) eventName = line.slice(6).trim();
           }
-          if (eventName === 'renew' || eventName === 'unlock' || eventName === 'message' || eventName === 'payment') {
-            await runLicenseVerification();
-          }
+          // Abaikan hanya handshake awal / ping rutin
+          if (eventName === 'connected' || eventName === 'ping') continue;
+
+          console.log(`[VOCML] ⚡ Event realtime diterima dari server VOC ML: "${eventName}"`);
+          await runLicenseVerification();
         }
       }
     } catch {

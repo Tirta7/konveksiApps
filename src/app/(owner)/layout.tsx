@@ -55,6 +55,14 @@ function useGlobalSync() {
           duration: 7000,
         });
         window.dispatchEvent(new CustomEvent("vocml-payment-celebration", { detail: d }));
+      } else if (event === "license:locked") {
+        toast.error(`🔒 Aplikasi Dikunci dari Pusat: ${d?.reason || "Lisensi dinonaktifkan"}`, {
+          id: "vocml-lock-alert",
+          duration: 5000,
+        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
       }
     });
     // Cek status lisensi berkala di background (jika dikunci dari pusat, langsung kunci layar browser)
@@ -69,7 +77,7 @@ function useGlobalSync() {
         }
       } catch {}
     };
-    const licInterval = setInterval(checkLicenseHeartbeat, 10000);
+    const licInterval = setInterval(checkLicenseHeartbeat, 3000); // 3 Detik responsif
 
     return () => { 
       unsubSync(); 
