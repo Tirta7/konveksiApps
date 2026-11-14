@@ -15,7 +15,7 @@ import { toast } from "sonner";
  * so any page-level fetchData() listeners refresh automatically.
  * Event aplikasi (permintaan vendor, laporan progres) ditampilkan sebagai notifikasi live.
  */
-function useGlobalSync() {
+function useGlobalSync(onLockChange?: (locked: boolean, reason?: string) => void) {
   useEffect(() => {
     const unsubSync = subscribeRealtime(() => {
       window.dispatchEvent(new CustomEvent("konveksi-sync"));
@@ -58,33 +58,42 @@ function useGlobalSync() {
       } else if (event === "license:locked") {
         toast.error(`🔒 Aplikasi Dikunci dari Pusat: ${d?.reason || "Lisensi dinonaktifkan"}`, {
           id: "vocml-lock-alert",
+          duration: 6000,
+        });
+        if (onLockChange) onLockChange(true, d?.reason);
+        window.dispatchEvent(new CustomEvent("open-license-modal"));
+      } else if (event === "license:unlocked") {
+        toast.success(`🔓 Lisensi Aktif: Aplikasi telah dibuka kembali dari pusat`, {
+          id: "vocml-unlock-alert",
           duration: 5000,
         });
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
+        if (onLockChange) onLockChange(false);
       }
     });
-    // Cek status lisensi berkala di background (jika dikunci dari pusat, langsung kunci layar browser)
+
+    // Cek status lisensi berkala di background (2 detik)
     const checkLicenseHeartbeat = async () => {
       try {
         const res = await fetch("/api/license-status");
         if (res.ok) {
           const lic = await res.json();
           if (lic && lic.allowed === false) {
-            window.location.reload();
+            if (onLockChange) onLockChange(true, lic.reason);
+            window.dispatchEvent(new CustomEvent("open-license-modal"));
+          } else if (lic && lic.allowed === true) {
+            if (onLockChange) onLockChange(false);
           }
         }
       } catch {}
     };
-    const licInterval = setInterval(checkLicenseHeartbeat, 3000); // 3 Detik responsif
+    const licInterval = setInterval(checkLicenseHeartbeat, 2000); // 2 Detik responsif
 
     return () => { 
       unsubSync(); 
       unsubEvt(); 
       clearInterval(licInterval);
     };
-  }, []);
+  }, [onLockChange]);
 }
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {
@@ -92,9 +101,16 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [appName, setAppName] = useState("KonveksiApps");
   const [logoUrl, setLogoUrl] = useState("/icons/icon-192.png");
+  const [isAppLocked, setIsAppLocked] = useState(false);
+  const [lockReason, setLockReason] = useState("");
+
+  const handleLockChange = (locked: boolean, reason?: string) => {
+    setIsAppLocked(locked);
+    if (reason) setLockReason(reason);
+  };
 
   // Start global real-time sync for all pages under this layout
-  useGlobalSync();
+  useGlobalSync(handleLockChange);
 
   useEffect(() => {
     function updateTitleAndName() {
@@ -140,6 +156,102 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       window.removeEventListener("pengaturan-changed", onSync);
     };
   }, []);
+
+  if (isAppLocked) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "#0F172A",
+        color: "#F8FAFC",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        position: "fixed",
+        inset: 0,
+        zIndex: 999999
+      }}>
+        <div style={{
+          background: "#1E293B",
+          border: "2px solid #EF4444",
+          borderRadius: 20,
+          maxWidth: 560,
+          width: "100%",
+          padding: 36,
+          textAlign: "center",
+          boxShadow: "0 25px 60px rgba(239, 68, 68, 0.25)"
+        }}>
+          <div style={{
+            width: 76,
+            height: 76,
+            borderRadius: "50%",
+            background: "rgba(239, 68, 68, 0.15)",
+            border: "2px solid #EF4444",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 18px",
+            fontSize: 34
+          }}>
+            🔒
+          </div>
+          <div style={{
+            display: "inline-block",
+            padding: "4px 12px",
+            borderRadius: 999,
+            background: "rgba(239, 68, 68, 0.2)",
+            color: "#F87171",
+            fontSize: 11,
+            fontWeight: 800,
+            textTransform: "uppercase",
+            marginBottom: 8
+          }}>
+            APLIKASI TERKUNCI
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: "#FFFFFF", marginBottom: 8 }}>
+            Akses Dinonaktifkan dari Pusat
+          </h1>
+          <p style={{ fontSize: 13, color: "#94A3B8", marginBottom: 24, lineHeight: 1.55 }}>
+            {lockReason || "Aplikasi ini telah dikunci sementara oleh administrator VOC ML. Hubungi penyedia sistem atau selesaikan pembayaran untuk membuka kembali."}
+          </p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-license-modal"))}
+              style={{
+                padding: "12px 24px",
+                background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 10,
+                fontWeight: 800,
+                fontSize: 13,
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.4)"
+              }}
+            >
+              💳 Buka Menu Tagihan QRIS
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "12px 20px",
+                background: "#334155",
+                color: "#F8FAFC",
+                border: "none",
+                borderRadius: 10,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer"
+              }}
+            >
+              🔄 Refresh Halaman
+            </button>
+          </div>
+        </div>
+        <VocmlLicenseModal />
+      </div>
+    );
+  }
 
   return (
     <div className={`app-layout ${isCollapsed ? 'sidebar-collapsed' : ''} ${isMobileOpen ? 'mobile-sidebar-open' : ''}`}>

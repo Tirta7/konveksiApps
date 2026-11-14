@@ -213,6 +213,7 @@ export async function runLicenseVerification() {
       checkedAt: Date.now()
     });
 
+    const previousAllowed = licenseStatus.allowed;
     const currentStatus = body.status || 'pending';
     const isAllowed = ALLOWED_SET.has(currentStatus);
 
@@ -265,6 +266,22 @@ export async function runLicenseVerification() {
             data: {
               status: currentStatus,
               reason: licenseStatus.reason,
+              machineId: licenseStatus.machineId,
+              storeName: licenseStatus.storeName,
+              billing: licenseStatus.billing,
+              ts: Date.now()
+            }
+          });
+        } catch {}
+      }
+    } else if (isAllowed && previousAllowed === false && globalThis.__rtHub?.sinks) {
+      console.log(`[VOCML] 🔓 APLIKASI DIBUKA KEMBALI DARI PUSAT`);
+      for (const sink of globalThis.__rtHub.sinks) {
+        try {
+          sink("rt", {
+            event: "license:unlocked",
+            data: {
+              status: currentStatus,
               ts: Date.now()
             }
           });
@@ -334,20 +351,32 @@ function scheduleNextCheck(delayMs) {
 // Inisialisasi saat server startup
 runLicenseVerification();
 
-// Koneksi realtime SSE server-side ke VOC ML untuk auto-detect event renew / unlock seketika
+// Koneksi realtime SSE server-side ke VOC ML untuk auto-detect event lock / unlock / renew seketika
 function startServerSseListener() {
   if (VOCML_CONFIG.disabled) return;
   const base = VOCML_CONFIG.serverUrl.replace(/\/$/, '');
   const mid = VOCML_CONFIG.machineId;
-  const prod = VOCML_CONFIG.product || 'pos';
-  const qs = new URLSearchParams({ machine_id: mid, product: prod });
 
   async function connectStream() {
+    let chosenProduct = VOCML_CONFIG.product;
     try {
-      const res = await fetch(`${base}/api/v1/stream?${qs.toString()}`, {
+      let qs = new URLSearchParams({ machine_id: mid, product: chosenProduct });
+      let res = await fetch(`${base}/api/v1/stream?${qs.toString()}`, {
         headers: { Accept: 'text/event-stream' }
       });
+
+      // Fallback transparan jika server remote belum mendukung enum 'konveksi'
+      if (!res.ok && res.status === 400) {
+        chosenProduct = 'pos';
+        qs = new URLSearchParams({ machine_id: mid, product: chosenProduct });
+        res = await fetch(`${base}/api/v1/stream?${qs.toString()}`, {
+          headers: { Accept: 'text/event-stream' }
+        });
+      }
+
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      console.log(`[VOCML] ✅ Stream realtime terhubung ke server VOC ML (product: ${chosenProduct})`);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -370,8 +399,9 @@ function startServerSseListener() {
           await runLicenseVerification();
         }
       }
-    } catch {
-      setTimeout(connectStream, 10000);
+    } catch (err) {
+      console.warn(`[VOCML] Stream putus (${err.message}), reconnect dalam 3 detik...`);
+      setTimeout(connectStream, 3000);
     }
   }
 
