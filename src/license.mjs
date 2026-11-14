@@ -410,52 +410,115 @@ function startServerSseListener() {
 
 startServerSseListener();
 
-// HTML Layar Kunci Red Lock Screen (Fallback server level jika diblokir sebelum browser load React)
+// HTML Layar Kunci Red Lock Screen (Diselaraskan 100% identik dengan VocmlLicenseModal React)
 export function renderLockedScreenHTML(status) {
   const billing = status.billing;
   const packages = billing?.packages || [];
   const defaultPkg = packages[0];
   const qrisUrl = defaultPkg?.qris_image_url || billing?.qris_image_url || '';
-  const amountText = defaultPkg?.amount_text || billing?.amount_text || 'Rp 450.000';
+  const amountText = defaultPkg?.amount_text || billing?.amount_text || 'Rp 0';
+  const mid = status.machineId || 'MID-UNKNOWN';
+  const store = status.storeName || 'Konveksi ERP';
 
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Terkunci - Lisensi Diperlukan | Konveksi ERP</title>
+  <title>Daftar Paket Lisensi & Perpanjangan | Konveksi ERP</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    body { background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 18px; max-width: 780px; width: 100%; padding: 32px; box-shadow: 0 25px 60px rgba(0,0,0,0.5); }
-    .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; margin-top: 20px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #0b1120; color: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-card { background: #1e293b; border: 1px solid #334155; border-radius: 20px; max-width: 880px; width: 100%; box-shadow: 0 25px 60px rgba(0,0,0,0.6); overflow: hidden; animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #334155; }
+    .header-title-box { display: flex; align-items: center; gap: 8px; }
+    .header-title { font-size: 18px; font-weight: 800; color: #ffffff; margin: 0; }
+    .header-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .badge-locked { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .lock-alert-text { font-size: 11px; color: #ef4444; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; padding: 24px; }
     @media(max-width: 680px) { .grid { grid-template-columns: 1fr; } }
-    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 999px; font-size: 12px; font-weight: 700; }
-    h1 { font-size: 22px; font-weight: 800; margin: 12px 0 6px; color: #fff; }
-    p.desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
-    .qris-box { background: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .qris-img-container { background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 12px; }
-    .qris-img { width: 180px; height: 180px; object-fit: contain; display: block; }
-    .total-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
-    .total-val { font-size: 22px; font-weight: 800; color: #38bdf8; font-family: ui-monospace, monospace; margin: 4px 0; }
-    .pkg-list { display: flex; flex-direction: column; gap: 10px; }
-    .pkg-item { padding: 12px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
-    .pkg-item:hover, .pkg-item.active { border-color: #38bdf8; background: rgba(56, 189, 248, 0.08); }
-    .pkg-name { font-size: 13px; font-weight: 700; color: #fff; }
-    .pkg-price { font-size: 14px; font-weight: 800; color: #38bdf8; font-family: ui-monospace, monospace; }
-    .btn-pay { width: 100%; margin-top: 16px; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-    .mid-box { margin-top: 16px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; font-family: ui-monospace, monospace; }
-    .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: blink 1.5s infinite; margin-right: 6px; }
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .qris-panel { background: rgba(15, 23, 42, 0.6); border-radius: 16px; border: 1px solid rgba(51, 65, 85, 0.6); padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .qris-img-box { padding: 12px; background: #ffffff; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; min-height: 224px; min-width: 224px; margin-bottom: 14px; }
+    .qris-img { width: 208px; height: 208px; object-fit: contain; display: block; }
+    .total-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin: 0; text-align: center; }
+    .total-val { font-size: 26px; font-weight: 900; color: #38bdf8; font-family: ui-monospace, SFMono-Regular, monospace; margin: 4px 0; text-align: center; }
+    .merchant-label { font-size: 11px; color: #94a3b8; margin: 0; text-align: center; }
+    .btn-pay { width: 100%; margin-top: 16px; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; border: none; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.15s; }
+    .btn-pay:active { transform: scale(0.99); }
+    .mid-box { width: 100%; margin-top: 14px; padding: 8px 12px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
+    .mid-text { font-family: ui-monospace, monospace; color: #38bdf8; font-weight: 700; }
+    .pkg-title { font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .pkg-list { display: flex; flex-direction: column; gap: 8px; }
+    .pkg-card { padding: 12px 14px; border-radius: 12px; border: 1px solid #334155; background: #0f172a; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.15s ease; }
+    .pkg-card.active { border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.1); }
+    .pkg-name { font-weight: 800; font-size: 13px; color: #ffffff; }
+    .pkg-badge { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: #f59e0b; color: #0f172a; margin-left: 6px; }
+    .pkg-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .pkg-amount { font-size: 14px; font-weight: 900; color: #38bdf8; font-family: ui-monospace, monospace; text-align: right; }
+    .voucher-box { margin-top: 16px; padding: 14px; background: rgba(15, 23, 42, 0.5); border: 1px solid #334155; border-radius: 12px; }
+    .voucher-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .voucher-form { display: flex; gap: 8px; }
+    .voucher-input { flex: 1; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #ffffff; font-size: 12px; text-transform: uppercase; outline: none; }
+    .voucher-btn { padding: 8px 16px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .help-box { margin-top: 14px; font-size: 11px; color: #94a3b8; line-height: 1.5; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px; }
+    .copy-btn { background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 2px; font-size: 11px; }
   </style>
   <script>
     function selectPackage(el, url, amount) {
-      document.querySelectorAll('.pkg-item').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.pkg-card').forEach(p => p.classList.remove('active'));
       el.classList.add('active');
       document.getElementById('qris-img').src = url;
       document.getElementById('total-amount').innerText = amount;
     }
-    // Fast polling untuk auto-unlock seketika
+    function copyMid() {
+      navigator.clipboard.writeText('${mid}');
+      const el = document.getElementById('copy-label');
+      el.innerText = 'Tersalin!';
+      setTimeout(() => { el.innerText = 'Salin'; }, 2000);
+    }
+    async function checkStatusNow() {
+      const btn = document.getElementById('btn-pay-now');
+      btn.innerText = '⏳ Memeriksa...';
+      try {
+        const res = await fetch('/api/license-status?refresh=1');
+        if (res.ok) {
+          const d = await res.json();
+          if (d.allowed) {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch(e) {}
+      setTimeout(() => { btn.innerText = '✅ Saya Sudah Bayar'; }, 1000);
+    }
+    async function claimVoucher(e) {
+      e.preventDefault();
+      const code = document.getElementById('voucher-code').value.trim();
+      if (!code) return;
+      const btn = document.getElementById('voucher-btn');
+      btn.innerText = '...';
+      try {
+        const res = await fetch('/api/license/voucher', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        });
+        const d = await res.json();
+        if (res.ok && d.ok) {
+          alert('Voucher Berhasil Diklaim!');
+          window.location.reload();
+        } else {
+          alert(d.error || 'Voucher tidak valid');
+        }
+      } catch(e) {
+        alert('Gagal klaim voucher');
+      } finally {
+        btn.innerText = 'Klaim';
+      }
+    }
+    // Fast-polling 1.5 detik ke server dengan refresh=1 untuk unlock seketika
     setInterval(async function() {
       try {
         const res = await fetch('/api/license-status?refresh=1');
@@ -466,47 +529,75 @@ export function renderLockedScreenHTML(status) {
           }
         }
       } catch(e) {}
-    }, 3000);
+    }, 1500);
   </script>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">🔒 LISENSI DIPERLUKAN</div>
-    <h1>Konveksi ERP — Akses Terkunci</h1>
-    <p class="desc">Aplikasi ini membutuhkan lisensi aktif untuk melanjutkan operasional. Silakan scan QRIS dinamis di bawah untuk perpanjangan seketika.</p>
+  <div class="modal-card">
+    <div class="header">
+      <div>
+        <div class="header-title-box">
+          <span style="color: #38bdf8; font-size: 18px;">🛡️</span>
+          <h3 class="header-title">Daftar Paket Lisensi & Perpanjangan</h3>
+          <span class="badge-locked">LOCKED</span>
+        </div>
+        <div class="header-sub">${store} • ${store}</div>
+      </div>
+      <div class="lock-alert-text">🔒 Lisensi Diperlukan</div>
+    </div>
 
     <div class="grid">
-      <!-- Kolom Kiri: QRIS Tunggal -->
-      <div class="qris-box">
-        <div class="qris-img-container">
-          <img id="qris-img" src="${qrisUrl}" alt="QRIS Dinamis VOC ML" class="qris-img" />
+      <!-- Kolom Kiri: Penampil QRIS Tunggal -->
+      <div class="qris-panel">
+        <div class="qris-img-box">
+          <img id="qris-img" src="${qrisUrl}" alt="QRIS Pembayaran Dinamis" class="qris-img" />
         </div>
-        <div class="total-label">TOTAL TAGIHAN</div>
-        <div id="total-amount" class="total-val">${amountText}</div>
-        <div style="font-size: 11px; color: #64748B;">QRIS • ${billing?.merchant_name || 'Virtual Operation Control'}</div>
-        <button class="btn-pay" onclick="window.location.reload()">✅ Saya Sudah Bayar</button>
+        <p class="total-label">TOTAL TAGIHAN</p>
+        <p id="total-amount" class="total-val">${amountText}</p>
+        <p class="merchant-label">QRIS Dinamis • ${billing?.merchant_name || 'Virtual Operation Control'}</p>
+        
+        <button id="btn-pay-now" class="btn-pay" onclick="checkStatusNow()">
+          ✅ Saya Sudah Bayar
+        </button>
+
+        <div class="mid-box">
+          <span style="color: #94a3b8;">MID:</span>
+          <span class="mid-text">${mid}</span>
+          <button class="copy-btn" onclick="copyMid()"><span id="copy-label">Salin</span></button>
+        </div>
       </div>
 
-      <!-- Kolom Kanan: Pilihan Paket -->
+      <!-- Kolom Kanan: Pilihan Paket & Klaim Voucher -->
       <div>
-        <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px;">PILIHAN PAKET LISENSI</div>
+        <div class="pkg-title">PILIHAN PAKET LISENSI</div>
         <div class="pkg-list">
           ${packages.map((pkg, idx) => `
-            <div class="pkg-item ${idx === 0 ? 'active' : ''}" onclick="selectPackage(this, '${pkg.qris_image_url}', '${pkg.amount_text}')">
+            <div class="pkg-card ${idx === 0 ? 'active' : ''}" onclick="selectPackage(this, '${pkg.qris_image_url}', '${pkg.amount_text}')">
               <div>
-                <div class="pkg-name">${pkg.name} (${pkg.label || pkg.days + ' Hari'})</div>
-                <div style="font-size: 11px; color: #64748b;">${pkg.promo_badge ? '⭐ ' + pkg.promo_badge : 'Resmi VOC ML'}</div>
+                <div style="display: flex; align-items: center;">
+                  <span class="pkg-name">${pkg.name}</span>
+                  ${pkg.promo_badge || pkg.promoBadge ? `<span class="pkg-badge">${pkg.promo_badge || pkg.promoBadge}</span>` : ''}
+                </div>
+                <div class="pkg-sub">Durasi: ${pkg.label || pkg.days + ' Hari'}</div>
               </div>
-              <div class="pkg-price">${pkg.amount_text}</div>
+              <div class="pkg-amount">${pkg.amount_text}</div>
             </div>
           `).join('')}
         </div>
-        <div class="mid-box">
-          <span>MACHINE ID:</span>
-          <span style="color: #38bdf8;">${status.machineId}</span>
+
+        <div class="voucher-box">
+          <div class="voucher-title">🏷️ KLAIM KODE VOUCHER PROMO</div>
+          <form class="voucher-form" onsubmit="claimVoucher(event)">
+            <input type="text" id="voucher-code" class="voucher-input" placeholder="Masukkan kode voucher..." />
+            <button type="submit" id="voucher-btn" class="voucher-btn">Klaim</button>
+          </form>
         </div>
-        <div style="margin-top: 12px; font-size: 11px; color: #94a3b8; display: flex; align-items: center;">
-          <span class="pulse"></span> Menunggu deteksi pembayaran seketika...
+
+        <div class="help-box">
+          <strong style="color: #cbd5e1;">⚡ Auto-Unlock Seketika:</strong><br />
+          1. Buka aplikasi BCA, GoPay, OVO, Dana, ShopeePay, atau Mobile Banking.<br />
+          2. Scan QRIS dinamis di sebelah kiri sesuai nominal yang tertera.<br />
+          3. Setelah bayar, sistem akan otomatis terbuka dalam hitungan detik!
         </div>
       </div>
     </div>
