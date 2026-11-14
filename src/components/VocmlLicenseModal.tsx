@@ -120,9 +120,8 @@ export default function VocmlLicenseModal() {
 
   const prevStatusRef = useRef<string | null>(null);
 
-  // Ambil data lisensi saat ini
+  // Ambil data lisensi saat ini (silent background polling, bebas kedip/blink)
   async function fetchLicense(isRefresh = false) {
-    if (isRefresh) setIsChecking(true);
     try {
       const url = isRefresh ? "/api/license-status?refresh=1" : "/api/license-status";
       const res = await fetch(url, { cache: "no-store" });
@@ -161,8 +160,6 @@ export default function VocmlLicenseModal() {
       }
     } catch (err) {
       console.error("[VOCML] Gagal memuat status lisensi:", err);
-    } finally {
-      if (isRefresh) setIsChecking(false);
     }
   }
 
