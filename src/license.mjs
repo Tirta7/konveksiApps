@@ -78,6 +78,14 @@ export let licenseStatus = {
 };
 
 let pollTimer = null;
+let lastBroadcastPaymentTime = null;
+
+try {
+  const initialCache = readCache();
+  if (initialCache?.data?.last_payment?.created_at) {
+    lastBroadcastPaymentTime = initialCache.data.last_payment.created_at;
+  }
+} catch {}
 
 const ALLOWED_SET = new Set(['active', 'expiring', 'trial']);
 
@@ -186,10 +194,16 @@ export async function runLicenseVerification() {
     const body = check.json;
     const msgs = await fetchBroadcastMessages(chosenProduct);
 
-    // Deteksi event pembayaran baru masuk
-    const prevPaymentTime = licenseStatus.lastPayment?.created_at;
+    // Deteksi event pembayaran baru masuk (hanya broadcast 1x per transaksi baru)
     const newPaymentTime = body.last_payment?.created_at;
-    const isNewPayment = newPaymentTime && newPaymentTime !== prevPaymentTime;
+    const isNewPayment = !!(
+      newPaymentTime &&
+      lastBroadcastPaymentTime &&
+      newPaymentTime !== lastBroadcastPaymentTime
+    );
+    if (newPaymentTime) {
+      lastBroadcastPaymentTime = newPaymentTime;
+    }
 
     // Simpan cache offline
     writeCache({
@@ -223,7 +237,7 @@ export async function runLicenseVerification() {
       messages: msgs || []
     };
 
-    // Broadcast ke browser WebSocket jika ada pembayaran baru masuk
+    // Broadcast ke browser WebSocket jika ada pembayaran baru masuk (1x saja)
     if (isNewPayment && globalThis.__rtHub?.sinks) {
       console.log(`[VOCML] 🎉 PEMBAYARAN BERHASIL DITERIMA: ${body.last_payment?.action || ''}`);
       for (const sink of globalThis.__rtHub.sinks) {
@@ -242,10 +256,9 @@ export async function runLicenseVerification() {
     }
 
     if (licenseStatus.allowed) {
-      scheduleNextCheck(30 * 1000); // 30 detik untuk sync berkala
+      scheduleNextCheck(15 * 1000); // 15 detik untuk sync berkala
     } else {
-      console.warn(`[VOCML] 🔒 APLIKASI TERKUNCI: ${licenseStatus.reason}. Cek ulang dalam 5 detik...`);
-      scheduleNextCheck(5 * 1000);
+      scheduleNextCheck(3 * 1000);
     }
   } catch (err) {
     // Mode Offline (Pilar 8)

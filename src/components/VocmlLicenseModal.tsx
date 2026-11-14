@@ -166,13 +166,17 @@ export default function VocmlLicenseModal() {
     }
   }
 
-  // Buka perayaan sukses bayar
+  // Buka perayaan sukses bayar (Hanya 1x per pembayaran baru, toast ber-ID tunggal bebas spam)
   function triggerSuccessCelebration(info: { pkgName: string; amountText: string; expiresAt: string }) {
     playPaymentChime();
     setSuccessInfo(info);
     setShowSuccessModal(true);
     setIsOpen(false);
-    toast.success("🎉 Pembayaran Lisensi Berhasil Diverifikasi!");
+    toast.success("🎉 Pembayaran Lisensi Berhasil Diverifikasi!", {
+      id: "vocml-payment-alert",
+      description: `Paket ${info.pkgName} aktif hingga ${info.expiresAt}.`,
+      duration: 7000,
+    });
   }
 
   // Listeners global event & startup check
@@ -230,10 +234,10 @@ export default function VocmlLicenseModal() {
       } catch {}
     }
 
-    // 2. Fast-polling 2.5 detik selama modal terbuka sebagai redundancy
+    // 2. Fast-polling 1.5 detik selama modal terbuka dengan refresh=1 langsung ke VOC ML (Responsif seketika)
     const pollInterval = setInterval(() => {
-      fetchLicense(false);
-    }, 2500);
+      fetchLicense(true);
+    }, 1500);
 
     return () => {
       clearInterval(pollInterval);
