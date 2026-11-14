@@ -186,6 +186,11 @@ export async function runLicenseVerification() {
     const body = check.json;
     const msgs = await fetchBroadcastMessages(chosenProduct);
 
+    // Deteksi event pembayaran baru masuk
+    const prevPaymentTime = licenseStatus.lastPayment?.created_at;
+    const newPaymentTime = body.last_payment?.created_at;
+    const isNewPayment = newPaymentTime && newPaymentTime !== prevPaymentTime;
+
     // Simpan cache offline
     writeCache({
       token: body.token,
@@ -214,8 +219,27 @@ export async function runLicenseVerification() {
       disabled: false,
       trial: body.trial || null,
       billing: body.billing || null,
+      lastPayment: body.last_payment || null,
       messages: msgs || []
     };
+
+    // Broadcast ke browser WebSocket jika ada pembayaran baru masuk
+    if (isNewPayment && globalThis.__rtHub?.sinks) {
+      console.log(`[VOCML] 🎉 PEMBAYARAN BERHASIL DITERIMA: ${body.last_payment?.action || ''}`);
+      for (const sink of globalThis.__rtHub.sinks) {
+        try {
+          sink("rt", {
+            event: "license:payment_success",
+            data: {
+              lastPayment: body.last_payment,
+              expiresAt: body.expires_at,
+              remainingDays: body.remaining_days,
+              ts: Date.now()
+            }
+          });
+        } catch {}
+      }
+    }
 
     if (licenseStatus.allowed) {
       scheduleNextCheck(30 * 1000); // 30 detik untuk sync berkala
@@ -279,6 +303,50 @@ function scheduleNextCheck(delayMs) {
 
 // Inisialisasi saat server startup
 runLicenseVerification();
+
+// Koneksi realtime SSE server-side ke VOC ML untuk auto-detect event renew / unlock seketika
+function startServerSseListener() {
+  if (VOCML_CONFIG.disabled) return;
+  const base = VOCML_CONFIG.serverUrl.replace(/\/$/, '');
+  const mid = VOCML_CONFIG.machineId;
+  const prod = VOCML_CONFIG.product || 'pos';
+  const qs = new URLSearchParams({ machine_id: mid, product: prod });
+
+  async function connectStream() {
+    try {
+      const res = await fetch(`${base}/api/v1/stream?${qs.toString()}`, {
+        headers: { Accept: 'text/event-stream' }
+      });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const blocks = buf.split('\n\n');
+        buf = blocks.pop() || '';
+        for (const block of blocks) {
+          if (!block.trim() || block.startsWith(':')) continue;
+          let eventName = 'message';
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) eventName = line.slice(6).trim();
+          }
+          if (eventName === 'renew' || eventName === 'unlock' || eventName === 'message' || eventName === 'payment') {
+            await runLicenseVerification();
+          }
+        }
+      }
+    } catch {
+      setTimeout(connectStream, 10000);
+    }
+  }
+
+  connectStream();
+}
+
+startServerSseListener();
 
 // HTML Layar Kunci Red Lock Screen (Fallback server level jika diblokir sebelum browser load React)
 export function renderLockedScreenHTML(status) {

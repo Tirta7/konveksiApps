@@ -49,6 +49,13 @@ interface LicenseData {
   product: string;
   expiresAt: string | null;
   remainingDays?: number | null;
+  lastPayment?: {
+    action?: string;
+    amount?: number;
+    package_name?: string;
+    created_at?: string;
+    expires_at?: string;
+  } | null;
   trial?: {
     enabled: boolean;
     quota: number;
@@ -128,8 +135,17 @@ export default function VocmlLicenseModal() {
           setSelectedPackage((prev) => prev || json.billing.packages[0]);
         }
 
-        // Cek perubahan status menjadi ACTIVE (Pilar 4)
-        if (prevStatusRef.current && prevStatusRef.current !== "active" && json.status === "active") {
+        // Cek perubahan status atau deteksi pembayaran baru masuk (Pilar 4)
+        const payment = json.lastPayment;
+        const lastCelebrated = localStorage.getItem("vocml_celebrated_payment");
+        if (payment?.created_at && payment.created_at !== lastCelebrated) {
+          localStorage.setItem("vocml_celebrated_payment", payment.created_at);
+          triggerSuccessCelebration({
+            pkgName: payment.package_name || selectedPackage?.name || "Paket Langganan",
+            amountText: payment.amount ? `Rp ${Number(payment.amount).toLocaleString("id-ID")}` : (selectedPackage?.amount_text || json.billing?.amount_text || "Lunas"),
+            expiresAt: payment.expires_at || json.expiresAt || "Aktif",
+          });
+        } else if (prevStatusRef.current && prevStatusRef.current !== "active" && json.status === "active") {
           triggerSuccessCelebration({
             pkgName: selectedPackage?.name || "Paket Langganan",
             amountText: selectedPackage?.amount_text || json.billing?.amount_text || "Lunas",
@@ -168,8 +184,22 @@ export default function VocmlLicenseModal() {
       setIsOpen(true);
     };
 
+    const handlePaymentCelebration = (e: any) => {
+      const d = e.detail;
+      const payment = d?.lastPayment;
+      triggerSuccessCelebration({
+        pkgName: payment?.package_name || selectedPackage?.name || "Paket Langganan",
+        amountText: payment?.amount ? `Rp ${Number(payment.amount).toLocaleString("id-ID")}` : (selectedPackage?.amount_text || "Lunas"),
+        expiresAt: payment?.expires_at || d?.expiresAt || "Aktif",
+      });
+    };
+
     window.addEventListener("open-license-modal", handleOpenModal);
-    return () => window.removeEventListener("open-license-modal", handleOpenModal);
+    window.addEventListener("vocml-payment-celebration", handlePaymentCelebration);
+    return () => {
+      window.removeEventListener("open-license-modal", handleOpenModal);
+      window.removeEventListener("vocml-payment-celebration", handlePaymentCelebration);
+    };
   }, []);
 
   // Pilar 4: Fast-polling / SSE listener saat modal terbuka (deteksi bayar seketika)
@@ -220,13 +250,17 @@ export default function VocmlLicenseModal() {
         const json = await res.json();
         setLicenseData(json);
         if (json.status === "active") {
+          const payment = json.lastPayment;
+          if (payment?.created_at) {
+            localStorage.setItem("vocml_celebrated_payment", payment.created_at);
+          }
           triggerSuccessCelebration({
-            pkgName: selectedPackage?.name || "Paket Langganan",
-            amountText: selectedPackage?.amount_text || json.billing?.amount_text || "Lunas",
-            expiresAt: json.expiresAt || "Aktif",
+            pkgName: payment?.package_name || selectedPackage?.name || "Paket Langganan",
+            amountText: payment?.amount ? `Rp ${Number(payment.amount).toLocaleString("id-ID")}` : (selectedPackage?.amount_text || json.billing?.amount_text || "Lunas"),
+            expiresAt: payment?.expires_at || json.expiresAt || "Aktif",
           });
         } else {
-          toast.info("⏳ Pembayaran sedang diproses oleh perbankan / QRIS server. Tunggu sebentar...");
+          toast.info("⏳ Pembayaran sedang diverifikasi oleh server QRIS. Tunggu beberapa detik...");
         }
       }
     } catch {

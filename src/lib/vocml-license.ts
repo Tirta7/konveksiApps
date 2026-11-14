@@ -55,6 +55,7 @@ export interface VocmlLicenseState {
   licenseKey?: string | null;
   trial?: VocmlTrial | null;
   billing?: VocmlBilling | null;
+  lastPayment?: any;
   offline?: boolean;
   lastChecked?: string | null;
   messages?: any[];
@@ -223,6 +224,7 @@ export async function queryLicenseServer(options: {
       licenseKey: body.license_key || null,
       trial: body.trial || null,
       billing: body.billing || null,
+      lastPayment: body.last_payment || null,
       offline: false,
       lastChecked: new Date().toISOString()
     };

@@ -48,6 +48,12 @@ function useGlobalSync() {
           description: "Pesanan otomatis masuk ke Penjualan Online.",
           duration: 5000,
         });
+      } else if (event === "license:payment_success") {
+        toast.success(`🎉 Pembayaran QRIS ${d?.lastPayment?.amount ? `Rp ${d.lastPayment.amount.toLocaleString("id-ID")}` : ""} Berhasil Diterima!`, {
+          description: `Paket ${d?.lastPayment?.package_name || "Langganan"} aktif hingga ${d?.expiresAt || "selesai"}.`,
+          duration: 10000,
+        });
+        window.dispatchEvent(new CustomEvent("vocml-payment-celebration", { detail: d }));
       }
     });
     // Cek status lisensi berkala di background (jika dikunci dari pusat, langsung kunci layar browser)
@@ -59,10 +65,22 @@ function useGlobalSync() {
           if (lic && lic.allowed === false) {
             window.location.reload();
           }
+          // Deteksi otomatis jika ada pembayaran baru yang masuk
+          if (lic?.lastPayment?.created_at) {
+            const lastCelebrated = localStorage.getItem("vocml_celebrated_payment");
+            if (lic.lastPayment.created_at !== lastCelebrated) {
+              localStorage.setItem("vocml_celebrated_payment", lic.lastPayment.created_at);
+              toast.success(`🎉 Pembayaran QRIS ${lic.lastPayment.amount ? `Rp ${lic.lastPayment.amount.toLocaleString("id-ID")}` : ""} Berhasil Diterima!`, {
+                description: `Paket ${lic.lastPayment.package_name || "Langganan"} aktif hingga ${lic.expiresAt || ""}.`,
+                duration: 10000,
+              });
+              window.dispatchEvent(new CustomEvent("vocml-payment-celebration", { detail: lic }));
+            }
+          }
         }
       } catch {}
     };
-    const licInterval = setInterval(checkLicenseHeartbeat, 10000); // 10 Detik
+    const licInterval = setInterval(checkLicenseHeartbeat, 5000); // 5 Detik responsif
 
     return () => { 
       unsubSync(); 
